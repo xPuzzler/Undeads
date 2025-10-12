@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Based Undeads - NFT Grid & Cover Maker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Righteous&family=Bebas+Neue&family=Bangers&family=Monoton&family=Creepster&family=Nosifer&family=Rubik+Moonrocks&family=Bungee+Shade&display=swap" rel="stylesheet">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a3a32 0%, #2d5f54 50%, #1e4138 100%);
+      font-family: 'Arial', sans-serif;
+      color: white;
+      min-height: 100vh;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .pixel-font {
+      font-family: 'Press Start 2P', cursive;
+      line-height: 1.8;
+    }
+    
+    /* ============================================
+       THEME SYSTEM
+       ============================================ */
+    body.theme-glass {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+    }
+    
+    body.theme-glass .glass-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    }
+    
+    body.theme-dark {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+    }
+    
+    body.theme-dark .glass-card {
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    }
+    
+    /* ============================================
+       GLASS CARDS
+       ============================================ */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+    
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* ============================================
+       HERO BANNER
+       ============================================ */
+    .hero-banner-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      min-height: 600px;
+    }
+    
+    .hero-banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+    .hero-overlay {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 600px;
+      background: linear-gradient(to bottom, 
+        rgba(0,0,0,0.7) 0%, 
+        rgba(0,0,0,0.3) 50%, 
+        rgba(0,0,0,0.8) 100%);
+      padding: 60px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+    }
+    
+    /* ============================================
+       SCROLLING NFT CAROUSEL
+       ============================================ */
+    .scrolling-container {
+      position: relative;
+      overflow: hidden;
+      padding: 30px 0;
+      height: 480px;
+    }
+    
+    .nft-scroll-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      width: max-content;
+    }
+    
+    .nft-scroll-row:nth-child(1) {
+      animation: scroll-left 80s linear infinite;
+    }
+    
+    .nft-scroll-row:nth-child(2) {
+      animation: scroll-right 80s linear infinite;
+    }
+    
+    @keyframes scroll-left {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    @keyframes scroll-right {
+      0% { transform: translateX(-50%); }
+      100% { transform: translateX(0); }
+    }
+    
+    .nft-scroll-row:hover {
+      animation-play-state: paused;
+    }
+    
+    .nft-card {
+      width: 200px;
+      flex-shrink: 0;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+    
+    .nft-card:nth-child(odd) {
+      transform: rotate(-2deg);
+    }
+    
+    .nft-card:nth-child(even) {
+      transform: rotate(2deg);
+    }
+    
+    .nft-card:hover {
+      transform: translateY(-20px) rotate(0deg) scale(1.15);
+      z-index: 10;
+    }
+    
+    .nft-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .nft-card:hover img {
+      border-color: #00ff88;
+      box-shadow: 0 15px 40px rgba(0, 255, 136, 0.5);
+    }
+    
+    /* ============================================
+       BUTTONS
+       ============================================ */
+    .btn-primary {
+      background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+      color: #0a1f1a;
+      font-weight: bold;
+      padding: 14px 32px;
+      border-radius: 50px;
+      border: none;
+      box-shadow: 0 6px 24px rgba(0, 255, 136, 0.4);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-primary:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 35px rgba(0, 255, 136, 0.6);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-weight: bold;
+      padding: 12px 28px;
+      border-radius: 50px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    /* ============================================
+       INPUTS & SELECTS
+       ============================================ */
+    input[type="text"],
+    input[type="number"],
+    select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 14px 18px;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #00ff88;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
+    }
+    
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* ============================================
+       NFT GRID
+       ============================================ */
+    #nftGrid {
+      max-height: 600px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      padding: 10px;
+    }
+    
+    #nftGrid::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    #nftGrid::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+    }
+    
+    #nftGrid::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #00ff88 0%, #00cc6f 100%);
+      border-radius: 10px;
+    }
+    
+    .nft-thumbnail {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    .nft-thumbnail:hover {
+      border-color: #00ff88;
+      transform: scale(1.08);
+      box-shadow: 0 8px 30px rgba(0, 255, 136, 0.4);
+    }
+    
+    .nft-thumbnail.selected-for-grid {
+      border-color: #00ff88;
+      box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.3);
+      transform: scale(1.05);
+    }
+    
+    /* ============================================
+       COVER MAKER
+       ============================================ */
+    #coverCanvas {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border: 3px solid #00ff88;
+      border-radius: 12px;
+      background: #2d5f54;
+      cursor: default;
+      box-shadow: 0 10px 40px rgba(0, 255, 136, 0.3);
+    }
+    
+    #coverCanvas.resize-cursor {
+      cursor: nwse-resize !important;
+    }
+    
+    #coverCanvas.move-cursor {
+      cursor: move !important;
+    }
+    
+    #trashBin {
+      transition: all 0.3s ease;
+    }
+    
+    #trashBin.active {
+      animation: shake 0.5s ease-in-out infinite;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: rotate(-5deg) scale(1.1); }
+      50% { transform: rotate(5deg) scale(1.1); }
+    }
+    
+    /* ============================================
+       SECTION DIVIDER
+       ============================================ */
+    .section-divider {
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
+      margin: 60px auto;
+      border-radius: 10px;
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+      .hero-overlay {
+        min-height: 500px;
+        padding: 40px 15px;
+      }
+      
+      .pixel-font {
+        font-size: 0.7rem;
+      }
+      
+      .nft-thumbnail {
+        height: 120px;
+      }
+      
+      .scrolling-container {
+        height: 380px;
+      }
+      
+      .nft-card {
+        width: 160px;
+      }
+      
+      .nft-card img {
+        height: 160px;
+      }
+    }
+    
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .hero-overlay {
+        min-height: 550px;
+      }
+    }
+    
+    /* ============================================
+       ANIMATIONS
+       ============================================ */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .fade-in-up {
+      animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Smooth transitions for theme changes */
+    body, .glass-card, nav, .btn-primary, .btn-secondary, 
+    input, select, .hero-overlay, .nft-card img, .section-divider {
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+<!-- Navbar -->
+<nav class="sticky top-0 z-50 w-full px-4 sm:px-6 py-4 bg-[#2d5f54]/95 backdrop-blur-lg border-b border-white/10 shadow-xl">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div>
+      <h1 class="pixel-font text-base sm:text-xl md:text-2xl text-[#00ff88] drop-shadow-lg">Based Undeads</h1>
+    </div>
+    
+    <div class="flex gap-3 sm:gap-4 items-center">
+      <button id="themeToggle" class="glass-card px-4 py-2 text-xs sm:text-sm hover:bg-white/10 transition-all">
+        <i class="fa-solid fa-palette mr-2"></i>
+        <span id="themeLabel">Normal</span>
+      </button>
+      <a href="https://x.com/BasedUndeads" target="_blank" class="text-xl sm:text-2xl hover:text-[#00ff88] transition-colors">
+        <i class="fa-brands fa-x-twitter"></i>
+      </a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="hover:opacity-80 transition-opacity">
+        <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
+             alt="OpenSea" width="28" height="28" class="inline-block"/>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="px-4 sm:px-6 py-8 sm:py-12">
+  <div class="max-w-7xl mx-auto fade-in-up">
+    <div class="hero-banner-container">
+      <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXh2anhkZTF6djc3bG0zMHg1dDlmOTBoaDYybTQxZXE5enJmNDdiYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/hrkCG1DyzGd9Qqvl8I/giphy.gif" 
+           alt="Based Undeads Banner" 
+           class="hero-banner-img"
+           onerror="this.src='https://placehold.co/1500x600/1a3a32/00ff88/png?text=Based+Undeads'"/>
+      
+      <div class="hero-overlay">
+        <div class="text-center" style="margin-top: 80px;">
+          <h2 class="pixel-font text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 text-white drop-shadow-2xl px-4">
+            BASED UNDEADS
+          </h2>
+          <h3 class="pixel-font text-lg sm:text-xl md:text-2xl lg:text-3xl mb-12 text-[#00ff88] drop-shadow-lg px-4">
+            Rising on Base
+          </h3>
+          <p class="text-base sm:text-lg md:text-xl max-w-3xl mx-auto text-white/95 px-4 leading-relaxed mb-8">
+            Join the undead revolution. Mint your Based Undead<br class="hidden sm:block"/>
+            and become part of the horde.
+          </p>
+        </div>
+        
+        <div style="margin-bottom: 80px;">
+          <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" 
+             class="btn-primary pixel-font text-sm sm:text-base md:text-lg inline-block">
+            Mint NOW
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured NFTs Carousel -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-7xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      Featured Undeads
+    </h3>
+    <div class="glass-card p-6 sm:p-8">
+      <div id="nftScroller" class="scrolling-container">
+        <div class="text-center py-12 text-white/60">
+          <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+          <p>Loading Featured Undeads...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider max-w-5xl"></div>
+
+<!-- Grid Maker & Downloader -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      NFT Grid Maker & Downloader
+    </h3>
+    
+    <!-- Wallet Input -->
+    <div class="glass-card p-6 sm:p-8 mb-6">
+      <label class="block pixel-font text-sm mb-4 text-white/90">Enter Wallet Address:</label>
+      <div class="grid grid-cols-1 gap-4">
+        <input type="text" id="walletAddress" placeholder="0x... or name.eth" 
+               class="w-full"/>
+        <div class="grid grid-cols-2 gap-4">
+          <select id="chainSelect" class="w-full">
+            <option value="base">Base</option>
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="optimism">Optimism</option>
+          </select>
+          <button id="fetchNFTs" class="btn-primary pixel-font text-xs sm:text-sm w-full">
+            Load NFTs
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection Selector -->
+    <div id="collectionSection" class="glass-card p-6 sm:p-8 mb-6 hidden">
+      <label class="block pixel-font text-sm mb-4 text-white/90">Select Collection:</label>
+      <select id="collectionSelect">
+        <option value="">Choose a collection...</option>
+      </select>
+    </div>
+
+    <!-- Grid Options -->
+    <div class="glass-card p-6 sm:p-8 mb-6">
+      <div class="flex items-center gap-4 mb-6">
+        <input type="checkbox" id="gridMode" class="w-6 h-6 cursor-pointer accent-[#00ff88]"/>
+        <label for="gridMode" class="pixel-font text-sm cursor-pointer">Enable Grid Maker</label>
+      </div>
+      
+      <div id="gridOptions" class="hidden space-y-6 pt-6 border-t border-white/20">
+        <!-- Selection Mode -->
+        <div>
+          <label class="block text-sm mb-3 text-white/90">Selection Mode:</label>
+          <div class="flex gap-6">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="selectionMode" value="manual" checked class="w-5 h-5 accent-[#00ff88]"/>
+              <span>Manual Selection</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="selectionMode" value="random" class="w-5 h-5 accent-[#00ff88]"/>
+              <span>Random Selection</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Grid Size & Settings -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Grid Size:</label>
+            <select id="gridSize">
+              <option value="3">3×3 (9 NFTs)</option>
+              <option value="4">4×4 (16 NFTs)</option>
+              <option value="5" selected>5×5 (25 NFTs)</option>
+              <option value="6">6×6 (36 NFTs)</option>
+              <option value="8">8×8 (64 NFTs)</option>
+              <option value="10">10×10 (100 NFTs)</option>
+              <option value="random-small">Random Small (2-5)</option>
+              <option value="random-medium">Random Medium (5-10)</option>
+              <option value="random-large">Random Large (10-20)</option>
+              <option value="custom">Custom Size...</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Separator Width (px):</label>
+            <input type="number" id="separatorWidth" value="10" min="0" max="50"/>
+          </div>
+        </div>
+
+        <!-- Custom Grid Size -->
+        <div id="customGridSizeInput" class="hidden grid grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Rows (max 50):</label>
+            <input type="number" id="customGridRows" value="3" min="1" max="50"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Columns (max 50):</label>
+            <input type="number" id="customGridCols" value="3" min="1" max="50"/>
+          </div>
+        </div>
+
+        <!-- Colors -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Separator Color:</label>
+            <input type="color" id="separatorColor" value="#000000" class="w-full h-14 rounded-lg cursor-pointer"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-3 text-white/90">Empty Cell Color:</label>
+            <input type="color" id="emptyCellColor" value="#1a1a1a" class="w-full h-14 rounded-lg cursor-pointer"/>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <button id="previewGrid" class="btn-secondary pixel-font text-xs">Preview</button>
+          <button id="resetGrid" class="btn-secondary pixel-font text-xs">Reset</button>
+          <button id="downloadGrid" class="btn-primary pixel-font text-xs">Download Grid</button>
+          <button id="downloadAll" class="btn-primary pixel-font text-xs">Download ZIP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid Preview -->
+    <div id="gridPreviewContainer" class="hidden glass-card p-6 sm:p-8 mb-6">
+      <h4 class="pixel-font text-sm mb-6 text-center text-[#00ff88]">Grid Preview</h4>
+      <div id="gridPreview" class="max-w-full mx-auto rounded-lg overflow-hidden"></div>
+    </div>
+
+    <!-- NFT Gallery -->
+    <div class="glass-card p-6 sm:p-8">
+      <h4 class="pixel-font text-sm mb-6 text-[#00ff88]">Your NFTs</h4>
+      <div id="nftGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <p class="col-span-full text-center text-white/60 py-12">
+          <i class="fas fa-wallet text-4xl mb-4 block"></i>
+          Enter a wallet address above to load NFTs
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider max-w-5xl"></div>
+
+<!-- Cover Maker -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      NFT Cover Maker
+    </h3>
+    
+    <div class="text-center mb-8">
+      <button id="openCoverMaker" class="btn-primary pixel-font text-sm sm:text-base">
+        <i class="fas fa-image mr-2"></i> Create Cover
+      </button>
+    </div>
+
+    <!-- Cover Maker Interface -->
+    <div id="coverMakerSection" class="hidden space-y-6">
+      
+      <!-- Selected NFTs -->
+      <div class="glass-card p-6 sm:p-8">
+        <h4 class="pixel-font text-xs mb-4 text-white/90">Selected NFTs for Cover</h4>
+        <div id="coverSelectedNFTs" class="flex gap-4 flex-wrap min-h-[120px] items-center justify-center border-2 border-dashed border-white/20 rounded-lg p-6">
+          <p class="text-white/60">Click NFTs from your wallet below to add them</p>
+        </div>
+      </div>
+
+      <!-- Background Options -->
+      <div class="glass-card p-6 sm:p-8">
+        <label class="block pixel-font text-xs mb-4 text-white/90">Background Settings:</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm mb-3">Solid Color:</label>
+            <input type="color" id="coverBgColor" value="#2d5f54" class="w-full h-14 rounded-lg cursor-pointer"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-3">Gradient Style:</label>
+            <select id="coverGradient">
+              <option value="">None (Use Solid Color)</option>
+              <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">Purple Dream</option>
+              <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">Pink Sunset</option>
+              <option value="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">Ocean Blue</option>
+              <option value="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">Mint Fresh</option>
+              <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)">Warm Flame</option>
+              <option value="linear-gradient(135deg, #30cfd0 0%, #330867 100%)">Deep Ocean</option>
+              <option value="linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)">Cotton Candy</option>
+              <option value="radial-gradient(circle, #667eea 0%, #764ba2 100%)">Purple Radial</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Options -->
+      <div class="glass-card p-6 sm:p-8">
+        <div class="flex items-center gap-4 mb-6">
+          <input type="checkbox" id="coverAddText" class="w-6 h-6 cursor-pointer accent-[#00ff88]"/>
+          <label for="coverAddText" class="pixel-font text-xs cursor-pointer">Add Text Overlay</label>
+        </div>
+        
+        <div id="coverTextOptions" class="hidden space-y-6">
+          <div>
+            <label class="block text-sm mb-3">Your Text:</label>
+            <input type="text" id="coverText" placeholder="Enter your text..." maxlength="50"/>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm mb-3">Font Family:</label>
+              <select id="coverFontFamily">
+                <option value="'Press Start 2P', cursive">Press Start 2P</option>
+                <option value="'Orbitron', sans-serif">Orbitron</option>
+                <option value="'Righteous', cursive">Righteous</option>
+                <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+                <option value="'Bangers', cursive">Bangers</option>
+                <option value="'Monoton', cursive">Monoton</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm mb-3">Text Effect:</label>
+              <select id="coverTextStyle">
+                <option value="solid">Solid</option>
+                <option value="gradient">Gradient</option>
+                <option value="stroke">Outline</option>
+                <option value="shadow">Shadow</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm mb-3">Formatting:</label>
+            <div class="flex gap-3">
+              <label class="flex items-center gap-2 px-4 py-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-all">
+                <input type="checkbox" id="coverTextBold" class="hidden"/>
+                <span class="font-bold text-lg">B</span>
+              </label>
+              <label class="flex items-center gap-2 px-4 py-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-all">
+                <input type="checkbox" id="coverTextItalic" class="hidden"/>
+                <span class="italic text-lg">I</span>
+              </label>
+              <label class="flex items-center gap-2 px-4 py-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-all">
+                <input type="checkbox" id="coverTextUnderline" class="hidden"/>
+                <span class="underline text-lg">U</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm mb-3">Primary Color:</label>
+              <input type="color" id="coverTextColor" value="#ffffff" class="w-full h-14 rounded-lg cursor-pointer"/>
+            </div>
+            <div>
+              <label class="block text-sm mb-3">Secondary Color (Gradient):</label>
+              <input type="color" id="coverTextColor2" value="#00ff88" class="w-full h-14 rounded-lg cursor-pointer"/>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm mb-3">Text Size: <span id="coverTextSizeValue" class="text-[#00ff88]">48px</span></label>
+            <input type="range" id="coverTextSize" min="20" max="120" value="48" class="w-full h-3 rounded-lg cursor-pointer accent-[#00ff88]"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Preview -->
+      <div class="glass-card p-6 sm:p-8 relative">
+        <h4 class="pixel-font text-xs mb-6 text-center text-[#00ff88]">Cover Preview (1500×500)</h4>
+        
+        <!-- Trash Bin -->
+        <div id="trashBin" class="absolute top-6 right-6 bg-red-500/90 backdrop-blur-sm p-4 rounded-full hidden z-50 transition-all hover:bg-red-600 hover:scale-110 cursor-pointer">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+          </svg>
+        </div>
+        
+        <div class="relative mx-auto rounded-xl overflow-hidden" style="max-width: 100%; aspect-ratio: 3/1; background: #1a1a1a;">
+          <canvas id="coverCanvas" width="1500" height="500" class="w-full h-full"></canvas>
+        </div>
+        
+        <p class="text-xs text-white/70 mt-4 text-center">
+          💡 <strong>Tips:</strong> Drag to move • Drag corners to resize • Drag to trash to delete • Right-click NFT to remove background
+        </p>
+        
+        <!-- Quick Actions -->
+        <div class="flex gap-3 mt-6 justify-center flex-wrap">
+          <button id="removeAllBg" class="btn-secondary pixel-font text-xs">Remove All BG</button>
+          <button id="resetAllSizes" class="btn-secondary pixel-font text-xs">Reset Sizes</button>
+          <button id="arrangeGrid" class="btn-secondary pixel-font text-xs">Auto Arrange</button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button id="resetCover" class="btn-secondary pixel-font text-sm">
+          <i class="fas fa-redo mr-2"></i> Reset Cover
+        </button>
+        <button id="downloadCover" class="btn-primary pixel-font text-sm">
+          <i class="fas fa-download mr-2"></i> Download Cover
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider max-w-5xl"></div>
+
+<!-- About Section -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-4xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      About Based Undeads
+    </h3>
+    <div class="glass-card p-8 sm:p-10">
+      <p class="text-base sm:text-lg leading-relaxed mb-6">
+        <strong class="text-[#00ff88]">Based Undeads</strong> rise from the ashes on Base, born in the forge of blockchain immortality. 
+        Each of the 6,666 souls carries its own legend, forged in fire, bound by chaos, and eternally etched on-chain. 
+        These aren't just NFTs—they're the restless spirits of a digital graveyard, algorithmically summoned from the void.
+      </p>
+      <p class="text-base sm:text-lg leading-relaxed mb-6">
+        From skeletal warriors to phantom wanderers, each Undead tells a story written in pixels and pain. 
+        The horde grows stronger. The Undead never die—they evolve, they persist, they <em class="text-[#00ff88]">become</em>.
+      </p>
+      <p class="text-base sm:text-lg leading-relaxed mb-6">
+        Which spirit calls to you? Join the revolution. Claim your Undead. Rise with the horde.
+      </p>
+      
+      <div class="mt-8 pt-8 border-t border-white/20">
+        <p class="text-sm sm:text-base leading-relaxed italic text-white/90">
+          <strong class="text-[#00ff88]">A Creator's Journey:</strong> This collection marks my first venture into pixel art—a leap from code into canvas, 
+          from developer to digital necromancer. Every sprite, every skull, every shadow was learned stroke by stroke. 
+          What started as experimentation became obsession. What began as pixels became souls.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Team Section -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-4xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      Meet the Team
+    </h3>
+    <div class="flex justify-center">
+      <a href="https://x.com/_sxms" target="_blank" class="group">
+        <div class="glass-card p-8 hover:scale-105 transition-all duration-300">
+          <img src="https://pbs.twimg.com/profile_images/1974232670402969600/QJdgv717_400x400.jpg" 
+               alt="SAM" 
+               class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-[#00ff88] object-cover shadow-2xl mb-6 mx-auto group-hover:border-white transition-all"/>
+          <h4 class="pixel-font text-lg sm:text-xl mb-2 text-center text-[#00ff88]">SAM</h4>
+          <p class="text-sm sm:text-base text-white/90 text-center">Founder • Artist • Developer</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-8 px-4 sm:px-6 border-t border-white/10 mt-16 bg-black/20">
+  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+    <p class="text-sm text-white/80 text-center sm:text-left">
+      &copy; 2025 Based Undeads. All rights reserved.
+    </p>
+    <div class="flex gap-6 items-center">
+      <a href="https://x.com/BasedUndeads" target="_blank" 
+         class="text-2xl hover:text-[#00ff88] transition-all hover:scale-110">
+        <i class="fa-brands fa-x-twitter"></i>
+      </a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" 
+         class="hover:opacity-80 transition-all hover:scale-110">
+        <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
+             alt="OpenSea" width="28" height="28" class="inline-block"/>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<!-- Main Script -->
+<script src="script.js"></script>
+
+</body>
+</html>
