@@ -1,4 +1,4 @@
-
+// Enhanced NFT Grid Maker Script with Secure API Integration
 // ============================================
 // CONFIGURATION & API MANAGEMENT
 // ============================================
