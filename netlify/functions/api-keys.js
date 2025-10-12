@@ -19,16 +19,20 @@ exports.handler = async (event, context) => {
   try {
     console.log('Environment variables:', {
       hasAlchemy: !!process.env.ALCHEMY_API_KEY,
-      hasOpenSea: !!process.env.OPENSEA_API_KEY
+      hasOpenSea: !!process.env.OPENSEA_API_KEY,
+      hasMoralis: !!process.env.MORALIS_API_KEY
     });
     
-    // Return API keys from environment variables
+    // Return API keys in the format expected by script.js
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        alchemyKey: process.env.ALCHEMY_API_KEY,
-        openSeaKey: process.env.OPENSEA_API_KEY
+        apiKeys: {
+          alchemy: process.env.ALCHEMY_API_KEY,
+          opensea: process.env.OPENSEA_API_KEY ? process.env.OPENSEA_API_KEY.split(',') : [],
+          moralis: process.env.MORALIS_API_KEY
+        }
       })
     };
   } catch (error) {
