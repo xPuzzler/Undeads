@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Based Undeads - NFT Grid & Cover Maker</title>
+  <title>Based Undeads</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -120,7 +120,7 @@
       position: relative;
       overflow: hidden;
       padding: 30px 0;
-      height: 480px;
+      height: 520px;
     }
     
     .nft-scroll-row {
@@ -180,6 +180,13 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.4);
       border: 3px solid rgba(255, 255, 255, 0.1);
       transition: all 0.3s ease;
+    }
+    .nft-card p {
+      margin-top: 8px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .nft-card:hover img {
@@ -667,6 +674,17 @@
         </div>
       </div>
 
+      <!-- Cover Size Options -->
+      <div class="glass-card p-6 sm:p-8">
+        <label class="block pixel-font text-xs mb-4 text-white/90">Cover Size:</label>
+        <select id="coverSize" class="w-full">
+          <option value="1500x500">Twitter/X Cover (1500×500)</option>
+          <option value="1024x1024">Square Post (1024×1024)</option>
+          <option value="1200x630">Facebook Cover (1200×630)</option>
+          <option value="1920x1080">Desktop Wallpaper (1920×1080)</option>
+        </select>
+      </div>
+
       <!-- Background Options -->
       <div class="glass-card p-6 sm:p-8">
         <label class="block pixel-font text-xs mb-4 text-white/90">Background Settings:</label>
@@ -776,7 +794,7 @@
           </svg>
         </div>
         
-        <div class="relative mx-auto rounded-xl overflow-hidden" style="max-width: 100%; aspect-ratio: 3/1; background: #1a1a1a;">
+        <div id="coverCanvasContainer" class="relative mx-auto rounded-xl overflow-hidden" style="max-width: 100%; aspect-ratio: 3/1; background: #1a1a1a;">
           <canvas id="coverCanvas" width="1500" height="500" class="w-full h-full"></canvas>
         </div>
         
