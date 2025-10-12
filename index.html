@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Based Undeads</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟‍♂️</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -57,6 +58,220 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
     }
+
+    /* Theme-specific button colors */
+body.theme-glass .btn-primary,
+body.theme-glass .nav-mint-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+  color: #667eea;
+  box-shadow: 0 6px 24px rgba(255, 255, 255, 0.4);
+}
+
+body.theme-glass .btn-primary:hover,
+body.theme-glass .nav-mint-btn:hover {
+  box-shadow: 0 10px 35px rgba(255, 255, 255, 0.6);
+}
+
+body.theme-dark .btn-primary,
+body.theme-dark .nav-mint-btn {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+  box-shadow: 0 6px 24px rgba(0, 255, 136, 0.6);
+}
+
+body.theme-dark .btn-primary:hover,
+body.theme-dark .nav-mint-btn:hover {
+  box-shadow: 0 10px 35px rgba(0, 255, 136, 0.8);
+}
+
+/* Theme-specific secondary buttons */
+body.theme-glass .btn-secondary {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+body.theme-glass .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+body.theme-dark .btn-secondary {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+}
+
+body.theme-dark .btn-secondary:hover {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: rgba(0, 255, 136, 0.5);
+}
+
+/* Theme-specific inputs */
+body.theme-glass input[type="text"],
+body.theme-glass input[type="number"],
+body.theme-glass select {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+body.theme-glass input[type="text"]:focus,
+body.theme-glass input[type="number"]:focus,
+body.theme-glass select:focus {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+}
+
+body.theme-dark input[type="text"],
+body.theme-dark input[type="number"],
+body.theme-dark select {
+  background: rgba(0, 255, 136, 0.05);
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+body.theme-dark input[type="text"]:focus,
+body.theme-dark input[type="number"]:focus,
+body.theme-dark select:focus {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
+}
+
+/* Theme-specific navbar */
+body.theme-glass nav {
+  background: rgba(102, 126, 234, 0.3);
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark nav {
+  background: rgba(10, 10, 10, 0.95);
+  border-bottom-color: rgba(0, 255, 136, 0.2);
+}
+
+/* Theme-specific logo glow */
+body.theme-glass .nav-logo h1 {
+  color: #ffffff;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(255, 255, 255, 0.5),
+    0 0 30px rgba(255, 255, 255, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .nav-logo h1 {
+  color: #00ff88;
+  text-shadow: 
+    0 0 10px rgba(0, 255, 136, 0.8),
+    0 0 20px rgba(0, 255, 136, 0.5),
+    0 0 30px rgba(0, 255, 136, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Theme-specific section divider */
+body.theme-glass .section-divider {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+}
+
+body.theme-dark .section-divider {
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.7), transparent);
+}
+
+/* Theme-specific NFT cards */
+body.theme-glass .nft-thumbnail:hover,
+body.theme-glass .nft-thumbnail.selected-for-grid {
+  border-color: #ffffff;
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.5);
+}
+
+body.theme-dark .nft-thumbnail:hover,
+body.theme-dark .nft-thumbnail.selected-for-grid {
+  border-color: #00ff88;
+  box-shadow: 0 8px 30px rgba(0, 255, 136, 0.6);
+}
+
+body.theme-glass .nft-card:hover img {
+  border-color: #ffffff;
+  box-shadow: 0 15px 40px rgba(255, 255, 255, 0.6);
+}
+
+body.theme-dark .nft-card:hover img {
+  border-color: #00ff88;
+  box-shadow: 0 15px 40px rgba(0, 255, 136, 0.6);
+}
+
+/* Theme-specific project cards */
+body.theme-glass .project-card:hover {
+  box-shadow: 0 20px 60px rgba(255, 255, 255, 0.5);
+}
+
+body.theme-dark .project-card:hover {
+  box-shadow: 0 20px 60px rgba(0, 255, 136, 0.5);
+}
+
+body.theme-glass .project-link {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+body.theme-glass .project-link:hover {
+  background: #ffffff;
+  color: #667eea;
+}
+
+body.theme-dark .project-link {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+body.theme-dark .project-link:hover {
+  background: #00ff88;
+  color: #0a1f1a;
+}
+
+/* Theme-specific scrollbar */
+body.theme-glass #nftGrid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+}
+
+body.theme-dark #nftGrid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00ff88 0%, #00cc6f 100%);
+}
+
+body.theme-glass #nftGrid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.theme-dark #nftGrid::-webkit-scrollbar-track {
+  background: rgba(0, 255, 136, 0.1);
+}
+
+/* Theme-specific canvas border */
+body.theme-glass #coverCanvas {
+  border-color: #ffffff;
+  box-shadow: 0 10px 40px rgba(255, 255, 255, 0.4);
+}
+
+body.theme-dark #coverCanvas {
+  border-color: #00ff88;
+  box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
+}
+
+/* Theme-specific checkboxes and accents */
+body.theme-glass input[type="checkbox"]:checked {
+  accent-color: #ffffff;
+}
+
+body.theme-glass input[type="range"] {
+  accent-color: #ffffff;
+}
+
+body.theme-dark input[type="checkbox"]:checked {
+  accent-color: #00ff88;
+}
+
+body.theme-dark input[type="range"] {
+  accent-color: #00ff88;
+}
     
     /* ============================================
        GLASS CARDS
@@ -74,44 +289,165 @@
       transform: translateY(-2px);
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
     }
+
+    /* ============================================
+   ENHANCED NAVBAR
+   ============================================ */
+nav {
+  position: relative;
+}
+
+.nav-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.nav-logo h1 {
+  text-shadow: 
+    0 0 10px rgba(0, 255, 136, 0.5),
+    0 0 20px rgba(0, 255, 136, 0.3),
+    0 0 30px rgba(0, 255, 136, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.5),
+    0 8px 16px rgba(0, 0, 0, 0.3);
+  animation: glow-pulse 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.nav-logo h1:hover {
+  transform: scale(1.05);
+  text-shadow: 
+    0 0 15px rgba(0, 255, 136, 0.8),
+    0 0 30px rgba(0, 255, 136, 0.5),
+    0 0 45px rgba(0, 255, 136, 0.3),
+    0 6px 12px rgba(0, 0, 0, 0.6),
+    0 12px 24px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(0, 255, 136, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.8));
+  }
+}
+
+.nav-mint-btn {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+  color: #0a1f1a;
+  font-weight: bold;
+  padding: 10px 24px;
+  border-radius: 50px;
+  border: none;
+  box-shadow: 
+    0 4px 15px rgba(0, 255, 136, 0.4),
+    0 0 20px rgba(0, 255, 136, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-mint-btn::before {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+}
+
+.nav-mint-btn:hover::before {
+  width: 400px;
+  height: 400px;
+}
+
+.nav-mint-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.nav-mint-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.nav-mint-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 25px rgba(0, 255, 136, 0.6),
+    0 0 30px rgba(0, 255, 136, 0.3);
+}
+
+@media (max-width: 768px) {
+  .nav-logo h1 {
+    font-size: 0.7rem !important;
+  }
+  
+  .nav-mint-btn {
+    padding: 8px 16px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-logo h1 {
+    font-size: 0.6rem !important;
+  }
+  
+  .nav-mint-btn {
+    padding: 6px 12px;
+    font-size: 0.65rem;
+  }
+}
     
     /* ============================================
        HERO BANNER
        ============================================ */
     .hero-banner-container {
-      position: relative;
-      width: 100%;
-      overflow: hidden;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      min-height: 600px;
-    }
-    
-    .hero-banner-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    
-    .hero-overlay {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      min-height: 600px;
-      background: linear-gradient(to bottom, 
-        rgba(0,0,0,0.7) 0%, 
-        rgba(0,0,0,0.3) 50%, 
-        rgba(0,0,0,0.8) 100%);
-      padding: 60px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 2;
-    }
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 30px 30px rgba(0,0,0,0.5);
+  min-height: 650px;
+  aspect-ratio: 3 / 1;
+}
+
+.hero-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.hero-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  background: linear-gradient(to bottom, 
+    rgba(0,0,0,0.7) 0%, 
+    rgba(0,0,0,0.3) 50%, 
+    rgba(0,0,0,0.8) 100%);
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
     
     /* ============================================
        SCROLLING NFT CAROUSEL
@@ -120,7 +456,7 @@
       position: relative;
       overflow: hidden;
       padding: 30px 0;
-      height: 620px;
+      height: 560px;
     }
     
     .nft-scroll-row {
@@ -212,22 +548,22 @@
     }
     
     .btn-primary::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.3);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s, height 0.6s;
-    }
-    
-    .btn-primary:hover::before {
-      width: 300px;
-      height: 300px;
-    }
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn-primary:hover::before {
+  width: 400px;
+  height: 400px;
+}
     
     .btn-primary:hover {
       transform: translateY(-3px);
@@ -391,7 +727,7 @@
       }
       
       .scrolling-container {
-        height: 380px;
+        height: 480px;
       }
       
       .nft-card {
@@ -432,6 +768,96 @@
     input, select, .hero-overlay, .nft-card img, .section-divider {
       transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* ============================================
+   PREVIOUS WORK SECTION
+   ============================================ */
+.project-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  height: 400px;
+}
+
+.project-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 60px rgba(0, 255, 136, 0.4);
+}
+
+.project-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .project-preview {
+  transform: scale(1.05);
+}
+
+.project-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%);
+  padding: 30px 20px;
+  transform: translateY(0);
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .project-overlay {
+  background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 80%, transparent 100%);
+}
+
+.project-title {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  color: #00ff88;
+}
+
+.project-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 15px;
+}
+
+.project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(0, 255, 136, 0.2);
+  border: 2px solid #00ff88;
+  border-radius: 50px;
+  color: #00ff88;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.project-link:hover {
+  background: #00ff88;
+  color: #0a1f1a;
+  transform: translateX(5px);
+}
+
+@media (max-width: 768px) {
+  .project-card {
+    height: 350px;
+  }
+  
+  .project-title {
+    font-size: 1.2rem;
+  }
+  
+  .project-description {
+    font-size: 0.85rem;
+  }
+}
   </style>
 </head>
 
@@ -439,24 +865,39 @@
 
 <!-- Navbar -->
 <nav class="sticky top-0 z-50 w-full px-4 sm:px-6 py-4 bg-[#2d5f54]/95 backdrop-blur-lg border-b border-white/10 shadow-xl">
-  <div class="max-w-7xl mx-auto flex items-center justify-between">
-    <div>
-      <h1 class="pixel-font text-base sm:text-xl md:text-2xl text-[#00ff88] drop-shadow-lg">Based Undeads</h1>
+  <div class="max-w-7xl mx-auto flex items-center justify-between relative">
+    
+    <!-- Left Side - Mint Button -->
+    <div class="flex items-center">
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" 
+         class="nav-mint-btn pixel-font text-xs sm:text-sm relative z-10">
+        <i class="fas fa-fire mr-1 sm:mr-2"></i>
+        <span>Mint</span>
+      </a>
     </div>
     
-    <div class="flex gap-3 sm:gap-4 items-center">
-      <button id="themeToggle" class="glass-card px-4 py-2 text-xs sm:text-sm hover:bg-white/10 transition-all">
-        <i class="fa-solid fa-palette mr-2"></i>
-        <span id="themeLabel">Normal</span>
+    <!-- Center - Logo -->
+    <div class="nav-logo">
+      <h1 class="pixel-font text-base sm:text-xl md:text-2xl text-[#00ff88]">
+        BASED UNDEADS
+      </h1>
+    </div>
+    
+    <!-- Right Side - Social Links & Theme -->
+    <div class="flex gap-2 sm:gap-4 items-center relative z-10">
+      <button id="themeToggle" class="glass-card px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-white/10 transition-all">
+        <i class="fa-solid fa-palette mr-1 sm:mr-2"></i>
+        <span id="themeLabel" class="hidden sm:inline">Normal</span>
       </button>
-      <a href="https://x.com/BasedUndeads" target="_blank" class="text-xl sm:text-2xl hover:text-[#00ff88] transition-colors">
+      <a href="https://x.com/BasedUndeads" target="_blank" class="text-lg sm:text-2xl hover:text-[#00ff88] transition-colors">
         <i class="fa-brands fa-x-twitter"></i>
       </a>
       <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="hover:opacity-80 transition-opacity">
         <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
-             alt="OpenSea" width="28" height="28" class="inline-block"/>
+             alt="OpenSea" width="24" height="24" class="sm:w-7 sm:h-7 inline-block"/>
       </a>
     </div>
+    
   </div>
 </nav>
 
@@ -835,11 +1276,11 @@
       <p class="text-base sm:text-lg leading-relaxed mb-6">
         <strong class="text-[#00ff88]">Based Undeads</strong> rise from the ashes on Base, born in the forge of blockchain immortality. 
         Each of the 6,666 souls carries its own legend, forged in fire, bound by chaos, and eternally etched on-chain. 
-        These aren't just NFTs—they're the restless spirits of a digital graveyard, algorithmically summoned from the void.
+        These aren't just NFTs, they're the restless spirits of a digital graveyard, algorithmically summoned from the void.
       </p>
       <p class="text-base sm:text-lg leading-relaxed mb-6">
         From skeletal warriors to phantom wanderers, each Undead tells a story written in pixels and pain. 
-        The horde grows stronger. The Undead never die—they evolve, they persist, they <em class="text-[#00ff88]">become</em>.
+        The horde grows stronger. The Undead never die, they evolve, they persist, they <em class="text-[#00ff88]">become</em>.
       </p>
       <p class="text-base sm:text-lg leading-relaxed mb-6">
         Which spirit calls to you? Join the revolution. Claim your Undead. Rise with the horde.
@@ -847,7 +1288,7 @@
       
       <div class="mt-8 pt-8 border-t border-white/20">
         <p class="text-sm sm:text-base leading-relaxed italic text-white/90">
-          <strong class="text-[#00ff88]">A Creator's Journey:</strong> This collection marks my first venture into pixel art—a leap from code into canvas, 
+          <strong class="text-[#00ff88]">A Creator's Journey:</strong> This collection marks my first venture into pixel art, a leap from code into canvas, 
           from developer to digital necromancer. Every sprite, every skull, every shadow was learned stroke by stroke. 
           What started as experimentation became obsession. What began as pixels became souls.
         </p>
@@ -860,7 +1301,7 @@
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-4xl mx-auto">
     <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      Meet the Team
+      <em class="text-[#00ff88]">FOUNDER</em>
     </h3>
     <div class="flex justify-center">
       <a href="https://x.com/_sxms" target="_blank" class="group">
@@ -869,9 +1310,64 @@
                alt="SAM" 
                class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-[#00ff88] object-cover shadow-2xl mb-6 mx-auto group-hover:border-white transition-all"/>
           <h4 class="pixel-font text-lg sm:text-xl mb-2 text-center text-[#00ff88]">SAM</h4>
-          <p class="text-sm sm:text-base text-white/90 text-center">Founder • Artist • Developer</p>
+          <p class="text-sm sm:text-base text-white/90 text-center"> Artist • Developer</p>
         </div>
       </a>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider max-w-5xl"></div>
+
+<!-- Previous Work Section -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+      Previous WORK
+    </h3>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+      
+      <!-- Crypto Puzzles -->
+      <a href="https://cpuzzles.xyz/" target="_blank" class="block">
+        <div class="glass-card project-card">
+          <img 
+            src="https://cpuzzles.xyz/og-image.png" 
+            alt="Crypto Puzzles Preview" 
+            class="project-preview"
+            onerror="this.src='https://i2.seadn.io/base/0xba77ef668fbdcf4611b5469491f7a7cd76303d5c/644d581f7581c1d630fd1a327684bb/cc644d581f7581c1d630fd1a327684bb.png?w=350'"
+          />
+          <div class="project-overlay">
+            <h4 class="project-title pixel-font">Crypto Puzzles</h4>
+            
+            <span class="project-link">
+              Visit Project
+              <i class="fas fa-arrow-right"></i>
+            </span>
+          </div>
+        </div>
+      </a>
+      
+      <!-- Based Squiggles -->
+      <a href="https://basedsquiggles.xyz/" target="_blank" class="block">
+        <div class="glass-card project-card">
+          <img 
+            src="https://basedsquiggles.xyz/og-image.png" 
+            alt="Based Squiggles Preview" 
+            class="project-preview"
+            onerror="this.src='https://i2.seadn.io/base/0xad0b08874ede845d09c4bf5f13c3bb3650720c34/578a5dca8ac2757ce35c2d5530520f/ec578a5dca8ac2757ce35c2d5530520f.png?w=350'"
+          />
+          <div class="project-overlay">
+            <h4 class="project-title pixel-font">Based Squiggles</h4>
+            
+            <span class="project-link">
+              Visit Project
+              <i class="fas fa-arrow-right"></i>
+            </span>
+          </div>
+        </div>
+      </a>
+      
     </div>
   </div>
 </section>
