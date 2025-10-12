@@ -374,10 +374,13 @@ function displayNFTs(nfts) {
     // Add click handler for grid selection
     div.addEventListener('click', () => handleNFTSelection(index, div));
     
-    // Add click handler for cover maker
-    if (!document.getElementById('coverMakerSection').classList.contains('hidden')) {
-      div.addEventListener('click', () => addNFTToCover(nft, index));
-    }
+    // Add click handler for cover maker - always attach
+    div.addEventListener('click', (e) => {
+      if (!document.getElementById('coverMakerSection').classList.contains('hidden')) {
+        e.stopPropagation();
+        addNFTToCover(nft, index);
+      }
+    });
     
     nftGrid.appendChild(div);
   });
@@ -539,16 +542,18 @@ function showGridPreview(canvas) {
   
   preview.innerHTML = '';
   preview.style.maxWidth = '100%';
-  preview.style.maxHeight = '600px';
+  preview.style.maxHeight = 'none';
+  preview.style.overflow = 'auto';
   
   const img = document.createElement('img');
   img.src = canvas.toDataURL();
   img.style.width = '100%';
   img.style.height = 'auto';
+  img.style.display = 'block';
   preview.appendChild(img);
   
   container.classList.remove('hidden');
-  container.scrollIntoView({ behavior: 'smooth' });
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function downloadCanvasAsImage(canvas, filename) {
@@ -787,6 +792,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('downloadGrid')?.addEventListener('click', downloadGrid);
   document.getElementById('downloadAll')?.addEventListener('click', downloadAllAsZip);
   document.getElementById('resetGrid')?.addEventListener('click', resetGrid);
+
+  // Cover size change listener
+  document.getElementById('coverSize')?.addEventListener('change', () => {
+    updateCanvasSize();
+    renderCover();
+  });
   
   // Theme switcher
   setupThemeSwitcher();
@@ -858,8 +869,22 @@ function initCoverCanvas() {
   const canvas = document.getElementById('coverCanvas');
   if (!canvas) return;
   
-  const ctx = canvas.getContext('2d');
+  updateCanvasSize();
   renderCover();
+}
+
+function updateCanvasSize() {
+  const canvas = document.getElementById('coverCanvas');
+  const sizeSelect = document.getElementById('coverSize');
+  const size = sizeSelect.value.split('x');
+  const width = parseInt(size[0]);
+  const height = parseInt(size[1]);
+  
+  canvas.width = width;
+  canvas.height = height;
+  
+  const container = canvas.parentElement;
+  container.style.aspectRatio = `${width}/${height}`;
 }
 
 // Cover maker functionality implementation
@@ -914,8 +939,8 @@ async function addNFTToCover(nft, index) {
   
   img.onload = () => {
     const size = 200;
-    const x = Math.random() * (1500 - size);
-    const y = Math.random() * (500 - size);
+    const x = Math.random() * (1300);
+    const y = Math.random() * (300);
     
     coverElements.push({
       type: 'nft',
@@ -929,6 +954,11 @@ async function addNFTToCover(nft, index) {
     });
     
     renderCover();
+    showNotification('NFT added to cover!', 'success');
+  };
+  
+  img.onerror = () => {
+    showNotification('Failed to load NFT image', 'error');
   };
   
   img.src = nft.image;
