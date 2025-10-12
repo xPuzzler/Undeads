@@ -65,7 +65,7 @@ let selectedCoverElement = null;
 // ============================================
 async function initializeAPIKeys() {
   try {
-    const response = await fetch('/.netlify/functions/api');
+    const response = await fetch('/.netlify/functions/api-keys');
     
     if (!response.ok) {
       throw new Error(`API keys fetch failed: ${response.status}`);
@@ -288,13 +288,13 @@ function processNFTsByCollection(nfts) {
                     nft.raw?.metadata?.image || 
                     '';
     
-    if (imageUrl) {
+    if (nft.image) {
       userCollections.get(collectionKey).nfts.push({
-        id: nft.tokenId,
-        name: nft.name || `#${nft.tokenId}`,
-        image: getProxiedImageUrl(imageUrl),
+        id: nft.id,
+        name: nft.name,
+        image: nft.image,
         collection: collectionName,
-        contractAddress: nft.contract.address,
+        contractAddress: nft.contractAddress,
         raw: nft
       });
     }
@@ -770,16 +770,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   const keysLoaded = await initializeAPIKeys();
   if (!keysLoaded) return;
   
-  // Set up chain selector
+  // Chain selector is already populated in HTML, just set the default
   const chainSelect = document.getElementById('chainSelect');
   if (chainSelect) {
-    Object.entries(SUPPORTED_CHAINS).forEach(([key, chain]) => {
-      const option = document.createElement('option');
-      option.value = key;
-      option.textContent = chain.name;
-      if (key === currentChain) option.selected = true;
-      chainSelect.appendChild(option);
-    });
+    chainSelect.value = currentChain;
   }
   
   // Load featured NFTs if on homepage
