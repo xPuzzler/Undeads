@@ -1,4 +1,4 @@
-// Enhanced NFT Grid Maker Script with Secure API Integration
+
 // ============================================
 // CONFIGURATION & API MANAGEMENT
 // ============================================
@@ -59,6 +59,10 @@ let selectedCollectionNFTs = [];
 let selectedNFTsForGrid = new Set();
 let coverElements = [];
 let selectedCoverElement = null;
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let originalImageData = new Map();
 
 // ============================================
 // API KEY INITIALIZATION
@@ -851,6 +855,9 @@ function setupCoverMaker() {
   const coverMakerBtn = document.getElementById('openCoverMaker');
   if (!coverMakerBtn) return;
   
+  const coverCanvas = document.getElementById('coverCanvas');
+  const trashBin = document.getElementById('trashBin');
+  
   coverMakerBtn.addEventListener('click', () => {
     const section = document.getElementById('coverMakerSection');
     section.classList.toggle('hidden');
@@ -860,9 +867,126 @@ function setupCoverMaker() {
     }
   });
   
-  // Cover maker functionality would go here
-  // This is a simplified version - the full implementation would include
-  // all the drag-and-drop, resize, and text features from your original code
+  // Cover size change listener
+  document.getElementById('coverSize')?.addEventListener('change', () => {
+    updateCanvasSize();
+    renderCover();
+  });
+  
+  // Text toggle
+  document.getElementById('coverAddText')?.addEventListener('change', (e) => {
+    document.getElementById('coverTextOptions').classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && !coverElements.find(el => el.type === 'text')) {
+      addTextToCover();
+    } else if (!e.target.checked) {
+      coverElements = coverElements.filter(el => el.type !== 'text');
+      renderCover();
+    }
+  });
+  
+  // Text styling updates
+  ['coverTextSize', 'coverText', 'coverTextColor', 'coverTextColor2', 'coverFontFamily', 'coverTextStyle', 'coverTextBold', 'coverTextItalic', 'coverTextUnderline'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    el.addEventListener(id === 'coverTextSize' ? 'input' : 'change', () => {
+      if (id === 'coverTextSize') {
+        document.getElementById('coverTextSizeValue').textContent = el.value + 'px';
+      }
+      const textEl = coverElements.find(el => el.type === 'text');
+      if (textEl) {
+        if (id === 'coverText') textEl.text = el.value;
+        if (id === 'coverTextSize') textEl.size = parseInt(el.value);
+        if (id === 'coverTextColor') textEl.color = el.value;
+        if (id === 'coverTextColor2') textEl.color2 = el.value;
+        if (id === 'coverFontFamily') textEl.font = el.value;
+        if (id === 'coverTextStyle') textEl.style = el.value;
+        if (id === 'coverTextBold') textEl.bold = el.checked;
+        if (id === 'coverTextItalic') textEl.italic = el.checked;
+        if (id === 'coverTextUnderline') textEl.underline = el.checked;
+        renderCover();
+      }
+    });
+  });
+  
+  // Background changes
+  document.getElementById('coverGradient')?.addEventListener('change', renderCover);
+  document.getElementById('coverBgColor')?.addEventListener('change', () => {
+    document.getElementById('coverGradient').value = '';
+    renderCover();
+  });
+  
+  // Reset cover button
+  document.getElementById('resetCover')?.addEventListener('click', () => {
+    coverElements = [];
+    selectedCoverElement = null;
+    originalImageData.clear();
+    trashBin?.classList.add('hidden');
+    document.getElementById('coverSelectedNFTs').innerHTML = '<p class="text-white/60 text-sm">Select NFTs from your wallet below</p>';
+    document.getElementById('coverAddText').checked = false;
+    document.getElementById('coverTextOptions').classList.add('hidden');
+    renderCover();
+  });
+  
+  // Download cover button
+  document.getElementById('downloadCover')?.addEventListener('click', () => {
+    coverCanvas.toBlob(blob => {
+      const link = document.createElement('a');
+      link.download = 'nft-cover.png';
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  });
+  
+  // Quick actions
+  document.getElementById('removeAllBg')?.addEventListener('click', () => {
+    coverElements.filter(el => el.type === 'nft').forEach(el => {
+      if (!el.bgRemoved) removeBackground(el);
+    });
+  });
+  
+  document.getElementById('resetAllSizes')?.addEventListener('click', () => {
+    coverElements.filter(el => el.type === 'nft').forEach(el => {
+      el.width = 200;
+      el.height = 200;
+    });
+    renderCover();
+  });
+  
+  document.getElementById('arrangeGrid')?.addEventListener('click', () => {
+    const nftElements = coverElements.filter(el => el.type === 'nft');
+    const cols = Math.ceil(Math.sqrt(nftElements.length));
+    const spacing = 50;
+    const size = 180;
+    
+    nftElements.forEach((el, i) => {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      el.x = spacing + col * (size + spacing);
+      el.y = spacing + row * (size + spacing);
+      el.width = size;
+      el.height = size;
+    });
+    renderCover();
+  });
+  
+  // Trash bin click
+  trashBin?.addEventListener('click', () => {
+    if (selectedCoverElement) {
+      const index = coverElements.indexOf(selectedCoverElement);
+      if (index > -1) {
+        coverElements.splice(index, 1);
+        selectedCoverElement = null;
+        trashBin.classList.add('hidden');
+        updateCoverSelectedDisplay();
+        renderCover();
+      }
+    }
+  });
+  
+  // Canvas mouse events
+  setupCanvasMouseEvents(coverCanvas, trashBin);
 }
 
 function initCoverCanvas() {
@@ -883,11 +1007,26 @@ function updateCanvasSize() {
   canvas.width = width;
   canvas.height = height;
   
+  const container = document.getElementById('coverCanvasContainer');
+  if (container) {
+    container.style.aspectRatio = `${width}/${height}`;
+  }
+}
+
+function updateCanvasSize() {
+  const canvas = document.getElementById('coverCanvas');
+  const sizeSelect = document.getElementById('coverSize');
+  const size = sizeSelect.value.split('x');
+  const width = parseInt(size[0]);
+  const height = parseInt(size[1]);
+  
+  canvas.width = width;
+  canvas.height = height;
+  
   const container = canvas.parentElement;
   container.style.aspectRatio = `${width}/${height}`;
 }
 
-// Cover maker functionality implementation
 function renderCover() {
   const coverCanvas = document.getElementById('coverCanvas');
   if (!coverCanvas) return;
@@ -900,7 +1039,7 @@ function renderCover() {
   if (gradient) {
     const colors = gradient.match(/#[0-9a-f]{6}/gi) || [];
     if (colors.length >= 2) {
-      const grad = ctx.createLinearGradient(0, 0, 1500, 500);
+      const grad = ctx.createLinearGradient(0, 0, coverCanvas.width, coverCanvas.height);
       grad.addColorStop(0, colors[0]);
       grad.addColorStop(1, colors[1]);
       ctx.fillStyle = grad;
@@ -911,7 +1050,12 @@ function renderCover() {
     ctx.fillStyle = bgColor;
   }
   
-  ctx.fillRect(0, 0, 1500, 500);
+  ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+  
+  // Draw alignment guides if element is selected
+  if (selectedCoverElement) {
+    drawAlignmentGuides(ctx, coverCanvas, selectedCoverElement);
+  }
   
   // Render cover elements
   coverElements.forEach(el => {
@@ -921,28 +1065,168 @@ function renderCover() {
       ctx.rotate(el.rotation * Math.PI / 180);
       ctx.drawImage(el.image, -el.width/2, -el.height/2, el.width, el.height);
       ctx.restore();
+      
+      // Draw selection outline and resize handle
+      if (el === selectedCoverElement) {
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(el.x - 5, el.y - 5, el.width + 10, el.height + 10);
+        ctx.setLineDash([]);
+        
+        // Draw resize handle
+        ctx.fillStyle = '#00ff88';
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(el.x + el.width, el.y + el.height, 10, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
     } else if (el.type === 'text') {
       ctx.save();
-      ctx.font = `${el.size}px ${el.font}`;
+      
+      let fontStyle = '';
+      if (el.italic) fontStyle += 'italic ';
+      if (el.bold) fontStyle += 'bold ';
+      ctx.font = `${fontStyle}${el.size}px ${el.font}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = el.color;
-      ctx.fillText(el.text, el.x, el.y);
+      
+      if (el.style === 'gradient') {
+        const grad = ctx.createLinearGradient(el.x - 200, el.y, el.x + 200, el.y);
+        grad.addColorStop(0, el.color);
+        grad.addColorStop(1, el.color2);
+        ctx.fillStyle = grad;
+        ctx.fillText(el.text, el.x, el.y);
+      } else if (el.style === 'stroke') {
+        ctx.strokeStyle = el.color;
+        ctx.lineWidth = 3;
+        ctx.strokeText(el.text, el.x, el.y);
+      } else if (el.style === 'shadow') {
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        ctx.fillStyle = el.color;
+        ctx.fillText(el.text, el.x, el.y);
+      } else {
+        ctx.fillStyle = el.color;
+        ctx.fillText(el.text, el.x, el.y);
+      }
+      
+      if (el.underline) {
+        const metrics = ctx.measureText(el.text);
+        ctx.strokeStyle = el.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(el.x - metrics.width/2, el.y + el.size/2 + 5);
+        ctx.lineTo(el.x + metrics.width/2, el.y + el.size/2 + 5);
+        ctx.stroke();
+      }
+      
+      if (el === selectedCoverElement) {
+        const metrics = ctx.measureText(el.text);
+        const textWidth = metrics.width;
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(el.x - textWidth/2 - 10, el.y - el.size/2 - 10, textWidth + 20, el.size + 20);
+        ctx.setLineDash([]);
+      }
+      
       ctx.restore();
     }
   });
 }
 
+// Canva-style alignment guides
+function drawAlignmentGuides(ctx, canvas, element) {
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const snapDistance = 10;
+  
+  ctx.save();
+  ctx.strokeStyle = '#ff00ff';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  
+  // Check if element is near center horizontally
+  if (Math.abs(element.x + element.width/2 - centerX) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(centerX, 0);
+    ctx.lineTo(centerX, canvas.height);
+    ctx.stroke();
+  }
+  
+  // Check if element is near center vertically
+  if (Math.abs(element.y + element.height/2 - centerY) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+    ctx.lineTo(canvas.width, centerY);
+    ctx.stroke();
+  }
+  
+  // Check if element is near left edge
+  if (Math.abs(element.x) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, canvas.height);
+    ctx.stroke();
+  }
+  
+  // Check if element is near right edge
+  if (Math.abs(element.x + element.width - canvas.width) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(canvas.width, 0);
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.stroke();
+  }
+  
+  // Check if element is near top edge
+  if (Math.abs(element.y) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(canvas.width, 0);
+    ctx.stroke();
+  }
+  
+  // Check if element is near bottom edge
+  if (Math.abs(element.y + element.height - canvas.height) < snapDistance) {
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+}
+
 async function addNFTToCover(nft, index) {
+  // Check if NFT already added
+  if (coverElements.find(el => el.nftIndex === index)) {
+    showNotification('NFT already added to cover!', 'info');
+    return;
+  }
+  
   const img = new Image();
   img.crossOrigin = 'anonymous';
   
   img.onload = () => {
+    const canvas = document.getElementById('coverCanvas');
     const size = 200;
-    const x = Math.random() * (1300);
-    const y = Math.random() * (300);
+    const x = Math.random() * (canvas.width - size);
+    const y = Math.random() * (canvas.height - size);
     
-    coverElements.push({
+    // Store original image data for background removal
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = img.width;
+    tempCanvas.height = img.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(img, 0, 0);
+    originalImageData.set(index, tempCtx.getImageData(0, 0, img.width, img.height));
+    
+    const element = {
       type: 'nft',
       image: img,
       x: x,
@@ -950,9 +1234,12 @@ async function addNFTToCover(nft, index) {
       width: size,
       height: size,
       nftIndex: index,
-      rotation: 0
-    });
+      rotation: 0,
+      bgRemoved: false
+    };
     
+    coverElements.push(element);
+    updateCoverSelectedDisplay();
     renderCover();
     showNotification('NFT added to cover!', 'success');
   };
@@ -962,4 +1249,284 @@ async function addNFTToCover(nft, index) {
   };
   
   img.src = nft.image;
+}
+
+function updateCoverSelectedDisplay() {
+  const container = document.getElementById('coverSelectedNFTs');
+  const nfts = coverElements.filter(el => el.type === 'nft');
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<p class="text-white/60 text-sm">Click NFTs from your wallet below to add them</p>';
+    return;
+  }
+  
+  container.innerHTML = nfts.map((el, idx) => {
+    const nft = selectedCollectionNFTs[el.nftIndex];
+    return `
+      <div class="relative group">
+        <img src="${el.image.src}" 
+             class="w-20 h-20 rounded-lg border-2 border-[#00ff88] object-cover" 
+             alt="${nft?.name || 'NFT'}"/>
+        <button onclick="removeCoverElementByIndex(${coverElements.indexOf(el)})" 
+                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+          ×
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function removeCoverElementByIndex(index) {
+  coverElements.splice(index, 1);
+  updateCoverSelectedDisplay();
+  renderCover();
+}
+
+function addTextToCover() {
+  const text = document.getElementById('coverText').value || 'Your Text Here';
+  const color = document.getElementById('coverTextColor').value;
+  const color2 = document.getElementById('coverTextColor2').value;
+  const size = parseInt(document.getElementById('coverTextSize').value);
+  const font = document.getElementById('coverFontFamily').value;
+  const style = document.getElementById('coverTextStyle').value;
+  
+  const canvas = document.getElementById('coverCanvas');
+  
+  coverElements.push({
+    type: 'text',
+    text: text,
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    color: color,
+    color2: color2,
+    size: size,
+    font: font,
+    style: style,
+    bold: false,
+    italic: false,
+    underline: false
+  });
+  
+  renderCover();
+}
+
+function removeBackground(element) {
+  if (element.type !== 'nft' || !element.image) return;
+  
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = element.image.width;
+  tempCanvas.height = element.image.height;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(element.image, 0, 0);
+  
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+  const data = imageData.data;
+  
+  // Sample corner colors
+  const corners = [
+    {x: 0, y: 0},
+    {x: tempCanvas.width - 1, y: 0},
+    {x: 0, y: tempCanvas.height - 1},
+    {x: tempCanvas.width - 1, y: tempCanvas.height - 1}
+  ];
+  
+  const bgColors = corners.map(corner => {
+    const i = (corner.y * tempCanvas.width + corner.x) * 4;
+    return {r: data[i], g: data[i+1], b: data[i+2]};
+  });
+  
+  const avgBg = {
+    r: bgColors.reduce((sum, c) => sum + c.r, 0) / 4,
+    g: bgColors.reduce((sum, c) => sum + c.g, 0) / 4,
+    b: bgColors.reduce((sum, c) => sum + c.b, 0) / 4
+  };
+  
+  const threshold = 40;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    
+    const diff = Math.sqrt(
+      Math.pow(r - avgBg.r, 2) +
+      Math.pow(g - avgBg.g, 2) +
+      Math.pow(b - avgBg.b, 2)
+    );
+    
+    if (diff < threshold) {
+      data[i + 3] = 0;
+    }
+  }
+  
+  tempCtx.putImageData(imageData, 0, 0);
+  
+  const newImg = new Image();
+  newImg.onload = () => {
+    element.image = newImg;
+    element.bgRemoved = true;
+    renderCover();
+    showNotification('Background removed!', 'success');
+  };
+  newImg.src = tempCanvas.toDataURL();
+}
+
+function setupCanvasMouseEvents(coverCanvas, trashBin) {
+  // Helper functions
+  function isOverResizeHandle(mouseX, mouseY, el) {
+    if (el.type !== 'nft') return false;
+    const handleX = el.x + el.width;
+    const handleY = el.y + el.height;
+    const distance = Math.sqrt(Math.pow(mouseX - handleX, 2) + Math.pow(mouseY - handleY, 2));
+    return distance < 15;
+  }
+  
+  function getElementAtPosition(mouseX, mouseY) {
+    for (let i = coverElements.length - 1; i >= 0; i--) {
+      const el = coverElements[i];
+      if (el.type === 'nft') {
+        if (mouseX >= el.x && mouseX <= el.x + el.width &&
+            mouseY >= el.y && mouseY <= el.y + el.height) {
+          return el;
+        }
+      } else if (el.type === 'text') {
+        const ctx = coverCanvas.getContext('2d');
+        ctx.font = `${el.size}px ${el.font}`;
+        const metrics = ctx.measureText(el.text);
+        const textWidth = metrics.width;
+        const textHeight = el.size;
+        
+        if (mouseX >= el.x - textWidth/2 && mouseX <= el.x + textWidth/2 &&
+            mouseY >= el.y - textHeight/2 && mouseY <= el.y + textHeight/2) {
+          return el;
+        }
+      }
+    }
+    return null;
+  }
+  
+  // Mouse move
+  coverCanvas.addEventListener('mousemove', (e) => {
+    const rect = coverCanvas.getBoundingClientRect();
+    const scaleX = coverCanvas.width / rect.width;
+    const scaleY = coverCanvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+    
+    if (isResizing && selectedCoverElement) {
+      const newWidth = Math.max(50, mouseX - selectedCoverElement.x);
+      const newHeight = Math.max(50, mouseY - selectedCoverElement.y);
+      selectedCoverElement.width = newWidth;
+      selectedCoverElement.height = newHeight;
+      renderCover();
+      return;
+    }
+    
+    if (isDragging && selectedCoverElement) {
+      let newX = mouseX - dragOffset.x;
+      let newY = mouseY - dragOffset.y;
+      
+      // Snap to alignment
+      const snapDistance = 10;
+      const centerX = coverCanvas.width / 2;
+      const centerY = coverCanvas.height / 2;
+      const elementCenterX = newX + selectedCoverElement.width / 2;
+      const elementCenterY = newY + selectedCoverElement.height / 2;
+      
+      if (Math.abs(elementCenterX - centerX) < snapDistance) {
+        newX = centerX - selectedCoverElement.width / 2;
+      }
+      if (Math.abs(elementCenterY - centerY) < snapDistance) {
+        newY = centerY - selectedCoverElement.height / 2;
+      }
+      if (Math.abs(newX) < snapDistance) {
+        newX = 0;
+      }
+      if (Math.abs(newX + selectedCoverElement.width - coverCanvas.width) < snapDistance) {
+        newX = coverCanvas.width - selectedCoverElement.width;
+      }
+      if (Math.abs(newY) < snapDistance) {
+        newY = 0;
+      }
+      if (Math.abs(newY + selectedCoverElement.height - coverCanvas.height) < snapDistance) {
+        newY = coverCanvas.height - selectedCoverElement.height;
+      }
+      
+      selectedCoverElement.x = newX;
+      selectedCoverElement.y = newY;
+      renderCover();
+      return;
+    }
+    
+    // Update cursor
+    if (selectedCoverElement && isOverResizeHandle(mouseX, mouseY, selectedCoverElement)) {
+      coverCanvas.classList.add('resize-cursor');
+      coverCanvas.classList.remove('move-cursor');
+    } else if (getElementAtPosition(mouseX, mouseY)) {
+      coverCanvas.classList.add('move-cursor');
+      coverCanvas.classList.remove('resize-cursor');
+    } else {
+      coverCanvas.classList.remove('resize-cursor', 'move-cursor');
+    }
+  });
+  
+  // Mouse down
+  coverCanvas.addEventListener('mousedown', (e) => {
+    const rect = coverCanvas.getBoundingClientRect();
+    const scaleX = coverCanvas.width / rect.width;
+    const scaleY = coverCanvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+    
+    if (selectedCoverElement && isOverResizeHandle(mouseX, mouseY, selectedCoverElement)) {
+      isResizing = true;
+      return;
+    }
+    
+    const clickedElement = getElementAtPosition(mouseX, mouseY);
+    
+    if (clickedElement) {
+      selectedCoverElement = clickedElement;
+      isDragging = true;
+      dragOffset.x = mouseX - clickedElement.x;
+      dragOffset.y = mouseY - clickedElement.y;
+      trashBin?.classList.remove('hidden');
+      renderCover();
+    } else {
+      selectedCoverElement = null;
+      trashBin?.classList.add('hidden');
+      renderCover();
+    }
+  });
+  
+  // Mouse up
+  coverCanvas.addEventListener('mouseup', () => {
+    isDragging = false;
+    isResizing = false;
+  });
+  
+  // Mouse leave
+  coverCanvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    isResizing = false;
+    coverCanvas.classList.remove('resize-cursor', 'move-cursor');
+  });
+  
+  // Right click for background removal
+  coverCanvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const rect = coverCanvas.getBoundingClientRect();
+    const scaleX = coverCanvas.width / rect.width;
+    const scaleY = coverCanvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+    
+    const el = getElementAtPosition(mouseX, mouseY);
+    if (el && el.type === 'nft') {
+      const action = confirm('Remove background for this NFT?');
+      if (action) {
+        removeBackground(el);
+      }
+    }
+  });
 }
