@@ -5,43 +5,52 @@
 let CONFIG = {
   ALCHEMY_API_KEY: null,
   OPENSEA_API_KEY: null,
+  MORALIS_API_KEY: null,
   BASED_UNDEADS_CONTRACT: '0x4aec4eddfab595c04557f78178f0962e46a02989',
   BASE_CHAIN_ID: 8453
 };
 
-// Supported chains configuration
 const SUPPORTED_CHAINS = {
   base: {
     name: 'Base',
     chainId: 8453,
     alchemyNetwork: 'base-mainnet',
-    openSeaSlug: 'base'
+    openSeaSlug: 'base',
+    apiEndpoint: 'base',
+    moralisChain: 'base',
+    alchemyChain: 'base-mainnet'
+  },
+  apechain: {
+    name: 'ApeChain',
+    chainId: 33139,
+    alchemyNetwork: 'apechain-mainnet',
+    openSeaSlug: 'ape_chain',
+    apiEndpoint: 'ape_chain',
+    moralisChain: 'apechain',
+    alchemyChain: 'apechain-mainnet'
+  },
+  abstract: {
+    name: 'Abstract',
+    chainId: 2741,
+    alchemyNetwork: 'abstract-mainnet',
+    openSeaSlug: 'abstract',
+    apiEndpoint: 'abstract',
+    moralisChain: 'abstract',
+    alchemyChain: 'abstract-mainnet'
   },
   ethereum: {
     name: 'Ethereum',
     chainId: 1,
     alchemyNetwork: 'eth-mainnet',
-    openSeaSlug: 'ethereum'
-  },
-  polygon: {
-    name: 'Polygon',
-    chainId: 137,
-    alchemyNetwork: 'polygon-mainnet',
-    openSeaSlug: 'matic'
-  },
-  arbitrum: {
-    name: 'Arbitrum',
-    chainId: 42161,
-    alchemyNetwork: 'arb-mainnet',
-    openSeaSlug: 'arbitrum'
-  },
-  optimism: {
-    name: 'Optimism',
-    chainId: 10,
-    alchemyNetwork: 'opt-mainnet',
-    openSeaSlug: 'optimism'
+    openSeaSlug: 'ethereum',
+    apiEndpoint: 'ethereum',
+    moralisChain: 'eth',
+    alchemyChain: 'eth-mainnet'
   }
 };
+
+const BASE_API_URL = 'https://api.opensea.io/api/v2';
+const MORALIS_API_URL = 'https://deep-index.moralis.io/api/v2';
 
 let currentChain = 'base';
 let userWalletAddress = null;
@@ -56,7 +65,7 @@ let selectedCoverElement = null;
 // ============================================
 async function initializeAPIKeys() {
   try {
-    const response = await fetch('/.netlify/functions/api-keys');
+    const response = await fetch('/.netlify/functions/api');
     
     if (!response.ok) {
       throw new Error(`API keys fetch failed: ${response.status}`);
@@ -64,12 +73,13 @@ async function initializeAPIKeys() {
     
     const data = await response.json();
     
-    if (!data.alchemyKey || !data.openSeaKey) {
+    if (!data.apiKeys || !data.apiKeys.opensea || !data.apiKeys.alchemy) {
       throw new Error('API keys are missing from response');
     }
     
-    CONFIG.ALCHEMY_API_KEY = data.alchemyKey;
-    CONFIG.OPENSEA_API_KEY = data.openSeaKey;
+    CONFIG.ALCHEMY_API_KEY = data.apiKeys.alchemy;
+    CONFIG.OPENSEA_API_KEY = Array.isArray(data.apiKeys.opensea) ? data.apiKeys.opensea[0] : data.apiKeys.opensea;
+    CONFIG.MORALIS_API_KEY = data.apiKeys.moralis;
     
     console.log('✅ API keys loaded successfully');
     return true;
@@ -125,19 +135,126 @@ async function loadWalletCollections(walletAddress) {
   nftGrid.innerHTML = '<div class="text-center py-8">Loading your NFTs...</div>';
   
   try {
+    const seenNFTs = new Set();
+    let allNFTs = [];
+
+    // Fetch from OpenSea
+    try {
+      console.log('Fetching NFTs from OpenSea...');
+      const openSeaUrl = `${BASE_API_URL}/chain/${chain.apiEndpoint}/account/${walletAddress}/nfts?limit=100`;
+      const openSeaResponse = await fetch(openSeaUrl, {
+        headers: {
+          'X-API-KEY': CONFIG.OPENSEA_API_KEY,
+          'accept': 'application/json'
+        }
+      });
+      
+      if (openSeaResponse.ok) {
+        const openSeaData = await openSeaResponse.json();
+        if (openSeaData.nfts && openSeaData.nfts.length > 0) {
+          console.log(`Found ${openSeaData.nfts.length} NFTs from OpenSea`);
+          openSeaData.nfts.forEach(nft => {
+            const uniqueId = `${nft.contract || ''}_${nft.identifier || ''}`;
+            if (!seenNFTs.has(uniqueId)) {
+              seenNFTs.add(uniqueId);
+              allNFTs.push({
+                id: nft.identifier,
+                name: nft.name || `#${nft.identifier}`,
+                image: getProxiedImageUrl(nft.image_url),
+                collection: nft.collection,
+                contractAddress: nft.contract,
+                raw: nft
+              });
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('OpenSea API Error:', error);
+    }
+
+    // Fetch from Moralis
+    if (CONFIG.MORALIS_API_KEY) {
+      try {
+        console.log('Fetching NFTs from Moralis...');
+        const moralisUrl = `${MORALIS_API_URL}/${walletAddress}/nft?chain=${chain.moralisChain}&format=decimal&limit=100`;
+        const moralisResponse = await fetch(moralisUrl, {
+          headers: {
+            'X-API-Key': CONFIG.MORALIS_API_KEY
+          }
+        });
+        
+        if (moralisResponse.ok) {
+          const moralisData = await moralisResponse.json();
+          if (moralisData.result && moralisData.result.length > 0) {
+            console.log(`Found ${moralisData.result.length} NFTs from Moralis`);
+            moralisData.result.forEach(nft => {
+              const uniqueId = `${nft.token_address || ''}_${nft.token_id || ''}`;
+              if (!seenNFTs.has(uniqueId)) {
+                seenNFTs.add(uniqueId);
+                allNFTs.push({
+                  id: nft.token_id,
+                  name: nft.name || `#${nft.token_id}`,
+                  image: getProxiedImageUrl(nft.metadata?.image || nft.metadata?.image_url),
+                  collection: nft.name,
+                  contractAddress: nft.token_address,
+                  raw: nft
+                });
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Moralis API Error:', error);
+      }
+    }
+
     // Fetch from Alchemy
-    const alchemyUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100`;
+    try {
+      console.log('Fetching NFTs from Alchemy...');
+      const alchemyUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100`;
+      
+      const alchemyResponse = await fetch(alchemyUrl);
+      
+      if (alchemyResponse.ok) {
+        const alchemyData = await alchemyResponse.json();
+        if (alchemyData.ownedNfts && alchemyData.ownedNfts.length > 0) {
+          console.log(`Found ${alchemyData.ownedNfts.length} NFTs from Alchemy`);
+          alchemyData.ownedNfts.forEach(nft => {
+            const uniqueId = `${nft.contract?.address || ''}_${nft.tokenId || ''}`;
+            if (!seenNFTs.has(uniqueId)) {
+              seenNFTs.add(uniqueId);
+              const imageUrl = nft.image?.cachedUrl || 
+                              nft.image?.thumbnailUrl || 
+                              nft.raw?.metadata?.image || 
+                              '';
+              if (imageUrl) {
+                allNFTs.push({
+                  id: nft.tokenId,
+                  name: nft.name || nft.title || `#${nft.tokenId}`,
+                  image: getProxiedImageUrl(imageUrl),
+                  collection: nft.contract?.openSeaMetadata?.collectionName || nft.contract?.name,
+                  contractAddress: nft.contract?.address,
+                  raw: nft
+                });
+              }
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Alchemy API Error:', error);
+    }
+
+    console.log(`Total unique NFTs found: ${allNFTs.length}`);
     
-    const response = await fetch(alchemyUrl);
-    const data = await response.json();
-    
-    if (!data.ownedNfts || data.ownedNfts.length === 0) {
+    if (allNFTs.length === 0) {
       nftGrid.innerHTML = '<div class="text-center py-8 text-yellow-400">No NFTs found in this wallet</div>';
       return;
     }
     
     // Process NFTs by collection
-    processNFTsByCollection(data.ownedNfts);
+    processNFTsByCollection(allNFTs);
     displayCollectionSelector();
     
   } catch (error) {
@@ -150,12 +267,10 @@ function processNFTsByCollection(nfts) {
   userCollections.clear();
   
   nfts.forEach(nft => {
-    if (!nft.contract?.address) return;
+    if (!nft.contractAddress) return;
     
-    const collectionKey = nft.contract.address.toLowerCase();
-    const collectionName = nft.contract.openSeaMetadata?.collectionName || 
-                          nft.contract.name || 
-                          'Unknown Collection';
+    const collectionKey = nft.contractAddress.toLowerCase();
+    const collectionName = nft.collection || 'Unknown Collection';
     
     // Skip spam collections
     if (isSpamCollection(collectionName)) return;
@@ -163,7 +278,7 @@ function processNFTsByCollection(nfts) {
     if (!userCollections.has(collectionKey)) {
       userCollections.set(collectionKey, {
         name: collectionName,
-        contract: nft.contract.address,
+        contract: nft.contractAddress,
         nfts: []
       });
     }
