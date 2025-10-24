@@ -954,6 +954,111 @@ nav {
 
 <div class="section-divider max-w-5xl"></div>
 
+<!-- RAFFLE SECTION -->
+<section class="py-10 sm:py-14 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto">
+    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
+       <span id="rafflePhaseName">Loading...</span>
+    </h3>
+    
+    <!-- Rewards Display -->
+    <div class="glass-card p-6 sm:p-8 mb-6">
+      <h4 class="pixel-font text-sm mb-4 text-center text-[#00ff88]">🎁 Milestone Rewards</h4>
+      <p class="text-xs text-center text-white/60 mb-4">Rewards will be loaded automatically</p>
+      <div id="raffleRewardsDisplay" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        <p class="col-span-full text-center text-white/60">Loading rewards...</p>
+      </div>
+    </div>
+
+    <!-- Eligible NFTs Display -->
+    <div class="glass-card p-6 sm:p-8 mb-6">
+      <h4 class="pixel-font text-sm mb-4 text-center">🎫 Eligible NFTs (Token #<span id="eligibleRangeDisplay">1501-2300</span>)</h4>
+      <div class="text-center mb-4">
+        <p class="text-sm text-white/80">Total Entries: <span id="totalEntriesCount" class="text-[#00ff88] font-bold">Loading...</span></p>
+      </div>
+      <div id="eligibleNFTsDisplay" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto">
+        <p class="col-span-full text-center text-white/60 py-4">Loading eligible NFTs...</p>
+      </div>
+    </div>
+
+    <!-- Listed NFTs for Sale -->
+    <div id="listedNFTsSection" class="glass-card p-6 sm:p-8 mb-6">
+      <h4 class="pixel-font text-sm mb-4 text-center text-[#ff6b6b]">🔥 Scoop More Entries While You Can!</h4>
+      <p class="text-xs text-center text-white/80 mb-4">These eligible NFTs are listed for sale right now. Each = 1 extra ticket! 🎫</p>
+      <div id="listedNFTsDisplay" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <p class="col-span-full text-center text-white/60 py-4">Loading listings...</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      
+      <!-- Left: Wallet Checker -->
+      <div class="glass-card p-6 sm:p-8">
+        <h4 class="pixel-font text-sm mb-4 text-[#00ff88]">📋 Check Your Entries</h4>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-white/80 mb-2">Wallet Address:</label>
+            <input type="text" id="raffleWalletInput" placeholder="0x..." class="w-full text-sm"/>
+          </div>
+          
+          <button onclick="checkWalletRaffle()" class="btn-primary w-full pixel-font text-xs">
+            Check NFTs
+          </button>
+          
+          <div class="glass-card p-4 bg-[#00ff88]/10 border-[#00ff88]/30">
+            <p class="text-xs text-white/60 mb-1">Your Entries</p>
+            <p class="text-3xl font-bold text-[#00ff88]" id="raffleEntriesCount">0</p>
+          </div>
+          
+          <div id="raffleTokensList" class="max-h-40 overflow-y-auto">
+            <p class="text-xs text-white/60 text-center py-4">Enter wallet to see your tokens</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Wheel -->
+      <div class="glass-card p-6 sm:p-8 flex flex-col items-center justify-center">
+        <h4 class="pixel-font text-sm mb-4 text-center w-full">🎯 The Wheel</h4>
+        <p class="text-xs text-white/60 mb-2 text-center" id="wheelStatus">Loading entries...</p>
+        
+        <div class="relative w-full aspect-square flex items-center justify-center mb-4">
+          <div class="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+            <div class="w-0 h-0 border-l-8 border-r-8 border-t-12 border-l-transparent border-r-transparent border-t-[#00ff88]"
+                 style="filter: drop-shadow(0 2px 6px rgba(0,255,136,0.6))"></div>
+          </div>
+          
+          <canvas id="raffleCanvasWheel" width="300" height="300" 
+                  style="border: 3px solid #00ff88; border-radius: 50%; box-shadow: 0 0 30px rgba(0,255,136,0.3);"></canvas>
+        </div>
+        
+        <button id="raffleSpinBtn" onclick="spinWheel()"
+                class="btn-primary pixel-font text-xs w-full">
+          Spin Raffle
+        </button>
+      </div>
+
+      <!-- Right: Winners -->
+      <div class="glass-card p-6 sm:p-8 flex flex-col">
+        <h4 class="pixel-font text-sm mb-4 text-[#00ff88]">🏆 Winners</h4>
+        
+        <div id="raffleWinnersList" class="flex-1 overflow-y-auto">
+          <p class="text-center text-white/60 py-8 text-sm">No winners yet</p>
+        </div>
+        
+        <button onclick="resetRaffle()" class="btn-secondary pixel-font text-xs w-full mt-4">
+          Reset Raffle
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+
+<div class="section-divider max-w-5xl mx-auto"></div>
+
 <!-- Grid Maker & Downloader -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-6xl mx-auto">
@@ -1352,11 +1457,11 @@ nav {
       <a href="https://basedsquiggles.xyz/" target="_blank" class="block">
         <div class="glass-card project-card">
           <img 
-            src="https://basedsquiggles.xyz/og-image.png" 
-            alt="Based Squiggles Preview" 
-            class="project-preview"
-            onerror="this.src='https://i2.seadn.io/base/0xad0b08874ede845d09c4bf5f13c3bb3650720c34/578a5dca8ac2757ce35c2d5530520f/ec578a5dca8ac2757ce35c2d5530520f.png?w=350'"
-          />
+  src="https://i2.seadn.io/base/0xad0b08874ede845d09c4bf5f13c3bb3650720c34/578a5dca8ac2757ce35c2d5530520f/ec578a5dca8ac2757ce35c2d5530520f.png?w=350" 
+  alt="Based Squiggles Preview" 
+  class="project-preview"
+  onerror="this.src='https://placehold.co/350x350/1a3a32/00ff88/png?text=Based+Squiggles'"
+/>
           <div class="project-overlay">
             <h4 class="project-title pixel-font">Based Squiggles</h4>
             
