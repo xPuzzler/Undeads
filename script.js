@@ -1,13 +1,37 @@
-// Enhanced NFT Grid Maker Script with Secure API Integration
-// ============================================
-// CONFIGURATION & API MANAGEMENT
-// ============================================
+
 let CONFIG = {
   ALCHEMY_API_KEY: null,
   OPENSEA_API_KEY: null,
   MORALIS_API_KEY: null,
   BASED_UNDEADS_CONTRACT: '0x4aec4eddfab595c04557f78178f0962e46a02989',
   BASE_CHAIN_ID: 8453
+};
+
+const RAFFLE_CONFIG = {
+  PHASE: 1,
+  PHASE_NAME: "Phase 2 🎃 - Based Undeads Giveaway",
+  TOKEN_RANGE: { min: 1501, max: 2300 },
+  TOTAL_WINNERS: 5,
+  IS_ACTIVE: true,
+  REWARD_OPENSEA_URLS: [
+    "https://opensea.io/assets/base/0x1260f90e0b1c482b38b88f26dee17c57615d670b/5481",
+    "https://opensea.io/assets/base/0x56dfe6ae26bf3043dc8fdf33bf739b4ff4b3bc4a/2546",
+    "https://opensea.io/assets/base/0x4ed83635e2309a7c067d0f98efca47b920bf79b1/6648",
+    "https://opensea.io/assets/base/0x61710b69793fa88cb35404a1f8d15070afcfe63f/2442",
+    "https://opensea.io/assets/base/0x84dcdda7382e501a574ff6ab09d2a0d0d4421188/2005",
+    "https://opensea.io/assets/base/0x2166a7349521c22ec4748c833c0b2bbe86bf7dcb/1642",
+    "https://opensea.io/assets/base/0xcd84a49328b41549306833c8dfb7d800708b4f3c/8209"
+  ],
+  REWARD_TOKENS: []
+};
+
+let raffleState = {
+  eligibleTokens: [],
+  allEligibleEntries: [],
+  walletAddress: '',
+  winners: [],
+  isSpinning: false,
+  eligibleNFTs: []
 };
 
 const SUPPORTED_CHAINS = {
@@ -64,9 +88,6 @@ let isResizing = false;
 let dragOffset = { x: 0, y: 0 };
 let originalImageData = new Map();
 
-// ============================================
-// API KEY INITIALIZATION
-// ============================================
 async function initializeAPIKeys() {
   try {
     const response = await fetch('/.netlify/functions/api-keys');
@@ -93,10 +114,6 @@ async function initializeAPIKeys() {
     return false;
   }
 }
-
-// ============================================
-// WALLET INTEGRATION
-// ============================================
 async function fetchWalletNFTs() {
   const walletInput = document.getElementById('walletAddress');
   const wallet = walletInput.value.trim();
@@ -106,7 +123,6 @@ async function fetchWalletNFTs() {
     return;
   }
   
-  // Resolve ENS if needed
   let resolvedAddress = wallet;
   if (wallet.endsWith('.eth')) {
     resolvedAddress = await resolveENS(wallet);
@@ -142,7 +158,6 @@ async function loadWalletCollections(walletAddress) {
     const seenNFTs = new Set();
     let allNFTs = [];
 
-    // Fetch from OpenSea
     try {
       console.log('Fetching NFTs from OpenSea...');
       const openSeaUrl = `${BASE_API_URL}/chain/${chain.apiEndpoint}/account/${walletAddress}/nfts?limit=100`;
@@ -177,7 +192,6 @@ async function loadWalletCollections(walletAddress) {
       console.error('OpenSea API Error:', error);
     }
 
-    // Fetch from Moralis
     if (CONFIG.MORALIS_API_KEY) {
       try {
         console.log('Fetching NFTs from Moralis...');
@@ -213,7 +227,6 @@ async function loadWalletCollections(walletAddress) {
       }
     }
 
-    // Fetch from Alchemy
     try {
       console.log('Fetching NFTs from Alchemy...');
       const alchemyUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100`;
@@ -257,7 +270,6 @@ async function loadWalletCollections(walletAddress) {
       return;
     }
     
-    // Process NFTs by collection
     processNFTsByCollection(allNFTs);
     displayCollectionSelector();
     
@@ -276,7 +288,6 @@ function processNFTsByCollection(nfts) {
     const collectionKey = nft.contractAddress.toLowerCase();
     const collectionName = nft.collection || 'Unknown Collection';
     
-    // Skip spam collections
     if (isSpamCollection(collectionName)) return;
     
     if (!userCollections.has(collectionKey)) {
@@ -303,8 +314,6 @@ function processNFTsByCollection(nfts) {
       });
     }
   });
-  
-  // Remove collections with no valid NFTs
   for (const [key, collection] of userCollections.entries()) {
     if (collection.nfts.length === 0) {
       userCollections.delete(key);
@@ -343,9 +352,6 @@ function displayCollectionSelector() {
   nftGrid.innerHTML = `<div class="text-center text-[#00ff88] py-8">✓ Found ${sortedCollections.length} collections! Select one above</div>`;
 }
 
-// ============================================
-// COLLECTION DISPLAY
-// ============================================
 document.getElementById('collectionSelect')?.addEventListener('change', function() {
   const selectedContract = this.value;
   if (!selectedContract) return;
@@ -375,10 +381,8 @@ function displayNFTs(nfts) {
       <p class="text-xs text-center mt-2 truncate px-1">${nft.name}</p>
     `;
     
-    // Add click handler for grid selection
     div.addEventListener('click', () => handleNFTSelection(index, div));
     
-    // Add click handler for cover maker - always attach
     div.addEventListener('click', (e) => {
       if (!document.getElementById('coverMakerSection').classList.contains('hidden')) {
         e.stopPropagation();
@@ -406,9 +410,6 @@ function handleNFTSelection(index, element) {
   }
 }
 
-// ============================================
-// GRID MAKER FUNCTIONALITY
-// ============================================
 function getActualGridSize() {
   const gridSizeSelect = document.getElementById('gridSize');
   const selected = gridSizeSelect.value;
@@ -498,11 +499,9 @@ async function createGridCanvas(nfts, gridData, isPreview) {
   canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
   
-  // Fill background
   ctx.fillStyle = separatorColor;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   
-  // Load and draw images
   for (let i = 0; i < gridData.rows * gridData.cols; i++) {
     const row = Math.floor(i / gridData.cols);
     const col = i % gridData.cols;
@@ -613,9 +612,6 @@ function resetGrid() {
   document.getElementById('gridPreviewContainer').classList.add('hidden');
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
 function getProxiedImageUrl(url) {
   if (!url) return 'https://placehold.co/300x300/1a1a1a/00ff88/png?text=NFT';
   
@@ -625,7 +621,6 @@ function getProxiedImageUrl(url) {
     return `https://ipfs.io/ipfs/${hash}`;
   }
   
-  // Handle Arweave URLs
   if (url.startsWith('ar://')) {
     const hash = url.replace('ar://', '');
     return `https://arweave.net/${hash}`;
@@ -649,9 +644,6 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-// ============================================
-// FEATURED UNDEADS CAROUSEL
-// ============================================
 async function loadFeaturedUndeads() {
   const nftScroller = document.getElementById('nftScroller');
   if (!nftScroller) return;
@@ -659,26 +651,77 @@ async function loadFeaturedUndeads() {
   nftScroller.innerHTML = '<div class="text-center py-8">Loading Featured Undeads...</div>';
   
   try {
+    const allNFTs = [];
+    
     const response = await fetch(
-      `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=50`,
+      `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=200`,
       {
+        method: 'GET',
         headers: {
           'accept': 'application/json',
           'x-api-key': CONFIG.OPENSEA_API_KEY
         }
       }
     );
+
+    if (!response.ok) {
+      throw new Error(`OpenSea API error: ${response.status}`);
+    }
+
+    const data = await response.json();
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.nfts && data.nfts.length > 0) {
-        displayFeaturedNFTs(data.nfts);
+    if (data.nfts && data.nfts.length > 0) {
+      allNFTs.push(...data.nfts);
+      
+      let nextCursor = data.next;
+      let pageCount = 1;
+      
+      while (nextCursor && pageCount < 10) {
+        const nextResponse = await fetch(
+          `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=200&next=${encodeURIComponent(nextCursor)}`,
+          {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'x-api-key': CONFIG.OPENSEA_API_KEY
+            }
+          }
+        );
+
+        if (!nextResponse.ok) break;
+        
+        const nextData = await nextResponse.json();
+        if (nextData.nfts && nextData.nfts.length > 0) {
+          allNFTs.push(...nextData.nfts);
+          nextCursor = nextData.next;
+          pageCount++;
+        } else {
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
+    }
+    
+    if (allNFTs.length > 0) {
+      displayFeaturedNFTs(allNFTs);
+      return;
     }
   } catch (error) {
     console.error('Error loading featured undeads:', error);
-    loadFallbackUndeads();
   }
+  
+  loadFallbackUndeads();
+}
+
+function loadFallbackUndeads() {
+  const nftScroller = document.getElementById('nftScroller');
+  nftScroller.innerHTML = `
+    <div class="text-center py-8 text-white/60">
+      <p>Unable to load Featured Undeads at the moment</p>
+      <p class="text-sm mt-2">Please check back soon or visit <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="text-[#00ff88] hover:underline">OpenSea</a></p>
+    </div>
+  `;
 }
 
 function displayFeaturedNFTs(nfts) {
@@ -740,9 +783,6 @@ function loadFallbackUndeads() {
   displayFeaturedNFTs(placeholders);
 }
 
-// ============================================
-// CHAIN SELECTOR
-// ============================================
 document.getElementById('chainSelect')?.addEventListener('change', function() {
   currentChain = this.value;
   userCollections.clear();
@@ -755,9 +795,6 @@ document.getElementById('chainSelect')?.addEventListener('change', function() {
   showNotification(`Switched to ${SUPPORTED_CHAINS[currentChain].name}`, 'info');
 });
 
-// ============================================
-// GRID OPTIONS HANDLERS
-// ============================================
 document.getElementById('gridMode')?.addEventListener('change', function() {
   document.getElementById('gridOptions').classList.toggle('hidden', !this.checked);
 });
@@ -771,48 +808,36 @@ document.getElementById('gridSize')?.addEventListener('change', function() {
   }
 });
 
-// ============================================
-// INITIALIZATION
-// ============================================
 document.addEventListener('DOMContentLoaded', async function() {
-  // Initialize API keys first
+ 
   const keysLoaded = await initializeAPIKeys();
   if (!keysLoaded) return;
   
-  // Chain selector is already populated in HTML, just set the default
   const chainSelect = document.getElementById('chainSelect');
   if (chainSelect) {
     chainSelect.value = currentChain;
   }
   
-  // Load featured NFTs if on homepage
   if (document.getElementById('nftScroller')) {
     loadFeaturedUndeads();
   }
   
-  // Set up event listeners
   document.getElementById('fetchNFTs')?.addEventListener('click', fetchWalletNFTs);
   document.getElementById('previewGrid')?.addEventListener('click', previewGrid);
   document.getElementById('downloadGrid')?.addEventListener('click', downloadGrid);
   document.getElementById('downloadAll')?.addEventListener('click', downloadAllAsZip);
   document.getElementById('resetGrid')?.addEventListener('click', resetGrid);
 
-  // Cover size change listener
   document.getElementById('coverSize')?.addEventListener('change', () => {
     updateCanvasSize();
     renderCover();
   });
   
-  // Theme switcher
   setupThemeSwitcher();
   
-  // Cover maker
   setupCoverMaker();
 });
 
-// ============================================
-// THEME SYSTEM
-// ============================================
 function setupThemeSwitcher() {
   const themes = ['normal', 'glass', 'dark'];
   let currentThemeIndex = 0;
@@ -848,9 +873,6 @@ function setupThemeSwitcher() {
   }
 }
 
-// ============================================
-// COVER MAKER SETUP
-// ============================================
 function setupCoverMaker() {
   const coverMakerBtn = document.getElementById('openCoverMaker');
   if (!coverMakerBtn) return;
@@ -867,13 +889,11 @@ function setupCoverMaker() {
     }
   });
   
-  // Cover size change listener
   document.getElementById('coverSize')?.addEventListener('change', () => {
     updateCanvasSize();
     renderCover();
   });
   
-  // Text toggle
   document.getElementById('coverAddText')?.addEventListener('change', (e) => {
     document.getElementById('coverTextOptions').classList.toggle('hidden', !e.target.checked);
     if (e.target.checked && !coverElements.find(el => el.type === 'text')) {
@@ -884,7 +904,6 @@ function setupCoverMaker() {
     }
   });
   
-  // Text styling updates
   ['coverTextSize', 'coverText', 'coverTextColor', 'coverTextColor2', 'coverFontFamily', 'coverTextStyle', 'coverTextBold', 'coverTextItalic', 'coverTextUnderline'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -909,14 +928,12 @@ function setupCoverMaker() {
     });
   });
   
-  // Background changes
   document.getElementById('coverGradient')?.addEventListener('change', renderCover);
   document.getElementById('coverBgColor')?.addEventListener('change', () => {
     document.getElementById('coverGradient').value = '';
     renderCover();
   });
   
-  // Reset cover button
   document.getElementById('resetCover')?.addEventListener('click', () => {
     coverElements = [];
     selectedCoverElement = null;
@@ -928,7 +945,6 @@ function setupCoverMaker() {
     renderCover();
   });
   
-  // Download cover button
   document.getElementById('downloadCover')?.addEventListener('click', () => {
     coverCanvas.toBlob(blob => {
       const link = document.createElement('a');
@@ -939,7 +955,6 @@ function setupCoverMaker() {
     });
   });
   
-  // Quick actions
   document.getElementById('removeAllBg')?.addEventListener('click', () => {
     coverElements.filter(el => el.type === 'nft').forEach(el => {
       if (!el.bgRemoved) removeBackground(el);
@@ -971,7 +986,6 @@ function setupCoverMaker() {
     renderCover();
   });
   
-  // Trash bin click
   trashBin?.addEventListener('click', () => {
     if (selectedCoverElement) {
       const index = coverElements.indexOf(selectedCoverElement);
@@ -985,7 +999,6 @@ function setupCoverMaker() {
     }
   });
   
-  // Canvas mouse events
   setupCanvasMouseEvents(coverCanvas, trashBin);
 }
 
@@ -1035,7 +1048,6 @@ function renderCover() {
   const gradient = document.getElementById('coverGradient')?.value;
   const bgColor = document.getElementById('coverBgColor')?.value || '#2d5f54';
   
-  // Clear and fill background
   if (gradient) {
     const colors = gradient.match(/#[0-9a-f]{6}/gi) || [];
     if (colors.length >= 2) {
@@ -1052,12 +1064,10 @@ function renderCover() {
   
   ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
   
-  // Draw alignment guides if element is selected
   if (selectedCoverElement) {
     drawAlignmentGuides(ctx, coverCanvas, selectedCoverElement);
   }
   
-  // Render cover elements
   coverElements.forEach(el => {
     if (el.type === 'nft' && el.image) {
       ctx.save();
@@ -1066,7 +1076,6 @@ function renderCover() {
       ctx.drawImage(el.image, -el.width/2, -el.height/2, el.width, el.height);
       ctx.restore();
       
-      // Draw selection outline and resize handle
       if (el === selectedCoverElement) {
         ctx.strokeStyle = '#00ff88';
         ctx.lineWidth = 3;
@@ -1140,7 +1149,6 @@ function renderCover() {
   });
 }
 
-// Canva-style alignment guides
 function drawAlignmentGuides(ctx, canvas, element) {
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -1151,7 +1159,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
   ctx.lineWidth = 1;
   ctx.setLineDash([5, 5]);
   
-  // Check if element is near center horizontally
   if (Math.abs(element.x + element.width/2 - centerX) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(centerX, 0);
@@ -1159,7 +1166,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
     ctx.stroke();
   }
   
-  // Check if element is near center vertically
   if (Math.abs(element.y + element.height/2 - centerY) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(0, centerY);
@@ -1167,7 +1173,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
     ctx.stroke();
   }
   
-  // Check if element is near left edge
   if (Math.abs(element.x) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(0, 0);
@@ -1175,7 +1180,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
     ctx.stroke();
   }
   
-  // Check if element is near right edge
   if (Math.abs(element.x + element.width - canvas.width) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(canvas.width, 0);
@@ -1183,7 +1187,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
     ctx.stroke();
   }
   
-  // Check if element is near top edge
   if (Math.abs(element.y) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(0, 0);
@@ -1191,7 +1194,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
     ctx.stroke();
   }
   
-  // Check if element is near bottom edge
   if (Math.abs(element.y + element.height - canvas.height) < snapDistance) {
     ctx.beginPath();
     ctx.moveTo(0, canvas.height);
@@ -1322,7 +1324,6 @@ function removeBackground(element) {
   const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
   const data = imageData.data;
   
-  // Sample corner colors
   const corners = [
     {x: 0, y: 0},
     {x: tempCanvas.width - 1, y: 0},
@@ -1372,7 +1373,7 @@ function removeBackground(element) {
 }
 
 function setupCanvasMouseEvents(coverCanvas, trashBin) {
-  // Helper functions
+  
   function isOverResizeHandle(mouseX, mouseY, el) {
     if (el.type !== 'nft') return false;
     const handleX = el.x + el.width;
@@ -1404,8 +1405,8 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
     }
     return null;
   }
+
   
-  // Mouse move
   coverCanvas.addEventListener('mousemove', (e) => {
     const rect = coverCanvas.getBoundingClientRect();
     const scaleX = coverCanvas.width / rect.width;
@@ -1426,7 +1427,6 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
       let newX = mouseX - dragOffset.x;
       let newY = mouseY - dragOffset.y;
       
-      // Snap to alignment
       const snapDistance = 10;
       const centerX = coverCanvas.width / 2;
       const centerY = coverCanvas.height / 2;
@@ -1458,7 +1458,6 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
       return;
     }
     
-    // Update cursor
     if (selectedCoverElement && isOverResizeHandle(mouseX, mouseY, selectedCoverElement)) {
       coverCanvas.classList.add('resize-cursor');
       coverCanvas.classList.remove('move-cursor');
@@ -1470,7 +1469,6 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
     }
   });
   
-  // Mouse down
   coverCanvas.addEventListener('mousedown', (e) => {
     const rect = coverCanvas.getBoundingClientRect();
     const scaleX = coverCanvas.width / rect.width;
@@ -1499,20 +1497,17 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
     }
   });
   
-  // Mouse up
   coverCanvas.addEventListener('mouseup', () => {
     isDragging = false;
     isResizing = false;
   });
   
-  // Mouse leave
   coverCanvas.addEventListener('mouseleave', () => {
     isDragging = false;
     isResizing = false;
     coverCanvas.classList.remove('resize-cursor', 'move-cursor');
   });
   
-  // Right click for background removal
   coverCanvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     const rect = coverCanvas.getBoundingClientRect();
@@ -1530,3 +1525,571 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
     }
   });
 }
+function parseOpenSeaUrl(url) {
+  const match = url.match(/\/assets\/([^\/]+)\/([^\/]+)\/(\d+)/);
+  if (match) {
+    return {
+      chain: match[1],
+      contract: match[2],
+      tokenId: match[3]
+    };
+  }
+  return null;
+}
+
+async function loadRewardNFTs() {
+  const rewards = [];
+  
+  for (const url of RAFFLE_CONFIG.REWARD_OPENSEA_URLS) {
+    const parsed = parseOpenSeaUrl(url);
+    if (!parsed) continue;
+    
+    try {
+      const response = await fetch(
+        `https://api.opensea.io/api/v2/chain/${parsed.chain}/contract/${parsed.contract}/nfts/${parsed.tokenId}`,
+        {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'x-api-key': CONFIG.OPENSEA_API_KEY
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const nft = data.nft;
+        
+        rewards.push({
+          id: rewards.length + 1,
+          name: nft.name || `Token #${parsed.tokenId}`,
+          image: nft.image_url || nft.display_image_url,
+          tokenId: parsed.tokenId,
+          contract: parsed.contract,
+          openseaUrl: url
+        });
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (error) {
+      console.error(`Error loading reward NFT from ${url}:`, error);
+    }
+  }
+  
+  RAFFLE_CONFIG.REWARD_TOKENS = rewards;
+  RAFFLE_CONFIG.TOTAL_WINNERS = rewards.length;
+  return rewards;
+}
+
+async function loadEligibleRaffleNFTs() {
+  try {
+    document.getElementById('wheelStatus').textContent = 'Loading entries...';
+    
+    const response = await fetch(
+      `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=200`,
+      {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'x-api-key': CONFIG.OPENSEA_API_KEY
+        }
+      }
+    );
+
+    if (!response.ok) throw new Error(`OpenSea API error: ${response.status}`);
+
+    let allNFTs = [];
+    let data = await response.json();
+    
+    if (data.nfts) allNFTs.push(...data.nfts);
+    
+    let nextCursor = data.next;
+    let pageCount = 1;
+    
+    while (nextCursor && pageCount < 5) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const nextResponse = await fetch(
+        `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=200&next=${encodeURIComponent(nextCursor)}`,
+        {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'x-api-key': CONFIG.OPENSEA_API_KEY
+          }
+        }
+      );
+
+      if (!nextResponse.ok) break;
+      
+      const nextData = await nextResponse.json();
+      if (nextData.nfts && nextData.nfts.length > 0) {
+        allNFTs.push(...nextData.nfts);
+        nextCursor = nextData.next;
+        pageCount++;
+      } else {
+        break;
+      }
+    }
+    
+    const eligibleNFTs = allNFTs.filter(nft => {
+      const tokenId = parseInt(nft.identifier);
+      return tokenId >= RAFFLE_CONFIG.TOKEN_RANGE.min && 
+             tokenId <= RAFFLE_CONFIG.TOKEN_RANGE.max;
+    }).sort((a, b) => parseInt(a.identifier) - parseInt(b.identifier));
+    
+    raffleState.eligibleNFTs = eligibleNFTs;
+    raffleState.allEligibleEntries = eligibleNFTs.map(nft => parseInt(nft.identifier));
+    
+    displayEligibleNFTs(eligibleNFTs);
+    displayRewards();
+    updateRaffleInfo();
+    drawWheel(0);
+    
+    checkForListedNFTs(eligibleNFTs);
+    
+  } catch (error) {
+    console.error('Error loading eligible NFTs:', error);
+    document.getElementById('wheelStatus').textContent = 'Error loading entries';
+    document.getElementById('eligibleNFTsDisplay').innerHTML = '<p class="col-span-full text-center text-red-400 py-4">Failed to load</p>';
+  }
+}
+
+function displayRewards() {
+  const container = document.getElementById('raffleRewardsDisplay');
+  
+  if (RAFFLE_CONFIG.REWARD_TOKENS.length === 0) {
+    container.innerHTML = '<p class="col-span-full text-center text-white/60">Loading rewards...</p>';
+    return;
+  }
+  
+  container.innerHTML = RAFFLE_CONFIG.REWARD_TOKENS.map((reward, idx) => `
+    <div class="text-center">
+      <a href="${reward.openseaUrl}" target="_blank" class="block group">
+        <img src="${reward.image}" 
+             alt="${reward.name}" 
+             class="w-full aspect-square object-cover rounded-lg border-2 border-[#00ff88] mb-2 group-hover:border-white transition-all"
+             onerror="this.src='https://placehold.co/200x200/1a3a32/00ff88/png?text=Prize+${idx+1}'"/>
+        <p class="text-xs pixel-font text-[#00ff88] group-hover:text-white transition-colors">Prize ${idx + 1}</p>
+        <p class="text-xs text-white/60 truncate">${reward.name}</p>
+      </a>
+    </div>
+  `).join('');
+}
+
+function displayEligibleNFTs(nfts) {
+  const container = document.getElementById('eligibleNFTsDisplay');
+  
+  if (nfts.length === 0) {
+    container.innerHTML = '<p class="col-span-full text-center text-white/60 py-4">No eligible NFTs found</p>';
+    return;
+  }
+  
+  container.innerHTML = nfts.map(nft => {
+    const tokenId = parseInt(nft.identifier);
+    const imageUrl = nft.image_url || nft.display_image_url || 
+                     `https://placehold.co/100x100/1a3a32/00ff88/png?text=${tokenId}`;
+    
+    return `
+      <div class="text-center">
+        <img src="${imageUrl}" 
+             alt="Undead #${tokenId}" 
+             class="w-full aspect-square object-cover rounded-lg border border-white/20 mb-1"
+             loading="lazy"
+             onerror="this.src='https://placehold.co/100x100/1a3a32/00ff88/png?text=${tokenId}'"/>
+        <p class="text-xs text-white/80">#${tokenId}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateRaffleInfo() {
+  document.getElementById('rafflePhaseName').textContent = RAFFLE_CONFIG.PHASE_NAME;
+  document.getElementById('eligibleRangeDisplay').textContent = `${RAFFLE_CONFIG.TOKEN_RANGE.min}-${RAFFLE_CONFIG.TOKEN_RANGE.max}`;
+  document.getElementById('totalEntriesCount').textContent = raffleState.allEligibleEntries.length;
+  document.getElementById('wheelStatus').textContent = `${raffleState.allEligibleEntries.length} entries loaded`;
+}
+
+async function checkWalletRaffle() {
+  const wallet = document.getElementById('raffleWalletInput').value.trim();
+  
+  if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) {
+    showNotification('Please enter a valid Ethereum wallet address', 'error');
+    return;
+  }
+
+  document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-white/60 text-center py-4">Checking...</p>';
+  document.getElementById('raffleEntriesCount').textContent = '...';
+
+  try {
+    const network = 'base-mainnet';
+    const url = `https://${network}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${wallet}&contractAddresses[]=${CONFIG.BASED_UNDEADS_CONTRACT}&withMetadata=true&pageSize=100`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'accept': 'application/json' }
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    const allTokens = data.ownedNfts ? data.ownedNfts.map(nft => parseInt(nft.tokenId)) : [];
+    
+    raffleState.walletAddress = wallet;
+    raffleState.eligibleTokens = allTokens.filter(tokenId => 
+      tokenId >= RAFFLE_CONFIG.TOKEN_RANGE.min && 
+      tokenId <= RAFFLE_CONFIG.TOKEN_RANGE.max
+    ).sort((a, b) => a - b);
+
+    document.getElementById('raffleEntriesCount').textContent = raffleState.eligibleTokens.length;
+    
+    if (raffleState.eligibleTokens.length > 0) {
+      document.getElementById('raffleTokensList').innerHTML = `
+        <div class="flex flex-wrap gap-2">
+          ${raffleState.eligibleTokens.map(token => `
+            <span class="bg-[#00ff88]/20 px-3 py-1 rounded text-xs border border-[#00ff88]">#${token}</span>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-yellow-400 text-center py-4">No eligible NFTs found</p>';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-red-400 text-center py-4">Error checking wallet</p>';
+  }
+}
+
+function spinWheel() {
+  if (raffleState.isSpinning || raffleState.allEligibleEntries.length === 0) {
+    showNotification('No entries available!', 'error');
+    return;
+  }
+  
+  if (raffleState.winners.length >= RAFFLE_CONFIG.TOTAL_WINNERS) {
+    showNotification('All prizes awarded!', 'info');
+    return;
+  }
+  
+  raffleState.isSpinning = true;
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  spinBtn.disabled = true;
+  spinBtn.textContent = 'Spinning...';
+
+  const spins = 5 + Math.floor(Math.random() * 5);
+  const extraDegrees = Math.random() * 360;
+  const totalRotation = spins * 360 + extraDegrees;
+  const duration = 4000;
+  
+  let currentRotation = 0;
+  const startTime = Date.now();
+  
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+    currentRotation = totalRotation * easeOut;
+    
+    drawWheel(currentRotation);
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      selectWinner(extraDegrees);
+    }
+  }
+  
+  animate();
+}
+
+function selectWinner(finalDegree) {
+  const entries = raffleState.allEligibleEntries;
+  const normalizedDegree = (360 - (finalDegree % 360)) % 360;
+  const segmentSize = 360 / Math.min(entries.length, 72);
+  const winningIndex = Math.floor(normalizedDegree / segmentSize) % entries.length;
+  const winningToken = entries[winningIndex];
+
+  const winningNFT = raffleState.eligibleNFTs.find(nft => parseInt(nft.identifier) === winningToken);
+  
+  raffleState.winners.push({
+    position: raffleState.winners.length + 1,
+    tokenId: winningToken,
+    reward: RAFFLE_CONFIG.REWARD_TOKENS[raffleState.winners.length % RAFFLE_CONFIG.REWARD_TOKENS.length],
+    nft: winningNFT
+  });
+
+  updateWinnersDisplay();
+
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  
+  if (raffleState.winners.length < RAFFLE_CONFIG.TOTAL_WINNERS) {
+    raffleState.isSpinning = false;
+    spinBtn.disabled = false;
+    spinBtn.textContent = `Spin Again (${RAFFLE_CONFIG.TOTAL_WINNERS - raffleState.winners.length} left)`;
+  } else {
+    raffleState.isSpinning = false;
+    spinBtn.textContent = '🎉 Complete!';
+    spinBtn.disabled = true;
+  }
+}
+
+function updateWinnersDisplay() {
+  const container = document.getElementById('raffleWinnersList');
+  container.innerHTML = raffleState.winners.map((winner, idx) => {
+    const nftImage = winner.nft?.image_url || winner.nft?.display_image_url || 
+                     `https://placehold.co/100x100/1a3a32/00ff88/png?text=${winner.tokenId}`;
+    
+    return `
+      <div class="glass-card p-4 mb-3">
+        <div class="flex items-center gap-4">
+          <div class="text-center">
+            <div class="pixel-font text-2xl text-[#00ff88] mb-2">#{idx + 1}</div>
+            <img src="${nftImage}" 
+                 alt="Undead #${winner.tokenId}" 
+                 class="w-20 h-20 rounded-lg border-2 border-[#00ff88]"
+                 onerror="this.src='https://placehold.co/100x100/1a3a32/00ff88/png?text=${winner.tokenId}'"/>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm text-[#00ff88] font-bold">Undead #${winner.tokenId}</p>
+            <p class="text-xs text-white/80 mt-2">Won: ${winner.reward.name}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function resetRaffle() {
+  if (raffleState.winners.length > 0 && !confirm('Reset raffle and clear winners?')) return;
+  
+  raffleState.winners = [];
+  raffleState.eligibleTokens = [];
+  raffleState.walletAddress = '';
+  raffleState.isSpinning = false;
+  
+  document.getElementById('raffleWalletInput').value = '';
+  document.getElementById('raffleEntriesCount').textContent = '0';
+  document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-white/60 text-center py-4">Enter wallet to see tokens</p>';
+  document.getElementById('raffleWinnersList').innerHTML = '<p class="text-center text-white/60 py-8 text-sm">No winners yet</p>';
+  
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  spinBtn.textContent = 'Spin Raffle';
+  spinBtn.disabled = false;
+  
+  drawWheel(0);
+}
+
+function drawWheel(rotation = 0) {
+  const canvas = document.getElementById('raffleCanvasWheel');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const entries = raffleState.allEligibleEntries;
+  
+  if (entries.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.arc(150, 150, 140, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Loading...', 150, 150);
+    return;
+  }
+  
+  const segmentCount = Math.min(entries.length, 72);
+  const segmentAngle = 360 / segmentCount;
+  const colors = ['#00ff88', '#00cc6f', '#00aa5f', '#008844', '#006633', '#ff6b6b', '#ff8787', '#ffa5a5', '#ffc3c3', '#ffe0e0'];
+  
+  const centerX = 150;
+  const centerY = 150;
+  const radius = 140;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.translate(-centerX, -centerY);
+
+  for (let i = 0; i < segmentCount; i++) {
+    const tokenId = entries[i % entries.length];
+    const startAngle = (i * segmentAngle - 90) * Math.PI / 180;
+    const endAngle = ((i + 1) * segmentAngle - 90) * Math.PI / 180;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const midAngle = (startAngle + endAngle) / 2;
+    const textX = centerX + Math.cos(midAngle) * (radius * 0.65);
+    const textY = centerY + Math.sin(midAngle) * (radius * 0.65);
+    
+    ctx.fillStyle = 'rgba(10,31,26,0.9)';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`#${tokenId}`, textX, textY);
+  }
+
+  ctx.restore();
+  
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 25, 0, 2 * Math.PI);
+  ctx.fillStyle = '#00ff88';
+  ctx.fill();
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+async function checkForListedNFTs(eligibleNFTs) {
+  try {
+    console.log('Searching for 3 listed NFTs from Phase 2 range...');
+    const listedNFTs = [];
+    const checkedTokens = new Set();
+    
+    const shuffled = [...eligibleNFTs].sort(() => 0.5 - Math.random());
+    
+    for (const nft of shuffled) {
+      if (listedNFTs.length >= 3) {
+        console.log('✓ Found 3 listed NFTs, stopping search');
+        break;
+      }
+      
+      const tokenId = nft.identifier;
+      
+      if (checkedTokens.has(tokenId)) continue;
+      checkedTokens.add(tokenId);
+      
+      try {
+        const response = await fetch(
+          `https://api.opensea.io/api/v2/orders/base/seaport/listings?asset_contract_address=${CONFIG.BASED_UNDEADS_CONTRACT}&token_ids=${tokenId}&limit=1`,
+          {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'x-api-key': CONFIG.OPENSEA_API_KEY
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.orders && data.orders.length > 0) {
+            const listing = data.orders[0];
+            const priceData = listing.current_price;
+            const decimals = 18;
+            const price = parseFloat((parseInt(priceData) / Math.pow(10, decimals)).toFixed(6));
+            
+            listedNFTs.push({
+              ...nft,
+              price: price,
+              priceWei: priceData,
+              currency: 'ETH',
+              openseaUrl: `https://opensea.io/assets/base/${CONFIG.BASED_UNDEADS_CONTRACT}/${tokenId}`
+            });
+            
+            console.log(`✓ Found listing ${listedNFTs.length}/3: Token #${tokenId} for ${price} ETH`);
+          }
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+      } catch (err) {
+        console.log(`Could not check token #${tokenId}`);
+      }
+      
+      if (checkedTokens.size >= 50) {
+        console.log('Checked 50 NFTs, stopping search');
+        break;
+      }
+    }
+    
+    if (listedNFTs.length > 0) {
+      console.log(`✓ Found ${listedNFTs.length} listed NFT(s) from Phase 2`);
+      displayListedNFTs(listedNFTs);
+    } else {
+      console.log('No listed NFTs found in Phase 2 range');
+      document.getElementById('listedNFTsSection')?.classList.add('hidden');
+    }
+    
+  } catch (error) {
+    console.error('Error checking listings:', error);
+    document.getElementById('listedNFTsSection')?.classList.add('hidden');
+  }
+}
+
+function displayListedNFTs(listedNFTs) {
+  const section = document.getElementById('listedNFTsSection');
+  const container = document.getElementById('listedNFTsDisplay');
+  
+  if (listedNFTs.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+  
+  section.classList.remove('hidden');
+  
+  container.innerHTML = listedNFTs.map(nft => {
+    const imageUrl = nft.image_url || nft.display_image_url || 
+                     `https://placehold.co/200x200/1a3a32/00ff88/png?text=${nft.identifier}`;
+    
+    return `
+      <a href="${nft.openseaUrl}" target="_blank" class="block group">
+        <div class="relative">
+          <img src="${imageUrl}" 
+               alt="Undead #${nft.identifier}" 
+               class="w-full aspect-square object-cover rounded-lg border-2 border-[#ff6b6b] group-hover:border-[#ff8787] transition-all"
+               loading="lazy"
+               onerror="this.src='https://placehold.co/200x200/1a3a32/00ff88/png?text=${nft.identifier}'"/>
+          <div class="absolute top-2 right-2 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-lg">
+            <p class="text-xs font-bold text-[#00ff88]">${nft.price} ETH</p>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3 rounded-b-lg">
+            <p class="text-sm font-bold text-white">#${nft.identifier}</p>
+            <p class="text-xs text-[#ff6b6b]">🎫 +1 Entry</p>
+          </div>
+        </div>
+      </a>
+    `;
+  }).join('');
+}
+async function preloadImages(nfts) {
+  const imagePromises = nfts.map(nft => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      const imageUrl = nft.image_url || nft.display_image_url;
+      if (imageUrl) {
+        img.src = imageUrl;
+      } else {
+        resolve();
+      }
+    });
+  });
+  
+  await Promise.all(imagePromises);
+}
+
+
+(async function initializeRaffle() {
+  const checkAPIKeys = setInterval(async () => {
+    if (CONFIG.OPENSEA_API_KEY && CONFIG.ALCHEMY_API_KEY) {
+      clearInterval(checkAPIKeys);
+      
+      if (document.getElementById('raffleCanvasWheel')) {
+        await loadRewardNFTs();
+        await loadEligibleRaffleNFTs();
+      }
+    }
+  }, 100);
+})();
