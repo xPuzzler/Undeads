@@ -35,9 +35,6 @@
       line-height: 1.8;
     }
     
-    /* ============================================
-       THEME SYSTEM
-       ============================================ */
     body.theme-glass {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
     }
@@ -59,7 +56,6 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
     }
 
-    /* Theme-specific button colors */
 body.theme-glass .btn-primary,
 body.theme-glass .nav-mint-btn {
   background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
@@ -83,7 +79,6 @@ body.theme-dark .nav-mint-btn:hover {
   box-shadow: 0 10px 35px rgba(0, 255, 136, 0.8);
 }
 
-/* Theme-specific secondary buttons */
 body.theme-glass .btn-secondary {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.4);
@@ -104,7 +99,6 @@ body.theme-dark .btn-secondary:hover {
   border-color: rgba(0, 255, 136, 0.5);
 }
 
-/* Theme-specific inputs */
 body.theme-glass input[type="text"],
 body.theme-glass input[type="number"],
 body.theme-glass select {
@@ -135,7 +129,6 @@ body.theme-dark select:focus {
   box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
 }
 
-/* Theme-specific navbar */
 body.theme-glass nav {
   background: rgba(102, 126, 234, 0.3);
   border-bottom-color: rgba(255, 255, 255, 0.3);
@@ -146,7 +139,6 @@ body.theme-dark nav {
   border-bottom-color: rgba(0, 255, 136, 0.2);
 }
 
-/* Theme-specific logo glow */
 body.theme-glass .nav-logo h1 {
   color: #ffffff;
   text-shadow: 
@@ -165,7 +157,6 @@ body.theme-dark .nav-logo h1 {
     0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
-/* Theme-specific section divider */
 body.theme-glass .section-divider {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
 }
@@ -174,7 +165,6 @@ body.theme-dark .section-divider {
   background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.7), transparent);
 }
 
-/* Theme-specific NFT cards */
 body.theme-glass .nft-thumbnail:hover,
 body.theme-glass .nft-thumbnail.selected-for-grid {
   border-color: #ffffff;
@@ -197,7 +187,6 @@ body.theme-dark .nft-card:hover img {
   box-shadow: 0 15px 40px rgba(0, 255, 136, 0.6);
 }
 
-/* Theme-specific project cards */
 body.theme-glass .project-card:hover {
   box-shadow: 0 20px 60px rgba(255, 255, 255, 0.5);
 }
@@ -228,7 +217,6 @@ body.theme-dark .project-link:hover {
   color: #0a1f1a;
 }
 
-/* Theme-specific scrollbar */
 body.theme-glass #nftGrid::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
 }
@@ -245,7 +233,6 @@ body.theme-dark #nftGrid::-webkit-scrollbar-track {
   background: rgba(0, 255, 136, 0.1);
 }
 
-/* Theme-specific canvas border */
 body.theme-glass #coverCanvas {
   border-color: #ffffff;
   box-shadow: 0 10px 40px rgba(255, 255, 255, 0.4);
@@ -256,7 +243,6 @@ body.theme-dark #coverCanvas {
   box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
 }
 
-/* Theme-specific checkboxes and accents */
 body.theme-glass input[type="checkbox"]:checked {
   accent-color: #ffffff;
 }
@@ -273,9 +259,6 @@ body.theme-dark input[type="range"] {
   accent-color: #00ff88;
 }
     
-    /* ============================================
-       GLASS CARDS
-       ============================================ */
     .glass-card {
       background: rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(12px);
@@ -290,9 +273,6 @@ body.theme-dark input[type="range"] {
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
     }
 
-    /* ============================================
-   ENHANCED NAVBAR
-   ============================================ */
 nav {
   position: relative;
 }
@@ -409,9 +389,6 @@ nav {
   }
 }
     
-    /* ============================================
-       HERO BANNER
-       ============================================ */
     .hero-banner-container {
   position: relative;
   width: 100%;
@@ -449,9 +426,6 @@ nav {
   z-index: 2;
 }
     
-    /* ============================================
-       SCROLLING NFT CAROUSEL
-       ============================================ */
     .scrolling-container {
       position: relative;
       overflow: hidden;
@@ -530,9 +504,6 @@ nav {
       box-shadow: 0 15px 40px rgba(0, 255, 136, 0.5);
     }
     
-    /* ============================================
-       BUTTONS
-       ============================================ */
     .btn-primary {
       background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
       color: #0a1f1a;
@@ -588,9 +559,6 @@ nav {
       transform: translateY(-2px);
     }
     
-    /* ============================================
-       INPUTS & SELECTS
-       ============================================ */
     input[type="text"],
     input[type="number"],
     select {
@@ -616,9 +584,6 @@ nav {
       color: rgba(255, 255, 255, 0.5);
     }
     
-    /* ============================================
-       NFT GRID
-       ============================================ */
     #nftGrid {
       max-height: 600px;
       overflow-y: auto;
@@ -664,9 +629,6 @@ nav {
       transform: scale(1.05);
     }
     
-    /* ============================================
-       COVER MAKER
-       ============================================ */
     #coverCanvas {
       width: 100%;
       max-width: 100%;
@@ -699,9 +661,6 @@ nav {
       50% { transform: rotate(5deg) scale(1.1); }
     }
     
-    /* ============================================
-       SECTION DIVIDER
-       ============================================ */
     .section-divider {
       height: 3px;
       background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
@@ -709,9 +668,6 @@ nav {
       border-radius: 10px;
     }
     
-    /* ============================================
-       RESPONSIVE
-       ============================================ */
     @media (max-width: 768px) {
       .hero-overlay {
         min-height: 500px;
@@ -745,9 +701,6 @@ nav {
       }
     }
     
-    /* ============================================
-       ANIMATIONS
-       ============================================ */
     @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -763,15 +716,12 @@ nav {
       animation: fadeInUp 0.6s ease-out;
     }
     
-    /* Smooth transitions for theme changes */
     body, .glass-card, nav, .btn-primary, .btn-secondary, 
     input, select, .hero-overlay, .nft-card img, .section-divider {
       transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* ============================================
-   PREVIOUS WORK SECTION
-   ============================================ */
+   
 .project-card {
   position: relative;
   overflow: hidden;
@@ -1031,11 +981,18 @@ nav {
           <canvas id="raffleCanvasWheel" width="300" height="300" 
                   style="border: 3px solid #00ff88; border-radius: 50%; box-shadow: 0 0 30px rgba(0,255,136,0.3);"></canvas>
         </div>
-        
-        <button id="raffleSpinBtn" onclick="spinWheel()"
-                class="btn-primary pixel-font text-xs w-full">
-          Spin Raffle
-        </button>
+        <div class="grid grid-cols-2 gap-3">
+          <button id="raffleShuffleBtn" 
+                  onclick="shuffleRaffleEntries()"
+                  class="btn-primary pixel-font text-xs">
+            Shuffle
+          </button>
+          <button id="raffleSpinBtn" 
+                  onclick="spinWheel()"
+                  class="btn-primary pixel-font text-xs">
+            Spin
+          </button>
+        </div>
       </div>
 
       <!-- Right: Winners -->
