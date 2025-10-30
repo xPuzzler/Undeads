@@ -114,22 +114,39 @@ async function initializeAPIKeys() {
     return false;
   }
 }
+
+function normalizeTokenId(tokenId) {
+  if (!tokenId) return '';
+  if (typeof tokenId === 'string' && tokenId.startsWith('0x')) {
+    return parseInt(tokenId, 16).toString();
+  }
+  return tokenId.toString();
+}
+
 async function fetchWalletNFTs() {
   const walletInput = document.getElementById('walletAddress');
   const wallet = walletInput.value.trim();
   
-  if (!wallet || (!wallet.startsWith('0x') && !wallet.endsWith('.eth'))) {
+  if (!wallet) {
+    showNotification('Please enter a wallet address or ENS name', 'error');
+    return;
+  }
+  
+  if (!wallet.endsWith('.eth') && (!wallet.startsWith('0x') || wallet.length !== 42)) {
     showNotification('Please enter a valid wallet address or ENS name', 'error');
     return;
   }
   
   let resolvedAddress = wallet;
+  
   if (wallet.endsWith('.eth')) {
+    showNotification('Resolving ENS name...', 'info');
     resolvedAddress = await resolveENS(wallet);
     if (!resolvedAddress) {
-      showNotification('Could not resolve ENS name', 'error');
+      showNotification(`Could not resolve ENS name: ${wallet}`, 'error');
       return;
     }
+    showNotification(`✓ Resolved to: ${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)}`, 'success');
   }
   
   userWalletAddress = resolvedAddress;
@@ -139,10 +156,35 @@ async function fetchWalletNFTs() {
 async function resolveENS(ensName) {
   try {
     const response = await fetch(
-      `https://eth-mainnet.g.alchemy.com/v2/${CONFIG.ALCHEMY_API_KEY}/resolveName?name=${ensName}`
+      `https://api.ensdata.net/${ensName}`
     );
+    
+    if (!response.ok) {
+      throw new Error(`ENS API returned status: ${response.status}`);
+    }
+    
     const data = await response.json();
-    return data.address;
+    
+    if (data && data.address) {
+      console.log(`✓ ENS resolved: ${ensName} → ${data.address}`);
+      return data.address;
+    }
+    
+    const backupResponse = await fetch(
+      `https://api.web3.bio/profile/ens/${ensName}`
+    );
+    
+    if (backupResponse.ok) {
+      const backupData = await backupResponse.json();
+      if (backupData && backupData.address) {
+        console.log(`✓ ENS resolved via backup: ${ensName} → ${backupData.address}`);
+        return backupData.address;
+      }
+    }
+    
+    console.error('Could not resolve ENS name');
+    return null;
+    
   } catch (error) {
     console.error('ENS resolution failed:', error);
     return null;
@@ -159,111 +201,171 @@ async function loadWalletCollections(walletAddress) {
     let allNFTs = [];
 
     try {
-      console.log('Fetching NFTs from OpenSea...');
-      const openSeaUrl = `${BASE_API_URL}/chain/${chain.apiEndpoint}/account/${walletAddress}/nfts?limit=100`;
-      const openSeaResponse = await fetch(openSeaUrl, {
+  console.log('Fetching NFTs from OpenSea...');
+  let openSeaNextCursor = null;
+  let openSeaPage = 0;
+  
+  do {
+    const openSeaUrl = openSeaNextCursor 
+      ? `${BASE_API_URL}/chain/${chain.apiEndpoint}/account/${walletAddress}/nfts?limit=200&next=${openSeaNextCursor}`
+      : `${BASE_API_URL}/chain/${chain.apiEndpoint}/account/${walletAddress}/nfts?limit=200`;
+      
+    const openSeaResponse = await fetch(openSeaUrl, {
+      headers: {
+        'X-API-KEY': CONFIG.OPENSEA_API_KEY,
+        'accept': 'application/json'
+      }
+    });
+    
+    if (openSeaResponse.ok) {
+      const openSeaData = await openSeaResponse.json();
+      if (openSeaData.nfts && openSeaData.nfts.length > 0) {
+        openSeaData.nfts.forEach(nft => {
+          const uniqueId = `${(nft.contract || '').toLowerCase()}_${normalizeTokenId(nft.identifier)}`;
+          if (!seenNFTs.has(uniqueId)) {
+            seenNFTs.add(uniqueId);
+            allNFTs.push({
+              id: nft.identifier,
+              name: nft.name || `#${nft.identifier}`,
+              image: getProxiedImageUrl(nft.image_url),
+              collection: nft.collection,
+              contractAddress: nft.contract,
+              raw: nft
+            });
+          }
+        });
+        console.log(`OpenSea page ${openSeaPage + 1}: Found ${openSeaData.nfts.length} NFTs (Total: ${allNFTs.length})`);
+        openSeaNextCursor = openSeaData.next;
+        openSeaPage++;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+    
+    if (openSeaNextCursor) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+  } while (openSeaNextCursor && openSeaPage < 20); 
+  
+} catch (error) {
+  console.error('OpenSea API Error:', error);
+}
+
+    if (CONFIG.MORALIS_API_KEY) {
+  try {
+    console.log('Fetching NFTs from Moralis...');
+    let moralisCursor = null;
+    let moralisPage = 0;
+    
+    do {
+      const moralisUrl = moralisCursor
+        ? `${MORALIS_API_URL}/${walletAddress}/nft?chain=${chain.moralisChain}&format=decimal&limit=100&cursor=${moralisCursor}`
+        : `${MORALIS_API_URL}/${walletAddress}/nft?chain=${chain.moralisChain}&format=decimal&limit=100`;
+        
+      const moralisResponse = await fetch(moralisUrl, {
         headers: {
-          'X-API-KEY': CONFIG.OPENSEA_API_KEY,
-          'accept': 'application/json'
+          'X-API-Key': CONFIG.MORALIS_API_KEY
         }
       });
       
-      if (openSeaResponse.ok) {
-        const openSeaData = await openSeaResponse.json();
-        if (openSeaData.nfts && openSeaData.nfts.length > 0) {
-          console.log(`Found ${openSeaData.nfts.length} NFTs from OpenSea`);
-          openSeaData.nfts.forEach(nft => {
-            const uniqueId = `${nft.contract || ''}_${nft.identifier || ''}`;
+      if (moralisResponse.ok) {
+        const moralisData = await moralisResponse.json();
+        if (moralisData.result && moralisData.result.length > 0) {
+          moralisData.result.forEach(nft => {
+            const uniqueId = `${(nft.token_address || '').toLowerCase()}_${normalizeTokenId(nft.token_id)}`;
             if (!seenNFTs.has(uniqueId)) {
               seenNFTs.add(uniqueId);
               allNFTs.push({
-                id: nft.identifier,
-                name: nft.name || `#${nft.identifier}`,
-                image: getProxiedImageUrl(nft.image_url),
-                collection: nft.collection,
-                contractAddress: nft.contract,
+                id: nft.token_id,
+                name: nft.name || `#${nft.token_id}`,
+                image: getProxiedImageUrl(nft.metadata?.image || nft.metadata?.image_url),
+                collection: nft.name,
+                contractAddress: nft.token_address,
                 raw: nft
               });
             }
           });
+          console.log(`Moralis page ${moralisPage + 1}: Found ${moralisData.result.length} NFTs (Total: ${allNFTs.length})`);
+          moralisCursor = moralisData.cursor;
+          moralisPage++;
+        } else {
+          break;
         }
+      } else {
+        break;
       }
-    } catch (error) {
-      console.error('OpenSea API Error:', error);
-    }
-
-    if (CONFIG.MORALIS_API_KEY) {
-      try {
-        console.log('Fetching NFTs from Moralis...');
-        const moralisUrl = `${MORALIS_API_URL}/${walletAddress}/nft?chain=${chain.moralisChain}&format=decimal&limit=100`;
-        const moralisResponse = await fetch(moralisUrl, {
-          headers: {
-            'X-API-Key': CONFIG.MORALIS_API_KEY
-          }
-        });
-        
-        if (moralisResponse.ok) {
-          const moralisData = await moralisResponse.json();
-          if (moralisData.result && moralisData.result.length > 0) {
-            console.log(`Found ${moralisData.result.length} NFTs from Moralis`);
-            moralisData.result.forEach(nft => {
-              const uniqueId = `${nft.token_address || ''}_${nft.token_id || ''}`;
-              if (!seenNFTs.has(uniqueId)) {
-                seenNFTs.add(uniqueId);
-                allNFTs.push({
-                  id: nft.token_id,
-                  name: nft.name || `#${nft.token_id}`,
-                  image: getProxiedImageUrl(nft.metadata?.image || nft.metadata?.image_url),
-                  collection: nft.name,
-                  contractAddress: nft.token_address,
-                  raw: nft
-                });
-              }
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Moralis API Error:', error);
+      
+      if (moralisCursor) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-    }
+      
+    } while (moralisCursor && moralisPage < 30); 
+    
+  } catch (error) {
+    console.error('Moralis API Error:', error);
+  }
+}
 
     try {
-      console.log('Fetching NFTs from Alchemy...');
-      const alchemyUrl = `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100`;
-      
-      const alchemyResponse = await fetch(alchemyUrl);
-      
-      if (alchemyResponse.ok) {
-        const alchemyData = await alchemyResponse.json();
-        if (alchemyData.ownedNfts && alchemyData.ownedNfts.length > 0) {
-          console.log(`Found ${alchemyData.ownedNfts.length} NFTs from Alchemy`);
-          alchemyData.ownedNfts.forEach(nft => {
-            const uniqueId = `${nft.contract?.address || ''}_${nft.tokenId || ''}`;
-            if (!seenNFTs.has(uniqueId)) {
-              seenNFTs.add(uniqueId);
-              const imageUrl = nft.image?.cachedUrl || 
-                              nft.image?.thumbnailUrl || 
-                              nft.raw?.metadata?.image || 
-                              '';
-              if (imageUrl) {
-                allNFTs.push({
-                  id: nft.tokenId,
-                  name: nft.name || nft.title || `#${nft.tokenId}`,
-                  image: getProxiedImageUrl(imageUrl),
-                  collection: nft.contract?.openSeaMetadata?.collectionName || nft.contract?.name,
-                  contractAddress: nft.contract?.address,
-                  raw: nft
-                });
-              }
+  console.log('Fetching NFTs from Alchemy...');
+  let alchemyPageKey = null;
+  let alchemyPage = 0;
+  
+  do {
+    const alchemyUrl = alchemyPageKey
+      ? `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100&pageKey=${alchemyPageKey}`
+      : `https://${chain.alchemyNetwork}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${walletAddress}&withMetadata=true&pageSize=100`;
+    
+    const alchemyResponse = await fetch(alchemyUrl);
+    
+    if (alchemyResponse.ok) {
+      const alchemyData = await alchemyResponse.json();
+      if (alchemyData.ownedNfts && alchemyData.ownedNfts.length > 0) {
+        alchemyData.ownedNfts.forEach(nft => {
+          const uniqueId = `${(nft.contract?.address || '').toLowerCase()}_${normalizeTokenId(nft.tokenId)}`;
+          if (!seenNFTs.has(uniqueId)) {
+            seenNFTs.add(uniqueId);
+            const imageUrl = nft.image?.cachedUrl || 
+                            nft.image?.thumbnailUrl || 
+                            nft.raw?.metadata?.image || 
+                            '';
+            if (imageUrl) {
+              allNFTs.push({
+                id: nft.tokenId,
+                name: nft.name || nft.title || `#${nft.tokenId}`,
+                image: getProxiedImageUrl(imageUrl),
+                collection: nft.contract?.openSeaMetadata?.collectionName || nft.contract?.name,
+                contractAddress: nft.contract?.address,
+                raw: nft
+              });
             }
-          });
-        }
+          }
+        });
+        console.log(`Alchemy page ${alchemyPage + 1}: Found ${alchemyData.ownedNfts.length} NFTs (Total: ${allNFTs.length})`);
+        alchemyPageKey = alchemyData.pageKey;
+        alchemyPage++;
+      } else {
+        break;
       }
-    } catch (error) {
-      console.error('Alchemy API Error:', error);
+    } else {
+      break;
     }
+    
+    if (alchemyPageKey) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+  } while (alchemyPageKey && alchemyPage < 50);
+  
+} catch (error) {
+  console.error('Alchemy API Error:', error);
+}
 
     console.log(`Total unique NFTs found: ${allNFTs.length}`);
+    console.log(`Total entries in seenNFTs: ${seenNFTs.size}`);
     
     if (allNFTs.length === 0) {
       nftGrid.innerHTML = '<div class="text-center py-8 text-yellow-400">No NFTs found in this wallet</div>';
@@ -314,6 +416,7 @@ function processNFTsByCollection(nfts) {
       });
     }
   });
+  
   for (const [key, collection] of userCollections.entries()) {
     if (collection.nfts.length === 0) {
       userCollections.delete(key);
@@ -409,7 +512,6 @@ function handleNFTSelection(index, element) {
     element.querySelector('img').classList.add('selected-for-grid');
   }
 }
-
 function getActualGridSize() {
   const gridSizeSelect = document.getElementById('gridSize');
   const selected = gridSizeSelect.value;
@@ -615,7 +717,6 @@ function resetGrid() {
 function getProxiedImageUrl(url) {
   if (!url) return 'https://placehold.co/300x300/1a1a1a/00ff88/png?text=NFT';
   
-  // Handle IPFS URLs
   if (url.startsWith('ipfs://')) {
     const hash = url.replace('ipfs://', '');
     return `https://ipfs.io/ipfs/${hash}`;
@@ -809,7 +910,7 @@ document.getElementById('gridSize')?.addEventListener('change', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
- 
+  
   const keysLoaded = await initializeAPIKeys();
   if (!keysLoaded) return;
   
@@ -1083,7 +1184,6 @@ function renderCover() {
         ctx.strokeRect(el.x - 5, el.y - 5, el.width + 10, el.height + 10);
         ctx.setLineDash([]);
         
-        // Draw resize handle
         ctx.fillStyle = '#00ff88';
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
@@ -1205,7 +1305,6 @@ function drawAlignmentGuides(ctx, canvas, element) {
 }
 
 async function addNFTToCover(nft, index) {
-  // Check if NFT already added
   if (coverElements.find(el => el.nftIndex === index)) {
     showNotification('NFT already added to cover!', 'info');
     return;
@@ -1220,7 +1319,6 @@ async function addNFTToCover(nft, index) {
     const x = Math.random() * (canvas.width - size);
     const y = Math.random() * (canvas.height - size);
     
-    // Store original image data for background removal
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = img.width;
     tempCanvas.height = img.height;
@@ -1373,7 +1471,6 @@ function removeBackground(element) {
 }
 
 function setupCanvasMouseEvents(coverCanvas, trashBin) {
-  
   function isOverResizeHandle(mouseX, mouseY, el) {
     if (el.type !== 'nft') return false;
     const handleX = el.x + el.width;
@@ -1525,6 +1622,7 @@ function setupCanvasMouseEvents(coverCanvas, trashBin) {
     }
   });
 }
+
 function parseOpenSeaUrl(url) {
   const match = url.match(/\/assets\/([^\/]+)\/([^\/]+)\/(\d+)/);
   if (match) {
@@ -1606,7 +1704,7 @@ async function loadEligibleRaffleNFTs() {
     let nextCursor = data.next;
     let pageCount = 1;
     
-    while (nextCursor && pageCount < 5) {
+    while (nextCursor && pageCount < 15) {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const nextResponse = await fetch(
@@ -1640,6 +1738,9 @@ async function loadEligibleRaffleNFTs() {
     
     raffleState.eligibleNFTs = eligibleNFTs;
     raffleState.allEligibleEntries = eligibleNFTs.map(nft => parseInt(nft.identifier));
+
+    raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
+    .sort(() => Math.random() - 0.5);
     
     displayEligibleNFTs(eligibleNFTs);
     displayRewards();
@@ -1675,6 +1776,19 @@ function displayRewards() {
       </a>
     </div>
   `).join('');
+}
+
+function shuffleRaffleEntries() {
+  if (raffleState.allEligibleEntries.length === 0) {
+    showNotification('No entries to shuffle!', 'error');
+    return;
+  }
+  
+  raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
+    .sort(() => Math.random() - 0.5);
+  
+  drawWheel(0);
+  showNotification('Entries shuffled!', 'success');
 }
 
 function displayEligibleNFTs(nfts) {
@@ -1803,7 +1917,7 @@ function spinWheel() {
 }
 
 function selectWinner(finalDegree) {
-  const entries = raffleState.allEligibleEntries;
+  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries; 
   const normalizedDegree = (360 - (finalDegree % 360)) % 360;
   const segmentSize = 360 / Math.min(entries.length, 72);
   const winningIndex = Math.floor(normalizedDegree / segmentSize) % entries.length;
@@ -1866,6 +1980,7 @@ function resetRaffle() {
   raffleState.eligibleTokens = [];
   raffleState.walletAddress = '';
   raffleState.isSpinning = false;
+  raffleState.shuffledEntries = [];
   
   document.getElementById('raffleWalletInput').value = '';
   document.getElementById('raffleEntriesCount').textContent = '0';
@@ -1884,7 +1999,7 @@ function drawWheel(rotation = 0) {
   if (!canvas) return;
   
   const ctx = canvas.getContext('2d');
-  const entries = raffleState.allEligibleEntries;
+  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries; 
   
   if (entries.length === 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2062,6 +2177,7 @@ function displayListedNFTs(listedNFTs) {
     `;
   }).join('');
 }
+
 async function preloadImages(nfts) {
   const imagePromises = nfts.map(nft => {
     return new Promise((resolve) => {
@@ -2079,7 +2195,6 @@ async function preloadImages(nfts) {
   
   await Promise.all(imagePromises);
 }
-
 
 (async function initializeRaffle() {
   const checkAPIKeys = setInterval(async () => {
