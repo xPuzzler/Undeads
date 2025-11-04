@@ -2196,6 +2196,306 @@ async function preloadImages(nfts) {
   await Promise.all(imagePromises);
 }
 
+
+const LEADERBOARD_CONFIG = {
+  EXCLUDED_WALLETS: [
+    '0xf2046406d6ccd578206e54207da9143954f75989',
+    '0xdce0501bc39afa5a066db503f03dc714e8bb41b5'
+  ],
+  PHASES: {
+    phase2: { min: 1501, max: 2300, name: 'Phase 2' },
+    phase3: { min: 2301, max: 3000, name: 'Phase 3' }
+  }
+};
+
+let leaderboardState = {
+  data: [],
+  isLoading: false,
+  currentPhase: 'phase2'
+};
+
+async function loadLeaderboard() {
+  if (leaderboardState.isLoading) return;
+  leaderboardState.isLoading = true;
+
+  const leaderboardList = document.getElementById('leaderboardList');
+  leaderboardList.innerHTML = `
+    <div class="text-center text-white/60 py-8">
+      <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+      <p class="text-xs">Loading from blockchain...</p>
+      <p class="text-xs mt-2" id="leaderboardProgress">Starting...</p>
+    </div>
+  `;
+
+  try {
+    const phase = LEADERBOARD_CONFIG.PHASES[leaderboardState.currentPhase];
+    console.log(`🚀 Loading ${phase.name} holders from blockchain`);
+    
+    updateProgress('Fetching holders from Alchemy...');
+    
+    const holders = await fetchHoldersFromBlockchain(phase.min, phase.max);
+    console.log(`✓ Found ${holders.size} unique holders`);
+    
+    const leaderboard = buildLeaderboardFromHolders(holders);
+    console.log(`✓ Leaderboard has ${leaderboard.length} entries`);
+    
+    leaderboardState.data = leaderboard;
+    displayLeaderboard(leaderboard);
+    console.log('✅ Done!');
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+    leaderboardList.innerHTML = `
+      <div class="text-center text-red-400 py-8">
+        <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
+        <p class="text-xs">Failed to load</p>
+        <p class="text-xs mt-2">${error.message}</p>
+        <button onclick="loadLeaderboard()" class="btn-secondary pixel-font text-xs mt-4">Retry</button>
+      </div>
+    `;
+  } finally {
+    leaderboardState.isLoading = false;
+  }
+}
+
+function updateProgress(message) {
+  const progressEl = document.getElementById('leaderboardProgress');
+  if (progressEl) progressEl.textContent = message;
+}
+
+async function fetchHoldersFromBlockchain(minToken, maxToken) {
+  const holders = new Map(); 
+  
+  console.log(`Fetching holders for tokens ${minToken}-${maxToken}...`);
+  
+  let processedCount = 0;
+  const totalTokens = maxToken - minToken + 1;
+  
+  const batchSize = 10;
+  
+  for (let tokenId = minToken; tokenId <= maxToken; tokenId += batchSize) {
+    const batchEnd = Math.min(tokenId + batchSize - 1, maxToken);
+    const batchPromises = [];
+    
+    for (let t = tokenId; t <= batchEnd; t++) {
+      const promise = fetchTokenOwner(t);
+      batchPromises.push(promise);
+    }
+    
+    const results = await Promise.all(batchPromises);
+    
+    results.forEach((result, index) => {
+      if (result.owner) {
+        const owner = result.owner.toLowerCase();
+        if (!holders.has(owner)) {
+          holders.set(owner, []);
+        }
+        holders.get(owner).push(result.tokenId);
+      }
+      
+      processedCount++;
+      if (processedCount % 50 === 0) {
+        const percent = Math.round((processedCount / totalTokens) * 100);
+        console.log(`Progress: ${processedCount}/${totalTokens} (${percent}%)`);
+        updateProgress(`${percent}% complete (${holders.size} holders found)`);
+      }
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  console.log(`✓ Fetched all ${totalTokens} tokens`);
+  return holders;
+}
+
+async function fetchTokenOwner(tokenId) {
+  try {
+    const url = `https://base.blockscout.com/api/v2/tokens/${CONFIG.BASED_UNDEADS_CONTRACT}/instances/${tokenId}`;
+    
+    const response = await fetch(url, {
+      headers: { 'accept': 'application/json' }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.owner && data.owner.hash) {
+        return { tokenId, owner: data.owner.hash };
+      }
+    }
+    
+    return { tokenId, owner: null };
+    
+  } catch (error) {
+    console.warn(`Failed to fetch owner for token ${tokenId}`);
+    return { tokenId, owner: null };
+  }
+}
+
+function buildLeaderboardFromHolders(holders) {
+  const leaderboard = [];
+  
+  for (const [wallet, tokens] of holders.entries()) {
+    const isExcluded = LEADERBOARD_CONFIG.EXCLUDED_WALLETS.includes(wallet);
+    
+    if (!isExcluded && tokens.length > 0) {
+      leaderboard.push({
+        wallet,
+        holding: tokens.length,
+        tokens: tokens.sort((a, b) => a - b)
+      });
+    }
+  }
+  
+  leaderboard.sort((a, b) => b.holding - a.holding);
+  
+  return leaderboard;
+}
+
+function displayLeaderboard(leaderboard) {
+  const leaderboardList = document.getElementById('leaderboardList');
+  
+  if (leaderboard.length === 0) {
+    leaderboardList.innerHTML = `
+      <div class="text-center text-white/60 py-8">
+        <p class="text-sm">No holders found</p>
+        <button onclick="loadLeaderboard()" class="btn-secondary pixel-font text-xs mt-4">Retry</button>
+      </div>
+    `;
+    
+    document.getElementById('leaderboardTotalWallets').textContent = '0';
+    document.getElementById('leaderboardTotalMinted').textContent = '0';
+    document.getElementById('leaderboardTotalHeld').textContent = '0';
+    return;
+  }
+
+  const totalWallets = leaderboard.length;
+  const totalHeld = leaderboard.reduce((sum, entry) => sum + entry.holding, 0);
+
+  document.getElementById('leaderboardTotalWallets').textContent = totalWallets;
+  document.getElementById('leaderboardTotalMinted').textContent = totalHeld;
+  document.getElementById('leaderboardTotalHeld').textContent = totalHeld;
+
+  const phase = LEADERBOARD_CONFIG.PHASES[leaderboardState.currentPhase];
+
+  leaderboardList.innerHTML = `<p class="text-xs text-[#00ff88] mb-4">✓ ${phase.name} holders loaded from blockchain</p>` + 
+    leaderboard.map((entry, index) => {
+      const shortWallet = `${entry.wallet.slice(0, 6)}...${entry.wallet.slice(-4)}`;
+      const rankBadge = index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`;
+      
+      return `
+        <div class="glass-card p-3 hover:bg-white/10 transition-all cursor-pointer leaderboard-entry" 
+             data-wallet="${entry.wallet}">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <span class="text-lg">${rankBadge}</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-mono text-white truncate" title="${entry.wallet}">
+                  ${shortWallet}
+                </p>
+                <div class="flex gap-3 mt-1 text-xs">
+                  <span class="text-[#00ff88]" title="Holding">💎 ${entry.holding} NFTs</span>
+                </div>
+              </div>
+            </div>
+            <button class="text-white/40 hover:text-white text-xs px-2 py-1" 
+                    onclick="copyToClipboard('${entry.wallet}', event)"
+                    title="Copy wallet address">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  document.querySelectorAll('.leaderboard-entry').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const wallet = el.dataset.wallet;
+      showWalletDetails(wallet, leaderboard);
+    });
+  });
+}
+
+function showWalletDetails(wallet, leaderboard) {
+  const entry = leaderboard.find(e => e.wallet === wallet);
+  if (!entry) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="glass-card p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <h3 class="pixel-font text-sm text-[#00ff88] mb-2">Wallet Details</h3>
+          <p class="text-xs font-mono text-white/80 break-all">${wallet}</p>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" class="text-white/60 hover:text-white text-2xl px-2">×</button>
+      </div>
+
+      <div class="text-center bg-white/5 rounded-lg p-4 mb-6">
+        <p class="text-3xl font-bold text-[#00ff88]">${entry.holding}</p>
+        <p class="text-sm text-white/60 mt-1">NFTs Held</p>
+      </div>
+
+      <div class="mb-4">
+        <h4 class="text-xs font-bold text-white/80 mb-2">Owned Tokens (${entry.tokens.length})</h4>
+        <div class="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
+          ${entry.tokens.map(tokenId => `
+            <a href="https://opensea.io/assets/base/${CONFIG.BASED_UNDEADS_CONTRACT}/${tokenId}" 
+               target="_blank"
+               class="bg-[#00ff88]/20 hover:bg-[#00ff88]/30 px-2 py-1 rounded text-xs border border-[#00ff88]/50">
+              #${tokenId}
+            </a>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-white/10">
+        <a href="https://opensea.io/${wallet}" target="_blank" class="btn-secondary pixel-font text-xs w-full text-center block">
+          View on OpenSea
+        </a>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+function copyToClipboard(text, event) {
+  event.stopPropagation();
+  navigator.clipboard.writeText(text).then(() => {
+    showNotification('Wallet address copied!', 'success');
+  }).catch(() => {
+    showNotification('Failed to copy', 'error');
+  });
+}
+
+document.getElementById('leaderboardSearch')?.addEventListener('input', function(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  const entries = document.querySelectorAll('.leaderboard-entry');
+  
+  entries.forEach(entry => {
+    const wallet = entry.dataset.wallet.toLowerCase();
+    if (wallet.includes(searchTerm)) {
+      entry.style.display = '';
+    } else {
+      entry.style.display = 'none';
+    }
+  });
+});
+
+(async function initializeLeaderboard() {
+  const checkReady = setInterval(async () => {
+    if (CONFIG.ALCHEMY_API_KEY && document.getElementById('leaderboardList')) {
+      clearInterval(checkReady);
+      await loadLeaderboard();
+    }
+  }, 100);
+})();
+
 (async function initializeRaffle() {
   const checkAPIKeys = setInterval(async () => {
     if (CONFIG.OPENSEA_API_KEY && CONFIG.ALCHEMY_API_KEY) {
