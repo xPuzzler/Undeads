@@ -8,19 +8,22 @@ let CONFIG = {
 };
 
 const RAFFLE_CONFIG = {
-  PHASE: 1,
-  PHASE_NAME: "Phase 2 🎃 - Based Undeads Giveaway",
-  TOKEN_RANGE: { min: 1501, max: 2300 },
-  TOTAL_WINNERS: 5,
+  PHASE: 2,
+  PHASE_NAME: "Phase 3 - Based Undeads Giveaway",
+  TOKEN_RANGE: { min: 2301, max: 3333 },
+  TOTAL_WINNERS: 10,
   IS_ACTIVE: true,
   REWARD_OPENSEA_URLS: [
-    "https://opensea.io/assets/base/0x1260f90e0b1c482b38b88f26dee17c57615d670b/5481",
-    "https://opensea.io/assets/base/0x56dfe6ae26bf3043dc8fdf33bf739b4ff4b3bc4a/2546",
-    "https://opensea.io/assets/base/0x4ed83635e2309a7c067d0f98efca47b920bf79b1/6648",
-    "https://opensea.io/assets/base/0x61710b69793fa88cb35404a1f8d15070afcfe63f/2442",
-    "https://opensea.io/assets/base/0x84dcdda7382e501a574ff6ab09d2a0d0d4421188/2005",
-    "https://opensea.io/assets/base/0x2166a7349521c22ec4748c833c0b2bbe86bf7dcb/1642",
-    "https://opensea.io/assets/base/0xcd84a49328b41549306833c8dfb7d800708b4f3c/8209"
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/666",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/1302",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/1919",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/29",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/229",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/253",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/642",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/116",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/770",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/2182",
   ],
   REWARD_TOKENS: []
 };
@@ -1738,6 +1741,13 @@ async function loadEligibleRaffleNFTs() {
     
     raffleState.eligibleNFTs = eligibleNFTs;
     raffleState.allEligibleEntries = eligibleNFTs.map(nft => parseInt(nft.identifier));
+   
+raffleState.shuffledEntries = [...raffleState.allEligibleEntries];
+for (let i = raffleState.shuffledEntries.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [raffleState.shuffledEntries[i], raffleState.shuffledEntries[j]] = 
+  [raffleState.shuffledEntries[j], raffleState.shuffledEntries[i]];
+}
 
     raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
     .sort(() => Math.random() - 0.5);
@@ -1784,8 +1794,12 @@ function shuffleRaffleEntries() {
     return;
   }
   
-  raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
-    .sort(() => Math.random() - 0.5);
+  raffleState.shuffledEntries = [...raffleState.allEligibleEntries];
+  for (let i = raffleState.shuffledEntries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [raffleState.shuffledEntries[i], raffleState.shuffledEntries[j]] = 
+    [raffleState.shuffledEntries[j], raffleState.shuffledEntries[i]];
+  }
   
   drawWheel(0);
   showNotification('Entries shuffled!', 'success');
@@ -1917,20 +1931,29 @@ function spinWheel() {
 }
 
 function selectWinner(finalDegree) {
-  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries; 
+  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries;
   const normalizedDegree = (360 - (finalDegree % 360)) % 360;
   const segmentSize = 360 / Math.min(entries.length, 72);
   const winningIndex = Math.floor(normalizedDegree / segmentSize) % entries.length;
   const winningToken = entries[winningIndex];
+
+  if (raffleState.winners.find(w => w.tokenId === winningToken)) {
+    raffleState.shuffledEntries = raffleState.shuffledEntries.filter(t => t !== winningToken);
+    showNotification(`Token #${winningToken} already won! Spinning again...`, 'info');
+    setTimeout(() => spinWheel(), 1000);
+    raffleState.isSpinning = false;
+    return;
+  }
 
   const winningNFT = raffleState.eligibleNFTs.find(nft => parseInt(nft.identifier) === winningToken);
   
   raffleState.winners.push({
     position: raffleState.winners.length + 1,
     tokenId: winningToken,
-    reward: RAFFLE_CONFIG.REWARD_TOKENS[raffleState.winners.length % RAFFLE_CONFIG.REWARD_TOKENS.length],
     nft: winningNFT
   });
+
+  raffleState.shuffledEntries = raffleState.shuffledEntries.filter(t => t !== winningToken);
 
   updateWinnersDisplay();
 
@@ -1957,15 +1980,14 @@ function updateWinnersDisplay() {
       <div class="glass-card p-4 mb-3">
         <div class="flex items-center gap-4">
           <div class="text-center">
-            <div class="pixel-font text-2xl text-[#00ff88] mb-2">#{idx + 1}</div>
+            <div class="pixel-font text-2xl text-[#00ff88] mb-2">Winner #${idx + 1}</div>
             <img src="${nftImage}" 
                  alt="Undead #${winner.tokenId}" 
-                 class="w-20 h-20 rounded-lg border-2 border-[#00ff88]"
+                 class="w-24 h-24 rounded-lg border-2 border-[#00ff88]"
                  onerror="this.src='https://placehold.co/100x100/1a3a32/00ff88/png?text=${winner.tokenId}'"/>
           </div>
           <div class="flex-1">
-            <p class="text-sm text-[#00ff88] font-bold">Undead #${winner.tokenId}</p>
-            <p class="text-xs text-white/80 mt-2">Won: ${winner.reward.name}</p>
+            <p class="text-lg text-[#00ff88] font-bold">Based Undead #${winner.tokenId}</p>
           </div>
         </div>
       </div>
@@ -2067,7 +2089,7 @@ function drawWheel(rotation = 0) {
 
 async function checkForListedNFTs(eligibleNFTs) {
   try {
-    console.log('Searching for 3 listed NFTs from Phase 2 range...');
+    console.log('Searching for 3 listed NFTs from Phase 3 range...');
     const listedNFTs = [];
     const checkedTokens = new Set();
     
@@ -2129,10 +2151,10 @@ async function checkForListedNFTs(eligibleNFTs) {
     }
     
     if (listedNFTs.length > 0) {
-      console.log(`✓ Found ${listedNFTs.length} listed NFT(s) from Phase 2`);
+      console.log(`✓ Found ${listedNFTs.length} listed NFT(s) from Phase 3`);
       displayListedNFTs(listedNFTs);
     } else {
-      console.log('No listed NFTs found in Phase 2 range');
+      console.log('No listed NFTs found in Phase 3 range');
       document.getElementById('listedNFTsSection')?.classList.add('hidden');
     }
     
@@ -2204,14 +2226,14 @@ const LEADERBOARD_CONFIG = {
   ],
   PHASES: {
     phase2: { min: 1501, max: 2300, name: 'Phase 2' },
-    phase3: { min: 2301, max: 3000, name: 'Phase 3' }
+    phase3: { min: 2301, max: 3333, name: 'Phase 3' }
   }
 };
 
 let leaderboardState = {
   data: [],
   isLoading: false,
-  currentPhase: 'phase2'
+  currentPhase: 'phase3'
 };
 
 async function loadLeaderboard() {
