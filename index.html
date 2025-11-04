@@ -920,16 +920,62 @@ nav {
       </div>
     </div>
 
-    <!-- Eligible NFTs Display -->
-    <div class="glass-card p-6 sm:p-8 mb-6">
-      <h4 class="pixel-font text-sm mb-4 text-center">🎫 Eligible NFTs (Token #<span id="eligibleRangeDisplay">1501-2300</span>)</h4>
-      <div class="text-center mb-4">
-        <p class="text-sm text-white/80">Total Entries: <span id="totalEntriesCount" class="text-[#00ff88] font-bold">Loading...</span></p>
+    <!-- Eligible NFTs & Leaderboard Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  
+  <!-- Eligible NFTs Display -->
+  <div class="glass-card p-6 sm:p-8">
+    <h4 class="pixel-font text-sm mb-4 text-center">🎫 Eligible NFTs (Token #<span id="eligibleRangeDisplay">1501-2300</span>)</h4>
+    <div class="text-center mb-4">
+      <p class="text-sm text-white/80">Total Entries: <span id="totalEntriesCount" class="text-[#00ff88] font-bold">Loading...</span></p>
+    </div>
+    <div id="eligibleNFTsDisplay" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto">
+      <p class="col-span-full text-center text-white/60 py-4">Loading eligible NFTs...</p>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="glass-card p-6 sm:p-8">
+    <h4 class="pixel-font text-sm mb-4 text-center text-[#00ff88]">🏆 Phase 2 Leaderboard</h4>
+    <div class="text-center mb-4">
+      <p class="text-xs text-white/60">Minters & Holders (Tokens #1501-2300)</p>
+    </div>
+    
+    <!-- Leaderboard Stats Summary -->
+    <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+      <div class="bg-white/5 rounded-lg p-2">
+        <p class="text-xs text-white/60">Total Wallets</p>
+        <p class="text-lg font-bold text-[#00ff88]" id="leaderboardTotalWallets">-</p>
       </div>
-      <div id="eligibleNFTsDisplay" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto">
-        <p class="col-span-full text-center text-white/60 py-4">Loading eligible NFTs...</p>
+      <div class="bg-white/5 rounded-lg p-2">
+        <p class="text-xs text-white/60">Total Minted</p>
+        <p class="text-lg font-bold text-[#00ff88]" id="leaderboardTotalMinted">-</p>
+      </div>
+      <div class="bg-white/5 rounded-lg p-2">
+        <p class="text-xs text-white/60">Total Held</p>
+        <p class="text-lg font-bold text-[#00ff88]" id="leaderboardTotalHeld">-</p>
       </div>
     </div>
+
+    <!-- Search Bar -->
+    <div class="mb-4">
+      <input type="text" 
+             id="leaderboardSearch" 
+             placeholder="Search wallet address..." 
+             class="w-full text-xs px-3 py-2"
+             style="font-size: 0.75rem;"/>
+    </div>
+
+    <!-- Leaderboard List -->
+    <div id="leaderboardList" class="space-y-2 max-h-96 overflow-y-auto">
+      <div class="text-center text-white/60 py-8">
+        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+        <p class="text-xs">Loading leaderboard...</p>
+      </div>
+    </div>
+  </div>
+
+</div>
 
     <!-- Listed NFTs for Sale -->
     <div id="listedNFTsSection" class="glass-card p-6 sm:p-8 mb-6">
