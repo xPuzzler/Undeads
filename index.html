@@ -23,12 +23,49 @@
     }
     
     body {
-      background: linear-gradient(135deg, #1a3a32 0%, #2d5f54 50%, #1e4138 100%);
-      font-family: 'Arial', sans-serif;
-      color: white;
-      min-height: 100vh;
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+  background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #1a2a3a);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  color: white;
+  min-height: 100vh;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.glow-on-hover {
+  position: relative;
+}
+
+.glow-on-hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.3) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.glow-on-hover:hover::before {
+  opacity: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.1); }
+}
     
     .pixel-font {
       font-family: 'Press Start 2P', cursive;
@@ -258,20 +295,116 @@ body.theme-dark input[type="checkbox"]:checked {
 body.theme-dark input[type="range"] {
   accent-color: #00ff88;
 }
+
+.cursor-dot {
+  width: 8px;
+  height: 8px;
+  background: #00ff88;
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+  mix-blend-mode: difference;
+}
+
+.cursor-outline {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+}
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #00ff88, #00cc6f);
+  z-index: 9999;
+  transition: width 0.1s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.particle-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+.nft-card {
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .cursor-dot,
+  .cursor-outline {
+    display: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(0, 255, 136, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(0, 255, 136, 0.3);
+  color: white;
+}
     
     .glass-card {
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      transition: all 0.3s ease;
-    }
-    
-    .glass-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    }
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transition: left 0.5s ease;
+}
+
+.glass-card:hover::before {
+  left: 100%;
+}
+
+.glass-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(0, 255, 136, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 255, 136, 0.2);
+}
 
 nav {
   position: relative;
@@ -304,6 +437,24 @@ nav {
     0 0 45px rgba(0, 255, 136, 0.3),
     0 6px 12px rgba(0, 0, 0, 0.6),
     0 12px 24px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+  position: relative;
+  display: inline-block;
+  width: auto;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+  border-radius: 2px;
 }
 
 @keyframes glow-pulse {
@@ -367,6 +518,40 @@ nav {
     0 0 30px rgba(0, 255, 136, 0.3);
 }
 
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-on-scroll {
+  animation: revealUp 0.8s ease-out forwards;
+}
+
+@keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    section {
+      animation: slideInUp 0.8s ease-out;
+    }
+    
+    .glass-card {
+      animation: slideInUp 0.6s ease-out;
+    }
+
 @media (max-width: 768px) {
   .nav-logo h1 {
     font-size: 0.7rem !important;
@@ -389,14 +574,21 @@ nav {
   }
 }
     
-    .hero-banner-container {
+   .hero-banner-container {
   position: relative;
   width: 100%;
   overflow: hidden;
-  border-radius: 20px;
-  box-shadow: 0 30px 30px rgba(0,0,0,0.5);
+  border-radius: 28px;
+  box-shadow: 
+    0 30px 60px rgba(0,0,0,0.6),
+    0 0 40px rgba(0, 255, 136, 0.1);
   min-height: 650px;
   aspect-ratio: 3 / 1;
+  transform-style: preserve-3d;
+}
+
+.hero-banner-container:hover .hero-banner-img {
+  transform: scale(1.05);
 }
 
 .hero-banner-img {
@@ -427,11 +619,16 @@ nav {
 }
     
     .scrolling-container {
-      position: relative;
-      overflow: hidden;
-      padding: 30px 0;
-      height: 560px;
-    }
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+}
     
     .nft-scroll-row {
       display: flex;
@@ -463,34 +660,48 @@ nav {
     }
     
     .nft-card {
-      width: 200px;
-      flex-shrink: 0;
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      position: relative;
-    }
+  width: 200px;
+  flex-shrink: 0;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  filter: brightness(0.9);
+}
+
+.nft-card:nth-child(odd) {
+  transform: rotate(-2deg);
+}
+
+.nft-card:nth-child(even) {
+  transform: rotate(2deg);
+}
+
+.nft-card:hover {
+  transform: translateY(-28px) rotate(0deg) scale(1.15);
+  z-index: 10;
+  filter: brightness(1.1);
+}
     
-    .nft-card:nth-child(odd) {
-      transform: rotate(-2deg);
-    }
-    
-    .nft-card:nth-child(even) {
-      transform: rotate(2deg);
-    }
-    
-    .nft-card:hover {
-      transform: translateY(-20px) rotate(0deg) scale(1.15);
-      z-index: 10;
-    }
-    
-    .nft-card img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
-    }
+   .nft-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 24px;
+  box-shadow: 
+    0 12px 36px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.nft-card img::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
     .nft-card p {
       margin-top: 8px;
       min-height: 40px;
@@ -500,24 +711,71 @@ nav {
     }
     
     .nft-card:hover img {
-      border-color: #00ff88;
-      box-shadow: 0 15px 40px rgba(0, 255, 136, 0.5);
-    }
+  border-color: #00ff88;
+  box-shadow: 
+    0 20px 60px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.float-on-hover:hover {
+  animation: float 3s ease-in-out infinite;
+}
     
     .btn-primary {
-      background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
-      color: #0a1f1a;
-      font-weight: bold;
-      padding: 14px 32px;
-      border-radius: 50px;
-      border: none;
-      box-shadow: 0 6px 24px rgba(0, 255, 136, 0.4);
-      transition: all 0.3s ease;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-    }
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+  color: #0a1f1a;
+  font-weight: 700;
+  padding: 18px 40px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 
+    0 10px 30px rgba(0, 255, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 14px;
+}
     
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn-primary:hover::after {
+  width: 300px;
+  height: 300px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 
+    0 15px 45px rgba(0, 255, 136, 0.5),
+    0 0 30px rgba(0, 255, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
     .btn-primary::before {
   content: '';
   position: absolute;
@@ -542,43 +800,51 @@ nav {
     }
     
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.08);
       color: white;
-      font-weight: bold;
-      padding: 12px 28px;
-      border-radius: 50px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-      transition: all 0.3s ease;
+      font-weight: 600;
+      padding: 14px 32px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
     }
     
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
       transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
     }
     
     input[type="text"],
-    input[type="number"],
-    select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 14px 18px;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      width: 100%;
-    }
-    
-    input[type="text"]:focus,
-    input[type="number"]:focus,
-    select:focus {
-      outline: none;
-      border-color: #00ff88;
-      background: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
-    }
+input[type="number"],
+select {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 18px 22px;
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  font-size: 15px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: #00ff88;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 0 0 3px rgba(0, 255, 136, 0.15),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 255, 136, 0.1);
+  transform: translateY(-1px);
+}
     
     input::placeholder {
       color: rgba(255, 255, 255, 0.5);
@@ -610,17 +876,17 @@ nav {
       width: 100%;
       height: 160px;
       object-fit: cover;
-      border-radius: 12px;
+      border-radius: 16px;
       cursor: pointer;
-      border: 3px solid transparent;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 2px solid transparent;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
     }
     
     .nft-thumbnail:hover {
       border-color: #00ff88;
-      transform: scale(1.08);
-      box-shadow: 0 8px 30px rgba(0, 255, 136, 0.4);
+      transform: scale(1.05);
+      box-shadow: 0 12px 32px rgba(0, 255, 136, 0.3);
     }
     
     .nft-thumbnail.selected-for-grid {
@@ -662,10 +928,11 @@ nav {
     }
     
     .section-divider {
-      height: 3px;
-      background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
-      margin: 60px auto;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.4), transparent);
+      margin: 80px auto;
       border-radius: 10px;
+      opacity: 0.8;
     }
     
     @media (max-width: 768px) {
@@ -725,15 +992,32 @@ nav {
 .project-card {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 28px;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
   height: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+.project-card:hover::before {
+  opacity: 1;
 }
 
 .project-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 20px 60px rgba(0, 255, 136, 0.4);
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 
+    0 25px 70px rgba(0, 255, 136, 0.3),
+    0 0 40px rgba(0, 255, 136, 0.2);
 }
 
 .project-preview {
@@ -814,7 +1098,7 @@ nav {
 <body class="text-white">
 
 <!-- Navbar -->
-<nav class="sticky top-0 z-50 w-full px-4 sm:px-6 py-4 bg-[#2d5f54]/95 backdrop-blur-lg border-b border-white/10 shadow-xl">
+<nav class="sticky top-0 z-50 w-full px-4 sm:px-6 py-5 bg-black/40 backdrop-blur-2xl border-b border-white/5 shadow-2xl">
   <div class="max-w-7xl mx-auto flex items-center justify-between relative">
     
     <!-- Left Side - Mint Button -->
@@ -833,20 +1117,23 @@ nav {
       </h1>
     </div>
     
-    <!-- Right Side - Social Links & Theme -->
+   
     <div class="flex gap-2 sm:gap-4 items-center relative z-10">
-      <button id="themeToggle" class="glass-card px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-white/10 transition-all">
-        <i class="fa-solid fa-palette mr-1 sm:mr-2"></i>
-        <span id="themeLabel" class="hidden sm:inline">Normal</span>
-      </button>
-      <a href="https://x.com/BasedUndeads" target="_blank" class="text-lg sm:text-2xl hover:text-[#00ff88] transition-colors">
-        <i class="fa-brands fa-x-twitter"></i>
-      </a>
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="hover:opacity-80 transition-opacity">
-        <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
-             alt="OpenSea" width="24" height="24" class="sm:w-7 sm:h-7 inline-block"/>
-      </a>
-    </div>
+  <button id="themeToggle" class="glass-card px-3 sm:px-4 py-2 text-xs sm:text-sm hover:bg-white/10 transition-all">
+    <i class="fa-solid fa-palette mr-1 sm:mr-2"></i>
+    <span id="themeLabel" class="hidden sm:inline">Normal</span>
+  </button>
+  <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="text-lg sm:text-2xl hover:text-[#5865F2] transition-colors">
+    <i class="fa-brands fa-discord"></i>
+  </a>
+  <a href="https://x.com/BasedUndeads" target="_blank" class="text-lg sm:text-2xl hover:text-[#00ff88] transition-colors">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="hover:opacity-80 transition-opacity">
+    <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
+         alt="OpenSea" width="24" height="24" class="sm:w-7 sm:h-7 inline-block"/>
+  </a>
+</div>
     
   </div>
 </nav>
@@ -888,9 +1175,11 @@ nav {
 <!-- Featured NFTs Carousel -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-7xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      Featured Undeads
-    </h3>
+    <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    Featured Undeads
+  </h3>
+</div>
     <div class="glass-card p-6 sm:p-8">
       <div id="nftScroller" class="scrolling-container">
         <div class="text-center py-12 text-white/60">
@@ -907,9 +1196,11 @@ nav {
 <!-- RAFFLE SECTION -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-6xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-       <span id="rafflePhaseName">Loading...</span>
-    </h3>
+    <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    <span id="rafflePhaseName">Loading...</span>
+  </h3>
+</div>
     
     <!-- Rewards Display -->
     <div class="glass-card p-6 sm:p-8 mb-6">
@@ -925,7 +1216,7 @@ nav {
   
   <!-- Eligible NFTs Display -->
   <div class="glass-card p-6 sm:p-8">
-    <h4 class="pixel-font text-sm mb-4 text-center">🎫 Eligible NFTs (Token #<span id="eligibleRangeDisplay">1501-2300</span>)</h4>
+    <h4 class="pixel-font text-sm mb-4 text-center">🎫 Eligible NFTs (Token #<span id="eligibleRangeDisplay">3334-4444</span>)</h4>
     <div class="text-center mb-4">
       <p class="text-sm text-white/80">Total Entries: <span id="totalEntriesCount" class="text-[#00ff88] font-bold">Loading...</span></p>
     </div>
@@ -936,9 +1227,9 @@ nav {
 
   <!-- Leaderboard -->
   <div class="glass-card p-6 sm:p-8">
-    <h4 class="pixel-font text-sm mb-4 text-center text-[#00ff88]">🏆 Phase 3 Leaderboard</h4>
+    <h4 class="pixel-font text-sm mb-4 text-center text-[#00ff88]">🏆 Phase 4 Leaderboard</h4>
     <div class="text-center mb-4">
-      <p class="text-xs text-white/60">Minters & Holders (Tokens #2301-3333)</p>
+      <p class="text-xs text-white/60">Minters & Holders (Tokens #3334-4444)</p>
     </div>
     
     <!-- Leaderboard Stats Summary -->
@@ -978,13 +1269,13 @@ nav {
 </div>
 
     <!-- Listed NFTs for Sale -->
-    <div id="listedNFTsSection" class="glass-card p-6 sm:p-8 mb-6">
-      <h4 class="pixel-font text-sm mb-4 text-center text-[#ff6b6b]">🔥 Scoop More Entries While You Can!</h4>
-      <p class="text-xs text-center text-white/80 mb-4">These eligible NFTs are listed for sale right now. Each = 1 extra ticket! 🎫</p>
-      <div id="listedNFTsDisplay" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        <p class="col-span-full text-center text-white/60 py-4">Loading listings...</p>
-      </div>
-    </div>
+<div id="listedNFTsSection" class="glass-card p-6 sm:p-8 mb-6">
+  <h4 class="pixel-font text-sm mb-4 text-center text-[#ff6b6b]">🔥 Scoop More Entries While You Can!</h4>
+  <p class="text-xs text-center text-white/80 mb-6">These eligible NFTs are listed for sale right now. Each = 1 extra ticket! 🎫</p>
+  <div id="listedNFTsDisplay" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 min-h-[250px]">
+    <p class="col-span-full text-center text-white/60 py-4">Loading listings...</p>
+  </div>
+</div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       
@@ -1065,9 +1356,11 @@ nav {
 <!-- Grid Maker & Downloader -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-6xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      NFT Grid Maker & Downloader
-    </h3>
+   <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    NFT Grid Maker & Downloader
+  </h3>
+</div>
     
     <!-- Wallet Input -->
     <div class="glass-card p-6 sm:p-8 mb-6">
@@ -1202,9 +1495,11 @@ nav {
 <!-- Cover Maker -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-6xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      NFT Cover Maker
-    </h3>
+    <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    NFT Cover Maker
+  </h3>
+</div>
     
     <div class="text-center mb-8">
       <button id="openCoverMaker" class="btn-primary pixel-font text-sm sm:text-base">
@@ -1377,9 +1672,11 @@ nav {
 <!-- About Section -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-4xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      About Based Undeads
-    </h3>
+   <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    About Based Undeads
+  </h3>
+</div>
     <div class="glass-card p-8 sm:p-10">
       <p class="text-base sm:text-lg leading-relaxed mb-6">
         <strong class="text-[#00ff88]">Based Undeads</strong> rise from the ashes on Base, born in the forge of blockchain immortality. 
@@ -1408,9 +1705,11 @@ nav {
 <!-- Team Section -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-4xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      <em class="text-[#00ff88]">FOUNDER</em>
-    </h3>
+    <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    <em class="text-[#00ff88]">FOUNDER</em>
+  </h3>
+</div>
     <div class="flex justify-center">
       <a href="https://x.com/_sxms" target="_blank" class="group">
         <div class="glass-card p-8 hover:scale-105 transition-all duration-300">
@@ -1430,9 +1729,11 @@ nav {
 <!-- Previous Work Section -->
 <section class="py-10 sm:py-14 px-4 sm:px-6">
   <div class="max-w-6xl mx-auto">
-    <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-center text-[#00ff88] drop-shadow-lg">
-      Previous WORK
-    </h3>
+    <div class="text-center">
+  <h3 class="pixel-font text-xl sm:text-2xl md:text-3xl mb-8 text-[#00ff88] drop-shadow-lg section-title">
+    Previous WORK
+  </h3>
+</div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
       
@@ -1487,16 +1788,20 @@ nav {
       &copy; 2025 Based Undeads. All rights reserved.
     </p>
     <div class="flex gap-6 items-center">
-      <a href="https://x.com/BasedUndeads" target="_blank" 
-         class="text-2xl hover:text-[#00ff88] transition-all hover:scale-110">
-        <i class="fa-brands fa-x-twitter"></i>
-      </a>
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" 
-         class="hover:opacity-80 transition-all hover:scale-110">
-        <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
-             alt="OpenSea" width="28" height="28" class="inline-block"/>
-      </a>
-    </div>
+  <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" 
+     class="text-2xl hover:text-[#5865F2] transition-all hover:scale-110">
+    <i class="fa-brands fa-discord"></i>
+  </a>
+  <a href="https://x.com/BasedUndeads" target="_blank" 
+     class="text-2xl hover:text-[#00ff88] transition-all hover:scale-110">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" 
+     class="hover:opacity-80 transition-all hover:scale-110">
+    <img src="https://storage.googleapis.com/opensea-static/Logomark/Logomark-Transparent%20White.svg" 
+         alt="OpenSea" width="28" height="28" class="inline-block"/>
+  </a>
+</div>
   </div>
 </footer>
 
