@@ -8,9 +8,9 @@ let CONFIG = {
 };
 
 const RAFFLE_CONFIG = {
-  PHASE: 2,
-  PHASE_NAME: "Phase 3 - Based Undeads Giveaway",
-  TOKEN_RANGE: { min: 2301, max: 3333 },
+  PHASE: 3,
+  PHASE_NAME: "Phase 4 - Based Undeads Giveaway",
+  TOKEN_RANGE: { min: 3334, max: 4444 },
   TOTAL_WINNERS: 10,
   IS_ACTIVE: true,
   REWARD_OPENSEA_URLS: [
@@ -2089,15 +2089,15 @@ function drawWheel(rotation = 0) {
 
 async function checkForListedNFTs(eligibleNFTs) {
   try {
-    console.log('Searching for 3 listed NFTs from Phase 3 range...');
+    console.log('Searching for 3 listed NFTs from Phase 4 range...');
     const listedNFTs = [];
     const checkedTokens = new Set();
     
     const shuffled = [...eligibleNFTs].sort(() => 0.5 - Math.random());
     
     for (const nft of shuffled) {
-      if (listedNFTs.length >= 3) {
-        console.log('✓ Found 3 listed NFTs, stopping search');
+      if (listedNFTs.length >= 5) {
+        console.log('✓ Found 5 listed NFTs, stopping search');
         break;
       }
       
@@ -2134,7 +2134,7 @@ async function checkForListedNFTs(eligibleNFTs) {
               openseaUrl: `https://opensea.io/assets/base/${CONFIG.BASED_UNDEADS_CONTRACT}/${tokenId}`
             });
             
-            console.log(`✓ Found listing ${listedNFTs.length}/3: Token #${tokenId} for ${price} ETH`);
+            console.log(`✓ Found listing ${listedNFTs.length}/5: Token #${tokenId} for ${price} ETH`);
           }
         }
         
@@ -2151,10 +2151,10 @@ async function checkForListedNFTs(eligibleNFTs) {
     }
     
     if (listedNFTs.length > 0) {
-      console.log(`✓ Found ${listedNFTs.length} listed NFT(s) from Phase 3`);
+      console.log(`✓ Found ${listedNFTs.length} listed NFT(s) from Phase 4`);
       displayListedNFTs(listedNFTs);
     } else {
-      console.log('No listed NFTs found in Phase 3 range');
+      console.log('No listed NFTs found in Phase 4 range');
       document.getElementById('listedNFTsSection')?.classList.add('hidden');
     }
     
@@ -2226,14 +2226,15 @@ const LEADERBOARD_CONFIG = {
   ],
   PHASES: {
     phase2: { min: 1501, max: 2300, name: 'Phase 2' },
-    phase3: { min: 2301, max: 3333, name: 'Phase 3' }
+    phase3: { min: 2301, max: 3333, name: 'Phase 3' },
+    phase4: { min: 3334, max: 4444, name: 'Phase 4' }
   }
 };
 
 let leaderboardState = {
   data: [],
   isLoading: false,
-  currentPhase: 'phase3'
+  currentPhase: 'phase4'
 };
 
 async function loadLeaderboard() {
@@ -2486,6 +2487,188 @@ function showWalletDetails(wallet, leaderboard) {
   });
 }
 
+const cursorDot = document.createElement('div');
+const cursorOutline = document.createElement('div');
+
+cursorDot.className = 'cursor-dot';
+cursorOutline.className = 'cursor-outline';
+
+document.body.appendChild(cursorDot);
+document.body.appendChild(cursorOutline);
+
+let mouseX = 0, mouseY = 0;
+let outlineX = 0, outlineY = 0;
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  cursorDot.style.left = e.clientX + 'px';
+  cursorDot.style.top = e.clientY + 'px';
+});
+
+function animateCursor() {
+  const distX = mouseX - outlineX;
+  const distY = mouseY - outlineY;
+  
+  outlineX += distX * 0.15;
+  outlineY += distY * 0.15;
+  
+  cursorOutline.style.left = outlineX + 'px';
+  cursorOutline.style.top = outlineY + 'px';
+  
+  requestAnimationFrame(animateCursor);
+}
+
+animateCursor();
+
+document.querySelectorAll('a, button, .nft-thumbnail, .nft-card').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursorDot.style.transform = 'translate(-50%, -50%) scale(2)';
+    cursorOutline.style.transform = 'translate(-50%, -50%) scale(1.5)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursorDot.style.transform = 'translate(-50%, -50%) scale(1)';
+    cursorOutline.style.transform = 'translate(-50%, -50%) scale(1)';
+  });
+});
+
+document.querySelectorAll('.btn-primary, .btn-secondary, .nav-mint-btn').forEach(button => {
+  button.addEventListener('mousemove', (e) => {
+    const rect = button.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    
+    button.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+  });
+  
+  button.addEventListener('mouseleave', () => {
+    button.style.transform = 'translate(0, 0)';
+  });
+});
+
+const progressBar = document.createElement('div');
+progressBar.className = 'scroll-progress';
+document.body.appendChild(progressBar);
+
+window.addEventListener('scroll', () => {
+  const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  const scrolled = (window.pageYOffset / windowHeight) * 100;
+  progressBar.style.width = scrolled + '%';
+});
+
+class ParticleSystem {
+  constructor() {
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'particle-canvas';
+    document.body.prepend(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.particles = [];
+    this.resize();
+    this.init();
+    this.animate();
+    
+    window.addEventListener('resize', () => this.resize());
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+  
+  init() {
+    const particleCount = Math.floor((this.canvas.width * this.canvas.height) / 15000);
+    for (let i = 0; i < particleCount; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 2 + 0.5
+      });
+    }
+  }
+  
+  animate() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.particles.forEach(particle => {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      
+      if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
+      if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+      
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      this.ctx.fill();
+    });
+    
+    this.particles.forEach((p1, i) => {
+      this.particles.slice(i + 1).forEach(p2 => {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 120) {
+          this.ctx.beginPath();
+          this.ctx.strokeStyle = `rgba(0, 255, 136, ${0.15 * (1 - distance / 120)})`;
+          this.ctx.lineWidth = 0.5;
+          this.ctx.moveTo(p1.x, p1.y);
+          this.ctx.lineTo(p2.x, p2.y);
+          this.ctx.stroke();
+        }
+      });
+    });
+    
+    requestAnimationFrame(() => this.animate());
+  }
+}
+
+new ParticleSystem();
+
+function typeWriter(element, text, speed = 100) {
+  let i = 0;
+  element.textContent = '';
+  
+  function type() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(type, speed);
+    }
+  }
+  type();
+}
+
+setTimeout(() => {
+  const heroSubtitle = document.querySelector('.hero-overlay h3');
+  if (heroSubtitle) {
+    const originalText = heroSubtitle.textContent;
+    typeWriter(heroSubtitle, originalText, 80);
+  }
+}, 500);
+
+document.querySelectorAll('.nft-card').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const rotateX = (y - centerY) / 10;
+    const rotateY = (centerX - x) / 10;
+    
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+  });
+  
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
+  });
+});
+
 function copyToClipboard(text, event) {
   event.stopPropagation();
   navigator.clipboard.writeText(text).then(() => {
@@ -2494,6 +2677,38 @@ function copyToClipboard(text, event) {
     showNotification('Failed to copy', 'error');
   });
 }
+
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+};
+
+const animatedObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry, index) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }, index * 100);
+      animatedObserver.unobserve(entry.target);
+    }
+  });
+}, observerOptions);
+
+document.querySelectorAll('.glass-card, .nft-card, .project-card').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(30px)';
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+  animatedObserver.observe(el);
+});
+
+window.addEventListener('scroll', () => {
+  const hero = document.querySelector('.hero-banner-img');
+  if (hero) {
+    const scrolled = window.pageYOffset;
+    hero.style.transform = `translateY(${scrolled * 0.4}px)`;
+  }
+});
 
 document.getElementById('leaderboardSearch')?.addEventListener('input', function(e) {
   const searchTerm = e.target.value.toLowerCase();
