@@ -1279,30 +1279,39 @@ select:focus {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       
-      <!-- Left: Wallet Checker -->
-      <div class="glass-card p-6 sm:p-8">
-        <h4 class="pixel-font text-sm mb-4 text-[#00ff88]">📋 Check Your Entries</h4>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs text-white/80 mb-2">Wallet Address:</label>
-            <input type="text" id="raffleWalletInput" placeholder="0x..." class="w-full text-sm"/>
-          </div>
-          
-          <button onclick="checkWalletRaffle()" class="btn-primary w-full pixel-font text-xs">
-            Check NFTs
-          </button>
-          
-          <div class="glass-card p-4 bg-[#00ff88]/10 border-[#00ff88]/30">
-            <p class="text-xs text-white/60 mb-1">Your Entries</p>
-            <p class="text-3xl font-bold text-[#00ff88]" id="raffleEntriesCount">0</p>
-          </div>
-          
-          <div id="raffleTokensList" class="max-h-40 overflow-y-auto">
-            <p class="text-xs text-white/60 text-center py-4">Enter wallet to see your tokens</p>
-          </div>
-        </div>
+     <!-- Left: Wallet Checker -->
+<div class="glass-card p-6 sm:p-8">
+  <h4 class="pixel-font text-sm mb-4 text-[#00ff88]">📋 Check Your Entries</h4>
+  
+  <div class="space-y-4">
+    <div>
+      <label class="block text-xs text-white/80 mb-2">Wallet Address:</label>
+      <input type="text" id="raffleWalletInput" placeholder="0x..." class="w-full text-sm"/>
+    </div>
+    
+    <button onclick="checkWalletRaffle()" class="btn-primary w-full pixel-font text-xs">
+      Check NFTs
+    </button>
+    
+    <div class="glass-card p-4 bg-[#00ff88]/10 border-[#00ff88]/30">
+      <p class="text-xs text-white/60 mb-1">Your Entries</p>
+      <p class="text-3xl font-bold text-[#00ff88]" id="raffleEntriesCount">0</p>
+    </div>
+    
+    <div id="raffleTokensList" class="max-h-40 overflow-y-auto">
+      <p class="text-xs text-white/60 text-center py-4">Enter wallet to see tokens</p>
+    </div>
+
+    <!-- NEW: Visual Display of Found NFTs -->
+    <div id="raffleFoundNFTsDisplay" class="hidden mt-4">
+      <h5 class="text-xs text-white/80 mb-3 font-bold">🎫 Your Eligible NFTs:</h5>
+      <div id="raffleFoundNFTsGrid" class="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+        <!-- NFT images will appear here -->
       </div>
+    </div>
+    
+  </div>
+</div>
 
       <!-- Center: Wheel -->
       <div class="glass-card p-6 sm:p-8 flex flex-col items-center justify-center">
