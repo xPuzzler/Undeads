@@ -1846,45 +1846,182 @@ async function checkWalletRaffle() {
     return;
   }
 
-  document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-white/60 text-center py-4">Checking...</p>';
+  const walletLower = wallet.toLowerCase();
+
+  document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-white/60 text-center py-4">Checking entries...</p>';
   document.getElementById('raffleEntriesCount').textContent = '...';
+  document.getElementById('raffleFoundNFTsDisplay').classList.add('hidden');
 
-  try {
-    const network = 'base-mainnet';
-    const url = `https://${network}.g.alchemy.com/nft/v3/${CONFIG.ALCHEMY_API_KEY}/getNFTsForOwner?owner=${wallet}&contractAddresses[]=${CONFIG.BASED_UNDEADS_CONTRACT}&withMetadata=true&pageSize=100`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'accept': 'application/json' }
-    });
-
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-    const data = await response.json();
-    const allTokens = data.ownedNfts ? data.ownedNfts.map(nft => parseInt(nft.tokenId)) : [];
+  if (leaderboardCache.holders && leaderboardCache.holders.size > 0) {
+    console.log('✓ Using cached leaderboard data');
     
-    raffleState.walletAddress = wallet;
-    raffleState.eligibleTokens = allTokens.filter(tokenId => 
-      tokenId >= RAFFLE_CONFIG.TOKEN_RANGE.min && 
-      tokenId <= RAFFLE_CONFIG.TOKEN_RANGE.max
-    ).sort((a, b) => a - b);
-
-    document.getElementById('raffleEntriesCount').textContent = raffleState.eligibleTokens.length;
-    
-    if (raffleState.eligibleTokens.length > 0) {
+    if (leaderboardCache.holders.has(walletLower)) {
+      const tokens = leaderboardCache.holders.get(walletLower);
+      
+      raffleState.walletAddress = wallet;
+      raffleState.eligibleTokens = tokens.sort((a, b) => a - b);
+      document.getElementById('raffleEntriesCount').textContent = tokens.length;
+      
       document.getElementById('raffleTokensList').innerHTML = `
         <div class="flex flex-wrap gap-2">
-          ${raffleState.eligibleTokens.map(token => `
+          ${tokens.map(token => `
             <span class="bg-[#00ff88]/20 px-3 py-1 rounded text-xs border border-[#00ff88]">#${token}</span>
           `).join('')}
         </div>
       `;
+      
+      showNotification(`Found ${tokens.length} entries from leaderboard data!`, 'success');
+      displayFoundRaffleNFTs(tokens);
+      
     } else {
-      document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-yellow-400 text-center py-4">No eligible NFTs found</p>';
+      raffleState.walletAddress = wallet;
+      raffleState.eligibleTokens = [];
+      document.getElementById('raffleEntriesCount').textContent = '0';
+      document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-yellow-400 text-center py-4">This wallet has 0 entries in Phase 4</p>';
+      showNotification('No entries found', 'info');
+    }
+    
+    return;
+  }
+
+  showNotification('Leaderboard not loaded yet. Checking blockchain...', 'info');
+  
+  try {
+    const phase = RAFFLE_CONFIG.TOKEN_RANGE;
+    const eligibleTokens = [];
+    
+    let checkedCount = 0;
+    const totalToCheck = phase.max - phase.min + 1;
+
+    for (let tokenId = phase.min; tokenId <= phase.max; tokenId++) {
+      try {
+        const url = `https://base.blockscout.com/api/v2/tokens/${CONFIG.BASED_UNDEADS_CONTRACT}/instances/${tokenId}`;
+        
+        const response = await fetch(url, {
+          headers: { 'accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.owner && data.owner.hash && data.owner.hash.toLowerCase() === walletLower) {
+            eligibleTokens.push(tokenId);
+            document.getElementById('raffleEntriesCount').textContent = eligibleTokens.length;
+          }
+        }
+        
+        checkedCount++;
+        
+        if (checkedCount % 50 === 0) {
+          const progress = Math.round((checkedCount / totalToCheck) * 100);
+          console.log(`Progress: ${progress}% (Found ${eligibleTokens.length} so far)`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (err) {
+        console.warn(`Failed to check token ${tokenId}`);
+      }
+    }
+    
+    raffleState.walletAddress = wallet;
+    raffleState.eligibleTokens = eligibleTokens.sort((a, b) => a - b);
+    document.getElementById('raffleEntriesCount').textContent = eligibleTokens.length;
+    
+    if (eligibleTokens.length > 0) {
+      document.getElementById('raffleTokensList').innerHTML = `
+        <div class="flex flex-wrap gap-2">
+          ${eligibleTokens.map(token => `
+            <span class="bg-[#00ff88]/20 px-3 py-1 rounded text-xs border border-[#00ff88]">#${token}</span>
+          `).join('')}
+        </div>
+      `;
+      
+      showNotification(`Found ${eligibleTokens.length} entries!`, 'success');
+      displayFoundRaffleNFTs(eligibleTokens);
+      
+    } else {
+      document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-yellow-400 text-center py-4">No eligible NFTs found in Phase 4 range (3334-4444)</p>';
+      showNotification('No entries found', 'info');
     }
   } catch (error) {
     console.error('Error:', error);
     document.getElementById('raffleTokensList').innerHTML = '<p class="text-xs text-red-400 text-center py-4">Error checking wallet</p>';
+    showNotification('Error checking entries', 'error');
+  }
+}
+
+async function displayFoundRaffleNFTs(tokenIds) {
+  const displaySection = document.getElementById('raffleFoundNFTsDisplay');
+  const grid = document.getElementById('raffleFoundNFTsGrid');
+  
+  displaySection.classList.remove('hidden');
+  grid.innerHTML = '<p class="col-span-3 text-center text-white/60 text-xs py-2">Loading images...</p>';
+  
+  try {
+    const nftImages = [];
+    
+    for (const tokenId of tokenIds.slice(0, 20)) { 
+      try {
+        const response = await fetch(
+          `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts/${tokenId}`,
+          {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'x-api-key': CONFIG.OPENSEA_API_KEY
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const imageUrl = data.nft?.image_url || data.nft?.display_image_url || 
+                          `https://placehold.co/100x100/1a3a32/00ff88/png?text=${tokenId}`;
+          
+          nftImages.push({
+            tokenId,
+            imageUrl,
+            openseaUrl: `https://opensea.io/assets/base/${CONFIG.BASED_UNDEADS_CONTRACT}/${tokenId}`
+          });
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+      } catch (err) {
+        console.error(`Failed to load token ${tokenId}`);
+      }
+    }
+    
+    if (nftImages.length > 0) {
+      grid.innerHTML = nftImages.map(nft => `
+        <a href="${nft.openseaUrl}" target="_blank" class="block group">
+          <div class="relative">
+            <img src="${nft.imageUrl}" 
+                 alt="Undead #${nft.tokenId}" 
+                 class="w-full aspect-square object-cover rounded-lg border-2 border-[#00ff88] group-hover:border-white transition-all"
+                 loading="lazy"
+                 onerror="this.src='https://placehold.co/100x100/1a3a32/00ff88/png?text=${nft.tokenId}'"/>
+            <div class="absolute bottom-0 left-0 right-0 bg-black/80 text-center py-1">
+              <p class="text-xs text-[#00ff88] font-bold">#${nft.tokenId}</p>
+            </div>
+          </div>
+        </a>
+      `).join('');
+      
+      if (tokenIds.length > 20) {
+        grid.innerHTML += `
+          <div class="col-span-3 text-center mt-2">
+            <p class="text-xs text-white/60">Showing first 20 of ${tokenIds.length} NFTs</p>
+          </div>
+        `;
+      }
+    } else {
+      grid.innerHTML = '<p class="col-span-3 text-center text-red-400 text-xs py-4">Failed to load images</p>';
+    }
+    
+  } catch (error) {
+    console.error('Error displaying NFTs:', error);
+    grid.innerHTML = '<p class="col-span-3 text-center text-red-400 text-xs py-4">Error loading images</p>';
   }
 }
 
@@ -2220,10 +2357,7 @@ async function preloadImages(nfts) {
 
 
 const LEADERBOARD_CONFIG = {
-  EXCLUDED_WALLETS: [
-    '0xf2046406d6ccd578206e54207da9143954f75989',
-    '0xdce0501bc39afa5a066db503f03dc714e8bb41b5'
-  ],
+  EXCLUDED_WALLETS: [],
   PHASES: {
     phase2: { min: 1501, max: 2300, name: 'Phase 2' },
     phase3: { min: 2301, max: 3333, name: 'Phase 3' },
@@ -2235,6 +2369,12 @@ let leaderboardState = {
   data: [],
   isLoading: false,
   currentPhase: 'phase4'
+};
+
+let leaderboardCache = {
+  data: null,
+  holders: new Map(), 
+  lastUpdated: null
 };
 
 async function loadLeaderboard() {
@@ -2252,22 +2392,35 @@ async function loadLeaderboard() {
 
   try {
     const phase = LEADERBOARD_CONFIG.PHASES[leaderboardState.currentPhase];
-    console.log(`🚀 Loading ${phase.name} holders from blockchain`);
+    console.log(`🚀 Loading ${phase.name} holders from Basescan + OpenSea`);
     
-    updateProgress('Fetching holders from Alchemy...');
+    updateProgress('Fetching all minted tokens from Basescan...');
     
-    const holders = await fetchHoldersFromBlockchain(phase.min, phase.max);
+    const mintedTokens = await fetchMintedTokensFromBasescan(phase.min, phase.max);
+    console.log(`✓ Found ${mintedTokens.length} minted tokens in range`);
+    
+    if (mintedTokens.length === 0) {
+      throw new Error('No minted tokens found in this range');
+    }
+    
+    updateProgress(`Found ${mintedTokens.length} minted tokens. Fetching current owners (this may take a few minutes)...`);
+    
+    const holders = await fetchOwnersFromOpenSeaOptimized(mintedTokens);
     console.log(`✓ Found ${holders.size} unique holders`);
     
     const leaderboard = buildLeaderboardFromHolders(holders);
-    console.log(`✓ Leaderboard has ${leaderboard.length} entries`);
+    console.log(`✓ Leaderboard has ${leaderboard.length} entries with ${leaderboard.reduce((sum, e) => sum + e.holding, 0)} total NFTs`);
+    
+    leaderboardCache.data = leaderboard;
+    leaderboardCache.holders = holders;
+    leaderboardCache.lastUpdated = Date.now();
     
     leaderboardState.data = leaderboard;
     displayLeaderboard(leaderboard);
     console.log('✅ Done!');
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error loading leaderboard:', error);
     leaderboardList.innerHTML = `
       <div class="text-center text-red-400 py-8">
         <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
@@ -2279,6 +2432,145 @@ async function loadLeaderboard() {
   } finally {
     leaderboardState.isLoading = false;
   }
+}
+
+async function fetchMintedTokensFromBasescan(minToken, maxToken) {
+  const mintedTokens = new Set();
+  
+  try {
+    const baseUrl = 'https://api.basescan.org/api';
+    const params = new URLSearchParams({
+      module: 'account',
+      action: 'tokennfttx',
+      contractaddress: CONFIG.BASED_UNDEADS_CONTRACT,
+      page: 1,
+      offset: 10000,
+      sort: 'asc',
+      apikey: 'CJGZ4QMEE1JYAB1CVHR34EP6892QBKK3FY' 
+    });
+    
+    const response = await fetch(`${baseUrl}?${params}`);
+    const data = await response.json();
+    
+    if (data.status === '1' && data.result) {
+      console.log(`✓ Basescan returned ${data.result.length} transfer events`);
+      
+      data.result.forEach(tx => {
+        const tokenId = parseInt(tx.tokenID);
+        if (tx.from === '0x0000000000000000000000000000000000000000' &&
+            tokenId >= minToken && 
+            tokenId <= maxToken) {
+          mintedTokens.add(tokenId);
+        }
+      });
+    }
+    
+    console.log(`✓ Found ${mintedTokens.size} minted tokens from Basescan`);
+    
+  } catch (error) {
+    console.error('Basescan API error:', error);
+  }
+  
+  if (mintedTokens.size === 0 && raffleState.eligibleNFTs.length > 0) {
+    console.log('⚠️ Basescan failed, using OpenSea eligible NFTs as fallback');
+    raffleState.eligibleNFTs.forEach(nft => {
+      const tokenId = parseInt(nft.identifier);
+      if (tokenId >= minToken && tokenId <= maxToken) {
+        mintedTokens.add(tokenId);
+      }
+    });
+  }
+  
+  return Array.from(mintedTokens).sort((a, b) => a - b);
+}
+
+async function fetchOwnersFromOpenSeaOptimized(tokenIds) {
+  const holders = new Map();
+  console.log(`Fetching current owners from OpenSea for ${tokenIds.length} tokens...`);
+  
+  let processedCount = 0;
+  let foundOwners = 0;
+  const batchSize = 5; 
+  const delayBetweenBatches = 1200; 
+  
+  for (let i = 0; i < tokenIds.length; i += batchSize) {
+    const batch = tokenIds.slice(i, Math.min(i + batchSize, tokenIds.length));
+    
+    for (const tokenId of batch) {
+      const result = await fetchTokenOwnerFromOpenSea(tokenId);
+      
+      processedCount++;
+      
+      if (result.owner) {
+        foundOwners++;
+        const owner = result.owner.toLowerCase();
+        if (!holders.has(owner)) {
+          holders.set(owner, []);
+        }
+        holders.get(owner).push(result.tokenId);
+      }
+      
+      if (processedCount % 10 === 0 || processedCount === tokenIds.length) {
+        const percent = Math.round((processedCount / tokenIds.length) * 100);
+        const eta = Math.round(((tokenIds.length - processedCount) * 0.3) / 60); 
+        console.log(`Progress: ${processedCount}/${tokenIds.length} (${percent}%) - ${foundOwners} owners, ${holders.size} unique wallets (ETA: ${eta}min)`);
+        updateProgress(`${percent}% complete - ${holders.size} holders found (${eta}min remaining)`);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    
+    if (i + batchSize < tokenIds.length) {
+      await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+    }
+  }
+  
+  console.log(`✓ Successfully fetched ${foundOwners} owners across ${holders.size} unique wallets`);
+  return holders;
+}
+
+async function fetchTokenOwnerFromOpenSea(tokenId, retries = 2) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts/${tokenId}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'x-api-key': CONFIG.OPENSEA_API_KEY
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.nft && data.nft.owners && data.nft.owners.length > 0) {
+          const ownerAddress = data.nft.owners[0].address;
+          return { tokenId, owner: ownerAddress };
+        }
+      }
+      
+      if (response.status === 429) {
+        const waitTime = 10000 * (attempt + 1); 
+        console.log(`⚠️ Rate limited on token ${tokenId}, waiting ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      if (attempt < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        continue;
+      }
+      
+    } catch (error) {
+      if (attempt < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+  }
+  
+  console.warn(`⚠️ Could not fetch owner for token ${tokenId}`);
+  return { tokenId, owner: null };
 }
 
 function updateProgress(message) {
@@ -2294,7 +2586,7 @@ async function fetchHoldersFromBlockchain(minToken, maxToken) {
   let processedCount = 0;
   const totalTokens = maxToken - minToken + 1;
   
-  const batchSize = 10;
+  const batchSize = 50;
   
   for (let tokenId = minToken; tokenId <= maxToken; tokenId += batchSize) {
     const batchEnd = Math.min(tokenId + batchSize - 1, maxToken);
@@ -2317,52 +2609,113 @@ async function fetchHoldersFromBlockchain(minToken, maxToken) {
       }
       
       processedCount++;
-      if (processedCount % 50 === 0) {
+      if (processedCount % 20 === 0 || processedCount === totalTokens) {
         const percent = Math.round((processedCount / totalTokens) * 100);
         console.log(`Progress: ${processedCount}/${totalTokens} (${percent}%)`);
         updateProgress(`${percent}% complete (${holders.size} holders found)`);
       }
     });
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
   
   console.log(`✓ Fetched all ${totalTokens} tokens`);
   return holders;
 }
 
-async function fetchTokenOwner(tokenId) {
-  try {
-    const url = `https://base.blockscout.com/api/v2/tokens/${CONFIG.BASED_UNDEADS_CONTRACT}/instances/${tokenId}`;
+async function fetchHoldersForSpecificTokens(tokenIds) {
+  const holders = new Map();
+  console.log(`Fetching holders for ${tokenIds.length} specific tokens...`);
+  
+  let processedCount = 0;
+  const batchSize = 10;
+  
+  for (let i = 0; i < tokenIds.length; i += batchSize) {
+    const batch = tokenIds.slice(i, Math.min(i + batchSize, tokenIds.length));
+    const batchPromises = batch.map(tokenId => fetchTokenOwner(tokenId));
     
-    const response = await fetch(url, {
-      headers: { 'accept': 'application/json' }
+    const results = await Promise.all(batchPromises);
+    
+    results.forEach((result) => {
+      if (result.owner) {
+        const owner = result.owner.toLowerCase();
+        if (!holders.has(owner)) {
+          holders.set(owner, []);
+        }
+        holders.get(owner).push(result.tokenId);
+      }
+      
+      processedCount++;
+      if (processedCount % 10 === 0 || processedCount === tokenIds.length) {
+        const percent = Math.round((processedCount / tokenIds.length) * 100);
+        console.log(`Progress: ${processedCount}/${tokenIds.length} (${percent}%)`);
+        updateProgress(`${percent}% complete (${holders.size} holders found)`);
+      }
     });
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.owner && data.owner.hash) {
-        return { tokenId, owner: data.owner.hash };
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
+  
+  console.log(`✓ Fetched all ${tokenIds.length} token owners`);
+  return holders;
+}
+
+async function fetchTokenOwner(tokenId, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = `https://base.blockscout.com/api/v2/tokens/${CONFIG.BASED_UNDEADS_CONTRACT}/instances/${tokenId}`;
+      
+      const response = await fetch(url, {
+        headers: { 'accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.owner && data.owner.hash) {
+          return { tokenId, owner: data.owner.hash };
+        }
+      }
+      
+      if (response.status === 404) {
+        return { tokenId, owner: null };
+      }
+      
+      if (response.status === 429) {
+        const waitTime = 5000 * (attempt + 1); // 5s, 10s, 15s
+        console.log(`⚠️ Rate limited on token ${tokenId}, waiting ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      if (attempt < retries - 1) {
+        const waitTime = 3000 * (attempt + 1);
+        console.log(`Token ${tokenId} failed (${response.status}), retrying in ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+    } catch (error) {
+      if (attempt < retries - 1) {
+        const waitTime = 3000 * (attempt + 1);
+        console.warn(`Token ${tokenId} error: ${error.message}, retrying in ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
-    
-    return { tokenId, owner: null };
-    
-  } catch (error) {
-    console.warn(`Failed to fetch owner for token ${tokenId}`);
-    return { tokenId, owner: null };
   }
+  
+  console.warn(`⚠️ Could not fetch owner for token ${tokenId} after ${retries} attempts`);
+  return { tokenId, owner: null };
 }
 
 function buildLeaderboardFromHolders(holders) {
   const leaderboard = [];
   
   for (const [wallet, tokens] of holders.entries()) {
-    const isExcluded = LEADERBOARD_CONFIG.EXCLUDED_WALLETS.includes(wallet);
+    const walletLower = wallet.toLowerCase();
     
-    if (!isExcluded && tokens.length > 0) {
+    if (tokens.length > 0) {
       leaderboard.push({
-        wallet,
+        wallet: walletLower,
         holding: tokens.length,
         tokens: tokens.sort((a, b) => a - b)
       });
@@ -2726,8 +3079,11 @@ document.getElementById('leaderboardSearch')?.addEventListener('input', function
 
 (async function initializeLeaderboard() {
   const checkReady = setInterval(async () => {
-    if (CONFIG.ALCHEMY_API_KEY && document.getElementById('leaderboardList')) {
+    if (CONFIG.ALCHEMY_API_KEY && 
+        document.getElementById('leaderboardList') && 
+        raffleState.eligibleNFTs.length > 0) {
       clearInterval(checkReady);
+      console.log(`✓ Ready to load leaderboard with ${raffleState.eligibleNFTs.length} minted NFTs`);
       await loadLeaderboard();
     }
   }, 100);
