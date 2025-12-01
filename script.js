@@ -780,7 +780,7 @@ async function loadFeaturedUndeads() {
       let nextCursor = data.next;
       let pageCount = 1;
       
-      while (nextCursor && pageCount < 10) {
+      while (nextCursor && pageCount < 25) {
         const nextResponse = await fetch(
           `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts?limit=200&next=${encodeURIComponent(nextCursor)}`,
           {
@@ -1707,7 +1707,7 @@ async function loadEligibleRaffleNFTs() {
     let nextCursor = data.next;
     let pageCount = 1;
     
-    while (nextCursor && pageCount < 15) {
+    while (nextCursor && pageCount < 25) {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const nextResponse = await fetch(
@@ -1741,13 +1741,6 @@ async function loadEligibleRaffleNFTs() {
     
     raffleState.eligibleNFTs = eligibleNFTs;
     raffleState.allEligibleEntries = eligibleNFTs.map(nft => parseInt(nft.identifier));
-   
-raffleState.shuffledEntries = [...raffleState.allEligibleEntries];
-for (let i = raffleState.shuffledEntries.length - 1; i > 0; i--) {
-  const j = Math.floor(Math.random() * (i + 1));
-  [raffleState.shuffledEntries[i], raffleState.shuffledEntries[j]] = 
-  [raffleState.shuffledEntries[j], raffleState.shuffledEntries[i]];
-}
 
     raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
     .sort(() => Math.random() - 0.5);
@@ -1764,6 +1757,112 @@ for (let i = raffleState.shuffledEntries.length - 1; i > 0; i--) {
     document.getElementById('wheelStatus').textContent = 'Error loading entries';
     document.getElementById('eligibleNFTsDisplay').innerHTML = '<p class="col-span-full text-center text-red-400 py-4">Failed to load</p>';
   }
+}
+
+let autoRefreshInterval = null;
+
+async function checkForNewMints() {
+  try {
+    console.log('🔄 Checking for new mints in Phase 4 range from Basescan...');
+    
+    const phase = RAFFLE_CONFIG.TOKEN_RANGE;
+    const mintedTokens = await fetchMintedTokensFromBasescan(phase.min, phase.max);
+    
+    console.log(`✓ Found ${mintedTokens.length} total minted tokens from Basescan`);
+    
+    const currentTokenIds = new Set(raffleState.eligibleNFTs.map(nft => parseInt(nft.identifier)));
+    const newTokenIds = mintedTokens.filter(tokenId => !currentTokenIds.has(tokenId));
+    
+    if (newTokenIds.length === 0) {
+      console.log(`✓ No new mints detected (Total: ${mintedTokens.length} in range)`);
+      showNotification(`No new mints. Total: ${mintedTokens.length}`, 'info');
+      return;
+    }
+    
+    console.log(`✓ Found ${newTokenIds.length} new mint(s)! Loading NFT data...`);
+    
+    const newNFTs = [];
+    for (const tokenId of newTokenIds) {
+      try {
+        const response = await fetch(
+          `https://api.opensea.io/api/v2/chain/base/contract/${CONFIG.BASED_UNDEADS_CONTRACT}/nfts/${tokenId}`,
+          {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+              'x-api-key': CONFIG.OPENSEA_API_KEY
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.nft) {
+            newNFTs.push(data.nft);
+          }
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 250));
+      } catch (error) {
+        console.error(`Failed to load NFT #${tokenId}:`, error);
+      }
+    }
+    
+    if (newNFTs.length > 0) {
+      console.log(`✓ Loaded data for ${newNFTs.length} new NFTs`);
+      
+      raffleState.eligibleNFTs.push(...newNFTs);
+      raffleState.eligibleNFTs.sort((a, b) => parseInt(a.identifier) - parseInt(b.identifier));
+      
+      raffleState.allEligibleEntries.push(...newTokenIds);
+      raffleState.allEligibleEntries.sort((a, b) => a - b);
+      
+      raffleState.shuffledEntries = [...raffleState.allEligibleEntries]
+        .sort(() => Math.random() - 0.5);
+      
+      displayEligibleNFTs(raffleState.eligibleNFTs);
+      updateRaffleInfo();
+      drawWheel(0);
+      
+      showNotification(`${newNFTs.length} new mint(s) detected!`, 'success');
+      
+      if (leaderboardCache.data) {
+        console.log('🔄 Auto-refreshing leaderboard with new mints...');
+        await loadLeaderboard();
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error checking for new mints:', error);
+    showNotification('Error checking for new mints', 'error');
+  }
+}
+
+function startAutoRefresh(intervalMinutes = 2) {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+  }
+  
+  console.log(`🔄 Auto-refresh enabled (checking every ${intervalMinutes} minutes)`);
+  
+  checkForNewMints();
+  
+  autoRefreshInterval = setInterval(() => {
+    checkForNewMints();
+  }, intervalMinutes * 60 * 1000);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    console.log('Auto-refresh stopped');
+  }
+}
+
+async function manualRefresh() {
+  showNotification('Checking for new mints...', 'info');
+  await checkForNewMints();
 }
 
 function displayRewards() {
@@ -2438,41 +2537,61 @@ async function fetchMintedTokensFromBasescan(minToken, maxToken) {
   const mintedTokens = new Set();
   
   try {
+    console.log('📡 Fetching ALL mint events from Basescan...');
     const baseUrl = 'https://api.basescan.org/api';
-    const params = new URLSearchParams({
-      module: 'account',
-      action: 'tokennfttx',
-      contractaddress: CONFIG.BASED_UNDEADS_CONTRACT,
-      page: 1,
-      offset: 10000,
-      sort: 'asc',
-      apikey: 'CJGZ4QMEE1JYAB1CVHR34EP6892QBKK3FY' 
-    });
     
-    const response = await fetch(`${baseUrl}?${params}`);
-    const data = await response.json();
+    let page = 1;
+    let totalFetched = 0;
     
-    if (data.status === '1' && data.result) {
-      console.log(`✓ Basescan returned ${data.result.length} transfer events`);
-      
-      data.result.forEach(tx => {
-        const tokenId = parseInt(tx.tokenID);
-        if (tx.from === '0x0000000000000000000000000000000000000000' &&
-            tokenId >= minToken && 
-            tokenId <= maxToken) {
-          mintedTokens.add(tokenId);
-        }
+    while (page <= 5) { 
+      const params = new URLSearchParams({
+        module: 'account',
+        action: 'tokennfttx',
+        contractaddress: CONFIG.BASED_UNDEADS_CONTRACT,
+        page: page,
+        offset: 10000,
+        sort: 'asc',
+        apikey: 'CJGZ4QMEE1JYAB1CVHR34EP6892QBKK3FY'
       });
+      
+      const response = await fetch(`${baseUrl}?${params}`);
+      const data = await response.json();
+      
+      if (data.status === '1' && data.result && data.result.length > 0) {
+        console.log(`✓ Basescan page ${page}: ${data.result.length} transactions`);
+        
+        data.result.forEach(tx => {
+          const tokenId = parseInt(tx.tokenID);
+          if (tx.from === '0x0000000000000000000000000000000000000000' &&
+              tokenId >= minToken && 
+              tokenId <= maxToken) {
+            mintedTokens.add(tokenId);
+          }
+        });
+        
+        totalFetched += data.result.length;
+        
+        if (data.result.length < 10000) {
+          console.log(`✓ Reached end of data at page ${page}`);
+          break;
+        }
+        
+        page++;
+        await new Promise(resolve => setTimeout(resolve, 300)); 
+      } else {
+        console.log(`✓ No more data from Basescan after page ${page - 1}`);
+        break;
+      }
     }
     
-    console.log(`✓ Found ${mintedTokens.size} minted tokens from Basescan`);
+    console.log(`✓ Basescan complete: ${mintedTokens.size} minted tokens found from ${totalFetched} total transactions`);
     
   } catch (error) {
     console.error('Basescan API error:', error);
   }
   
   if (mintedTokens.size === 0 && raffleState.eligibleNFTs.length > 0) {
-    console.log('⚠️ Basescan failed, using OpenSea eligible NFTs as fallback');
+    console.log('⚠️ Basescan failed, using existing eligible NFTs as fallback');
     raffleState.eligibleNFTs.forEach(nft => {
       const tokenId = parseInt(nft.identifier);
       if (tokenId >= minToken && tokenId <= maxToken) {
@@ -3097,6 +3216,8 @@ document.getElementById('leaderboardSearch')?.addEventListener('input', function
       if (document.getElementById('raffleCanvasWheel')) {
         await loadRewardNFTs();
         await loadEligibleRaffleNFTs();
+        
+        startAutoRefresh(2);
       }
     }
   }, 100);
