@@ -1997,6 +1997,18 @@
     grid-template-columns: repeat(3, 1fr);
   }
 
+  .raffle-grid > *:last-child {
+    grid-column: span 1;
+  }
+
+  .raffle-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   .eligible-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -2333,7 +2345,7 @@
       </div>
 
       <!-- Eligible NFTs & Leaderboard -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px;">
+      <div class="raffle-bottom-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px;">
         <!-- Eligible NFTs -->
         <div class="tool-panel">
           <p class="raffle-panel-title"><i class="fas fa-ticket-alt"></i> Eligible NFTs (Token #<span id="eligibleRangeDisplay">3334-4444</span>)</p>
