@@ -792,85 +792,122 @@ async function removeBackgroundAdvanced(img) {
   const width = canvas.width;
   const height = canvas.height;
   
-  // Sample ONLY the corner pixels to find the true background color
-  const cornerSamples = [];
-  const cornerSize = 5;
+  // Sample edge pixels for background color detection
+  const edgeSamples = [];
+  const sampleSize = 3;
   
-  // Four corners only
-  for (let dy = 0; dy < cornerSize; dy++) {
-    for (let dx = 0; dx < cornerSize; dx++) {
-      // Top-left
-      let idx = (dy * width + dx) * 4;
-      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-      // Top-right
-      idx = (dy * width + (width - 1 - dx)) * 4;
-      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-      // Bottom-left
-      idx = ((height - 1 - dy) * width + dx) * 4;
-      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-      // Bottom-right
-      idx = ((height - 1 - dy) * width + (width - 1 - dx)) * 4;
-      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+  // Sample all four edges
+  for (let i = 0; i < sampleSize; i++) {
+    // Top edge
+    for (let x = 0; x < width; x += 10) {
+      const idx = (i * width + x) * 4;
+      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+    }
+    // Bottom edge
+    for (let x = 0; x < width; x += 10) {
+      const idx = ((height - 1 - i) * width + x) * 4;
+      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+    }
+    // Left edge
+    for (let y = 0; y < height; y += 10) {
+      const idx = (y * width + i) * 4;
+      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+    }
+    // Right edge
+    for (let y = 0; y < height; y += 10) {
+      const idx = (y * width + (width - 1 - i)) * 4;
+      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
     }
   }
   
-  // Find most common color with tight quantization
-  const colorCounts = {};
-  cornerSamples.forEach(c => {
-    const key = Math.round(c.r / 5) + ',' + Math.round(c.g / 5) + ',' + Math.round(c.b / 5);
-    colorCounts[key] = (colorCounts[key] || 0) + 1;
+  // Find dominant background color
+  const colorMap = new Map();
+  edgeSamples.forEach(c => {
+    const key = `${Math.round(c.r/10)*10},${Math.round(c.g/10)*10},${Math.round(c.b/10)*10}`;
+    colorMap.set(key, (colorMap.get(key) || 0) + 1);
   });
   
   let maxCount = 0;
-  let bgColorKey = '0,0,0';
-  for (const [key, count] of Object.entries(colorCounts)) {
-    if (count > maxCount) { maxCount = count; bgColorKey = key; }
+  let bgColor = [0, 0, 0];
+  for (const [key, count] of colorMap.entries()) {
+    if (count > maxCount) {
+      maxCount = count;
+      bgColor = key.split(',').map(Number);
+    }
   }
   
-  const [bgR, bgG, bgB] = bgColorKey.split(',').map(v => parseInt(v) * 5);
+  const [bgR, bgG, bgB] = bgColor;
   
-  // Check if background is uniform (solid color)
-  let variance = 0;
-  cornerSamples.forEach(c => {
-    variance += Math.abs(c.r - bgR) + Math.abs(c.g - bgG) + Math.abs(c.b - bgB);
-  });
-  const avgVariance = variance / cornerSamples.length;
+  // Remove background using flood fill from edges
+  const visited = new Array(width * height).fill(false);
+  const threshold = 35; // Color similarity threshold
   
-  // If background is not uniform, be very conservative
-  if (avgVariance > 20) {
-    const result = new Image();
-    result.src = canvas.toDataURL();
-    await new Promise(resolve => result.onload = resolve);
-    return result;
+  function floodFill(startX, startY) {
+    const stack = [[startX, startY]];
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop();
+      
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      
+      const idx = y * width + x;
+      if (visited[idx]) continue;
+      
+      const dataIdx = idx * 4;
+      const r = data[dataIdx];
+      const g = data[dataIdx + 1];
+      const b = data[dataIdx + 2];
+      
+      // Check if this pixel is similar to background
+      const colorDiff = Math.sqrt(
+        Math.pow(r - bgR, 2) +
+        Math.pow(g - bgG, 2) +
+        Math.pow(b - bgB, 2)
+      );
+      
+      if (colorDiff > threshold) continue;
+      
+      visited[idx] = true;
+      
+      // Make this pixel transparent with smooth edge
+      const alpha = Math.max(0, Math.min(255, (colorDiff / threshold) * 255));
+      data[dataIdx + 3] = alpha;
+      
+      // Add neighbors to stack
+      stack.push([x + 1, y]);
+      stack.push([x - 1, y]);
+      stack.push([x, y + 1]);
+      stack.push([x, y - 1]);
+    }
   }
   
-  // Very tight threshold - only exact matches
-  const threshold = 18;
-  const edgeOnly = 25; // Only process pixels within 25px of edge
-  
-  // Flood fill from edges only
+  // Start flood fill from all edges
+  for (let x = 0; x < width; x++) {
+    floodFill(x, 0); // Top edge
+    floodFill(x, height - 1); // Bottom edge
+  }
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const distFromEdge = Math.min(x, width - 1 - x, y, height - 1 - y);
+    floodFill(0, y); // Left edge
+    floodFill(width - 1, y); // Right edge
+  }
+  
+  // Apply anti-aliasing to edges
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = (y * width + x) * 4;
+      const alpha = data[idx + 3];
       
-      // Only process pixels very close to the edge
-      if (distFromEdge > edgeOnly) continue;
-      
-      const i = (y * width + x) * 4;
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      
-      const colorDiff = Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
-      
-      // Very strict - only remove if extremely close to background
-      if (colorDiff < threshold) {
-        // Fade based on distance from edge
-        const fadeFactor = distFromEdge / edgeOnly;
-        if (colorDiff < threshold * 0.4) {
-          data[i + 3] = Math.floor(255 * fadeFactor * fadeFactor);
-        } else {
-          const alpha = Math.floor(255 * (colorDiff / threshold));
-          data[i + 3] = Math.min(data[i + 3], Math.max(alpha, Math.floor(255 * fadeFactor)));
+      if (alpha > 0 && alpha < 255) {
+        // Smooth edge pixels
+        let neighborAlpha = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+            neighborAlpha += data[nIdx + 3];
+          }
         }
+        data[idx + 3] = Math.floor((alpha + neighborAlpha / 8) / 2);
       }
     }
   }
@@ -991,10 +1028,21 @@ function renderWallpaper() {
   // Draw pattern overlay if selected
   if (wallpaperState.pattern) {
     const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
-    const patternObj = WALLPAPER_PATTERNS.find(p => p.id === wallpaperState.pattern);
-    if (patternObj && patternObj.draw) {
-      patternObj.draw(ctx, canvas.width, canvas.height, patternColor);
-    }
+    const patternOpacity = parseInt(document.getElementById('patternOpacity')?.value || 15) / 100;
+    
+    // Create temporary canvas for pattern
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = canvas.width;
+    patternCanvas.height = canvas.height;
+    const patternCtx = patternCanvas.getContext('2d');
+    
+    // Draw pattern
+    drawPattern(patternCtx, wallpaperState.pattern, canvas.width, canvas.height, 'transparent', patternColor);
+    
+    // Apply pattern with opacity
+    ctx.globalAlpha = patternOpacity;
+    ctx.drawImage(patternCanvas, 0, 0);
+    ctx.globalAlpha = 1.0;
   }
   
   // Draw all characters
@@ -1052,10 +1100,21 @@ function downloadWallpaper() {
   // Draw pattern overlay if selected
   if (wallpaperState.pattern) {
     const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
-    const patternObj = WALLPAPER_PATTERNS.find(p => p.id === wallpaperState.pattern);
-    if (patternObj && patternObj.draw) {
-      patternObj.draw(ctx, canvas.width, canvas.height, patternColor);
-    }
+    const patternOpacity = parseInt(document.getElementById('patternOpacity')?.value || 15) / 100;
+    
+    // Create temporary canvas for pattern
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = canvas.width;
+    patternCanvas.height = canvas.height;
+    const patternCtx = patternCanvas.getContext('2d');
+    
+    // Draw pattern
+    drawPattern(patternCtx, wallpaperState.pattern, canvas.width, canvas.height, 'transparent', patternColor);
+    
+    // Apply pattern with opacity
+    ctx.globalAlpha = patternOpacity;
+    ctx.drawImage(patternCanvas, 0, 0);
+    ctx.globalAlpha = 1.0;
   }
   
   // Draw characters without selection UI
@@ -2013,3 +2072,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }, 100);
 })();
+
+// Viewer Controls
+  let currentSquiggleToken = 1;
+  
+  document.getElementById('squiggleReplay')?.addEventListener('click', () => {
+    const iframe = document.getElementById('squiggleFrame');
+    iframe.src = iframe.src;
+  });
+  
+  document.getElementById('squiggleRandom')?.addEventListener('click', () => {
+    currentSquiggleToken = Math.floor(Math.random() * 3333) + 1;
+    document.getElementById('squiggleFrame').src = `https://ar-io.net/svG43xqmnbW-S19ZYLD0Dn5oUCS3p6XEq2h6_fNtqd8/?tid=${currentSquiggleToken}`;
+    document.getElementById('squiggleTokenDisplay').textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+  });
+  
+  document.getElementById('squiggleFullscreen')?.addEventListener('click', () => {
+    const iframe = document.getElementById('squiggleFrame');
+    if (iframe.requestFullscreen) {
+      iframe.requestFullscreen();
+    } else if (iframe.webkitRequestFullscreen) {
+      iframe.webkitRequestFullscreen();
+    } else if (iframe.msRequestFullscreen) {
+      iframe.msRequestFullscreen();
+    }
+  });
+  
+  document.getElementById('puzzleNew')?.addEventListener('click', () => {
+    const iframe = document.getElementById('puzzleFrame');
+    iframe.src = iframe.src;
+  });
