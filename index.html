@@ -1962,7 +1962,44 @@
 
     @media (max-width: 768px) {
   nav {
-    padding: 16px 20px;
+    padding: 16px 16px;
+  }
+
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  * {
+    max-width: 100vw;
+  }
+
+  section {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  .raffle-container,
+  .grid-maker-container,
+  .wallpaper-container,
+  .about-container,
+  .team-container,
+  .projects-container,
+  footer .footer-content {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 0;
+  }
+
+  .stat-item {
+    padding: 24px 12px;
   }
 
   .nav-links {
@@ -1978,11 +2015,76 @@
   }
 
   .hero {
-    padding: 100px 20px;
+    padding: 100px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .raffle-container,
+  .grid-maker-container,
+  .wallpaper-container,
+  .about-container,
+  .team-container,
+  .projects-container {
+    padding: 0;
   }
 
   .section {
-    padding: 80px 20px;
+    padding: 80px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .nft-scroller-section {
+    padding: 60px 0;
+  }
+
+  .nft-scroller-header {
+    padding: 0 16px;
+  }
+
+  .stats-section {
+    padding: 40px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .raffle-section {
+    padding: 60px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .grid-maker-section {
+    padding: 60px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .wallpaper-section {
+    padding: 60px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .about-section {
+    padding: 80px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .team-section {
+    padding: 80px 16px;
+  }
+
+  .projects-section {
+    padding: 80px 16px;
+  }
+
+  footer {
+    padding: 40px 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .raffle-grid {
@@ -2010,7 +2112,22 @@
   }
 
   .eligible-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    max-height: 350px;
+    gap: 6px;
+    padding: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .eligible-item {
+    min-width: 0;
+  }
+
+  .eligible-item img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
   }
 
   .input-row {
@@ -2055,6 +2172,19 @@
     max-width: 280px;
   }
 
+  .phone-frame {
+    max-width: 280px;
+    margin: 0 auto;
+  }
+
+  .wallpaper-preview-container {
+    padding: 0;
+  }
+
+  .wallpaper-controls {
+    padding: 0;
+  }
+
   .viewer-grid {
     grid-template-columns: 1fr !important;
   }
@@ -2084,6 +2214,65 @@
 
   .nav-links .nav-social a {
     font-size: 20px;
+  }
+
+  /* Global mobile fixes */
+  .raffle-container,
+  .grid-maker-container,
+  .wallpaper-container,
+  .about-container,
+  .team-container,
+  .projects-container {
+    padding: 0 !important;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .glass-card,
+  .viewer-panel {
+    margin: 0;
+    border-radius: 16px;
+  }
+
+  /* Fix rewards grid on mobile */
+  .rewards-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .reward-item img {
+    width: 100%;
+    height: auto;
+  }
+
+  /* Fix wheel on mobile */
+  #raffleCanvasWheel {
+    max-width: 260px;
+    max-height: 260px;
+  }
+
+  .wheel-wrapper {
+    transform: scale(0.95);
+  }
+
+  /* Fix leaderboard on mobile */
+  .leaderboard-list {
+    max-height: 300px;
+  }
+
+  .leaderboard-entry {
+    padding: 12px;
+  }
+
+  /* Ensure no horizontal scroll */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  section, div {
+    max-width: 100vw;
   }
 }
 
@@ -2136,8 +2325,33 @@
     font-size: 16px;
   }
 
+  .tool-panel {
+    padding: 16px 12px;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .raffle-panel {
+    padding: 16px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
   .control-panel {
-    padding: 20px;
+    padding: 16px;
+  }
+
+  .viewer-panel {
+    padding: 20px 16px;
+  }
+
+  .control-panel {
+    padding: 16px 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .viewer-controls {
@@ -2151,30 +2365,182 @@
 }
 
     @media (max-width: 480px) {
-      .hero-cta {
-        flex-direction: column;
-        width: 100%;
-      }
+  .hero-cta {
+    flex-direction: column;
+    width: 100%;
+  }
 
-      .hero-cta .btn-primary,
-      .hero-cta .btn-secondary {
-        width: 100%;
-        justify-content: center;
-      }
+  .hero-cta .btn-primary,
+  .hero-cta .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
 
-      .stats-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
 
-      .stat-item {
-        padding: 24px 16px;
-      }
+  .stat-item {
+    padding: 20px 12px;
+  }
 
-      .bg-options {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
+  .bg-options {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .pattern-options {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .eligible-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  #nftGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .listed-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* Smaller text for mobile */
+  .section-title {
+    font-size: clamp(28px, 8vw, 48px);
+  }
+
+  .hero-title {
+    font-size: clamp(48px, 12vw, 120px);
+  }
+
+  /* Fix input fields */
+  .input-field {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  select {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  /* Fix buttons */
+  .btn-tool {
+    padding: 12px 16px;
+    font-size: 10px;
+  }
+
+  .wheel-btn {
+    padding: 12px 20px;
+    font-size: 10px;
+  }
+
+  /* Fix wheel size */
+  #raffleCanvasWheel {
+    max-width: 240px;
+    max-height: 240px;
+  }
+
+  .wheel-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .wheel-controls .wheel-btn {
+    width: 100%;
+  }
+}
+
+/* MOBILE FIXES - ADD AT END OF STYLE */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  section {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .raffle-container,
+  .grid-maker-container,
+  .wallpaper-container,
+  .about-container,
+  .team-container,
+  .projects-container,
+  .stats-grid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .tool-panel,
+  .raffle-panel,
+  .control-panel,
+  .viewer-panel {
+    padding: 16px 12px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .eligible-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    max-height: 350px !important;
+    overflow-y: auto !important;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  #raffleCanvasWheel {
+    max-width: 260px !important;
+    max-height: 260px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .eligible-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  #raffleCanvasWheel {
+    max-width: 220px !important;
+    max-height: 220px !important;
+  }
+
+  .wheel-controls {
+    flex-direction: column !important;
+  }
+
+  .wheel-controls .wheel-btn {
+    width: 100% !important;
+  }
+}
   </style>
 </head>
 <body>
