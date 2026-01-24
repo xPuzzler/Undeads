@@ -792,38 +792,36 @@ async function removeBackgroundAdvanced(img) {
   const width = canvas.width;
   const height = canvas.height;
   
-  // Sample edge pixels for background color detection
-  const edgeSamples = [];
-  const sampleSize = 3;
+  // Sample corners and edges to detect background color
+  const samples = [];
+  const sampleDepth = Math.min(10, Math.floor(width * 0.05));
   
-  // Sample all four edges
-  for (let i = 0; i < sampleSize; i++) {
-    // Top edge
-    for (let x = 0; x < width; x += 10) {
-      const idx = (i * width + x) * 4;
-      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-    }
-    // Bottom edge
-    for (let x = 0; x < width; x += 10) {
-      const idx = ((height - 1 - i) * width + x) * 4;
-      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-    }
-    // Left edge
-    for (let y = 0; y < height; y += 10) {
-      const idx = (y * width + i) * 4;
-      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-    }
-    // Right edge
-    for (let y = 0; y < height; y += 10) {
-      const idx = (y * width + (width - 1 - i)) * 4;
-      edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+  // Sample all four corners thoroughly
+  for (let i = 0; i < sampleDepth; i++) {
+    for (let j = 0; j < sampleDepth; j++) {
+      // Top-left
+      let idx = (i * width + j) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Top-right
+      idx = (i * width + (width - 1 - j)) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Bottom-left
+      idx = ((height - 1 - i) * width + j) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Bottom-right
+      idx = ((height - 1 - i) * width + (width - 1 - j)) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
     }
   }
   
-  // Find dominant background color
+  // Find the most common color (background)
   const colorMap = new Map();
-  edgeSamples.forEach(c => {
-    const key = `${Math.round(c.r/10)*10},${Math.round(c.g/10)*10},${Math.round(c.b/10)*10}`;
+  samples.forEach(([r, g, b]) => {
+    // Quantize to reduce noise
+    const qr = Math.round(r / 8) * 8;
+    const qg = Math.round(g / 8) * 8;
+    const qb = Math.round(b / 8) * 8;
+    const key = `${qr},${qg},${qb}`;
     colorMap.set(key, (colorMap.get(key) || 0) + 1);
   });
   
@@ -838,11 +836,35 @@ async function removeBackgroundAdvanced(img) {
   
   const [bgR, bgG, bgB] = bgColor;
   
-  // Remove background using flood fill from edges
-  const visited = new Array(width * height).fill(false);
-  const threshold = 35; // Color similarity threshold
+  // Check if background is uniform enough
+  let uniformCount = 0;
+  samples.forEach(([r, g, b]) => {
+    const diff = Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
+    if (diff < 30) uniformCount++;
+  });
   
-  function floodFill(startX, startY) {
+  // If less than 60% of corners match, background is too complex
+  if (uniformCount / samples.length < 0.6) {
+    console.log('Background too complex, using conservative removal');
+  }
+  
+  // Create alpha mask using flood fill from all edges
+  const visited = new Uint8Array(width * height);
+  const alphaMap = new Uint8Array(width * height).fill(255);
+  
+  // Threshold for background detection (adjustable)
+  const threshold = 32;
+  const softThreshold = 50;
+  
+  function colorDistance(idx) {
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+    return Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
+  }
+  
+  // Flood fill from edges
+  function floodFillIterative(startX, startY) {
     const stack = [[startX, startY]];
     
     while (stack.length > 0) {
@@ -850,30 +872,25 @@ async function removeBackgroundAdvanced(img) {
       
       if (x < 0 || x >= width || y < 0 || y >= height) continue;
       
-      const idx = y * width + x;
-      if (visited[idx]) continue;
+      const pixelIndex = y * width + x;
+      if (visited[pixelIndex]) continue;
       
-      const dataIdx = idx * 4;
-      const r = data[dataIdx];
-      const g = data[dataIdx + 1];
-      const b = data[dataIdx + 2];
+      const dataIndex = pixelIndex * 4;
+      const dist = colorDistance(dataIndex);
       
-      // Check if this pixel is similar to background
-      const colorDiff = Math.sqrt(
-        Math.pow(r - bgR, 2) +
-        Math.pow(g - bgG, 2) +
-        Math.pow(b - bgB, 2)
-      );
+      if (dist > softThreshold) continue;
       
-      if (colorDiff > threshold) continue;
+      visited[pixelIndex] = 1;
       
-      visited[idx] = true;
+      // Set alpha based on distance
+      if (dist < threshold) {
+        alphaMap[pixelIndex] = 0;
+      } else {
+        // Soft edge - gradual transparency
+        alphaMap[pixelIndex] = Math.floor(((dist - threshold) / (softThreshold - threshold)) * 255);
+      }
       
-      // Make this pixel transparent with smooth edge
-      const alpha = Math.max(0, Math.min(255, (colorDiff / threshold) * 255));
-      data[dataIdx + 3] = alpha;
-      
-      // Add neighbors to stack
+      // Add neighbors
       stack.push([x + 1, y]);
       stack.push([x - 1, y]);
       stack.push([x, y + 1]);
@@ -881,33 +898,43 @@ async function removeBackgroundAdvanced(img) {
     }
   }
   
-  // Start flood fill from all edges
+  // Start flood fill from all edge pixels
   for (let x = 0; x < width; x++) {
-    floodFill(x, 0); // Top edge
-    floodFill(x, height - 1); // Bottom edge
+    floodFillIterative(x, 0);
+    floodFillIterative(x, height - 1);
   }
   for (let y = 0; y < height; y++) {
-    floodFill(0, y); // Left edge
-    floodFill(width - 1, y); // Right edge
+    floodFillIterative(0, y);
+    floodFillIterative(width - 1, y);
   }
   
-  // Apply anti-aliasing to edges
+  // Apply alpha map with edge smoothing
+  for (let i = 0; i < width * height; i++) {
+    data[i * 4 + 3] = alphaMap[i];
+  }
+  
+  // Apply feathering to smooth edges
+  const tempAlpha = new Uint8Array(alphaMap);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
-      const idx = (y * width + x) * 4;
-      const alpha = data[idx + 3];
+      const idx = y * width + x;
+      const current = tempAlpha[idx];
       
-      if (alpha > 0 && alpha < 255) {
-        // Smooth edge pixels
-        let neighborAlpha = 0;
+      // Only smooth edge pixels (not fully transparent or opaque)
+      if (current > 0 && current < 255) {
+        let sum = 0;
+        let count = 0;
+        
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nIdx = ((y + dy) * width + (x + dx)) * 4;
-            neighborAlpha += data[nIdx + 3];
+            const ni = (y + dy) * width + (x + dx);
+            sum += tempAlpha[ni];
+            count++;
           }
         }
-        data[idx + 3] = Math.floor((alpha + neighborAlpha / 8) / 2);
+        
+        // Blend with neighbors
+        data[idx * 4 + 3] = Math.floor((current * 2 + sum / count) / 3);
       }
     }
   }
@@ -915,7 +942,7 @@ async function removeBackgroundAdvanced(img) {
   ctx.putImageData(imageData, 0, 0);
   
   const result = new Image();
-  result.src = canvas.toDataURL();
+  result.src = canvas.toDataURL('image/png');
   await new Promise(resolve => result.onload = resolve);
   return result;
 }
