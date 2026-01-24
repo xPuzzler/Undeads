@@ -2053,10 +2053,36 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
   
   const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  const navLinks = document.querySelector('.nav-links');
+  const navSocial = document.querySelector('.nav-social');
+  
   mobileMenuBtn?.addEventListener('click', () => {
-    const navLinks = document.querySelector('.nav-links');
-    if (navLinks.style.display === 'flex') navLinks.style.display = 'none';
-    else navLinks.style.cssText = 'display: flex; position: fixed; top: 70px; left: 0; right: 0; flex-direction: column; background: rgba(3,3,3,0.98); padding: 24px; gap: 16px; border-bottom: 1px solid var(--border);';
+    if (navLinks.style.display === 'flex') {
+      navLinks.style.display = 'none';
+      mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+    } else {
+      // Clone social links and mint button into nav-links for mobile
+      const socialClone = navSocial.cloneNode(true);
+      socialClone.style.cssText = 'display: flex; justify-content: center; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 8px;';
+      
+      // Clear any existing clones
+      const existingClone = navLinks.querySelector('.nav-social');
+      if (existingClone) existingClone.remove();
+      
+      navLinks.appendChild(socialClone);
+      navLinks.style.cssText = 'display: flex; position: fixed; top: 70px; left: 0; right: 0; flex-direction: column; background: rgba(3,3,3,0.98); backdrop-filter: blur(20px); padding: 24px; gap: 16px; border-bottom: 1px solid var(--border); z-index: 99;';
+      mobileMenuBtn.innerHTML = '<i class="fas fa-times"></i>';
+    }
+  });
+  
+  // Close mobile menu when clicking nav links
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        navLinks.style.display = 'none';
+        if (mobileMenuBtn) mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+      }
+    });
   });
   
   // Initialize background removal toggle as active
