@@ -231,6 +231,41 @@
       box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
     }
 
+    .mint-btn {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+  color: #000000;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.mint-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.mint-btn:hover::before {
+  left: 100%;
+}
+
+.mint-btn:hover {
+  background: linear-gradient(135deg, #00ff88 0%, #00ffaa 100%);
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(0, 255, 136, 0.5);
+}
+
+.mint-icon {
+  font-size: 14px;
+}
+
     /* Mobile Nav */
     .mobile-menu-btn {
       display: none;
@@ -2541,6 +2576,153 @@
     width: 100% !important;
   }
 }
+
+/* ========================================
+   COMPLETE MOBILE FIXES - ADD AT END
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Prevent any horizontal scroll */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* All sections use consistent padding */
+  section,
+  .section,
+  .hero,
+  .nft-scroller-section,
+  .stats-section,
+  .raffle-section,
+  .grid-maker-section,
+  .wallpaper-section,
+  .about-section,
+  .team-section,
+  .projects-section {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Remove padding from containers */
+  .raffle-container,
+  .grid-maker-container,
+  .wallpaper-container,
+  .about-container,
+  .team-container,
+  .projects-container {
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Fix all panels */
+  .tool-panel,
+  .raffle-panel,
+  .control-panel,
+  .viewer-panel,
+  .glass-card {
+    padding: 16px 12px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Fix grids */
+  .eligible-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    max-height: 350px !important;
+    overflow-y: auto !important;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .listed-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  #nftGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Fix raffle wheel */
+  #raffleCanvasWheel {
+    max-width: 260px !important;
+    max-height: 260px !important;
+  }
+
+  .wheel-wrapper {
+    transform: scale(0.95);
+  }
+
+  .wheel-controls {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .wheel-controls .wheel-btn {
+    width: 100% !important;
+  }
+
+  /* Fix footer */
+  footer {
+    padding: 40px 12px !important;
+  }
+
+  .footer-content {
+    flex-direction: column !important;
+    gap: 20px !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .eligible-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  #raffleCanvasWheel {
+    max-width: 220px !important;
+    max-height: 220px !important;
+  }
+
+  .stat-item {
+    padding: 16px 8px !important;
+  }
+
+  .stat-number {
+    font-size: 28px !important;
+  }
+
+  .btn-tool {
+    padding: 10px 14px !important;
+    font-size: 10px !important;
+  }
+
+  .input-field,
+  select {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+}
   </style>
 </head>
 <body>
@@ -2567,9 +2749,9 @@
     <div class="nav-social">
       <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
       <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="nav-btn">
-        <i class="fas fa-fire"></i> Mint Now
-      </a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="nav-btn mint-btn">
+  <span class="mint-icon">🔥</span> Mint Now
+</a>
     </div>
     <button class="mobile-menu-btn" id="mobileMenuBtn">
       <i class="fas fa-bars"></i>
