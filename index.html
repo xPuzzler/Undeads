@@ -1268,7 +1268,7 @@
     .bg-option {
       aspect-ratio: 9/16;
       border-radius: 12px;
-      cursor: none;
+      cursor: pointer;
       border: 2px solid transparent;
       transition: all 0.3s;
       overflow: hidden;
@@ -1276,6 +1276,52 @@
 
     .bg-option:hover {
       transform: scale(1.05);
+    }
+
+    /* Pattern Options */
+    .pattern-options {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .pattern-option {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 2px solid var(--glass-border);
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass);
+      padding: 4px;
+    }
+
+    .pattern-option:hover {
+      border-color: rgba(0, 255, 136, 0.5);
+      transform: scale(1.05);
+    }
+
+    .pattern-option.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    }
+
+    .pattern-option span {
+      font-size: 8px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    .pattern-preview {
+      width: 100%;
+      height: 24px;
+      background: #1a1a1a;
+      border-radius: 4px;
     }
 
     .bg-option.selected {
@@ -1827,125 +1873,6 @@
       border-radius: 4px;
     }
 
-    /* Meme Generator Section */
-    .meme-section {
-      padding: 120px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .meme-container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .meme-grid {
-      display: grid;
-      grid-template-columns: 300px 1fr 280px;
-      gap: 24px;
-      align-items: start;
-    }
-
-    .meme-templates-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      max-height: 400px;
-      overflow-y: auto;
-      padding-right: 8px;
-    }
-
-    .meme-template {
-      cursor: pointer;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 2px solid transparent;
-      transition: all 0.3s;
-    }
-
-    .meme-template:hover {
-      transform: scale(1.05);
-      border-color: rgba(0, 255, 136, 0.3);
-    }
-
-    .meme-template.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-    }
-
-    .meme-template img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-    }
-
-    .meme-template p {
-      font-family: 'Geist Mono', monospace;
-      font-size: 9px;
-      text-align: center;
-      padding: 6px 4px;
-      color: var(--muted);
-      background: var(--glass);
-    }
-
-    .meme-preview-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .meme-frame {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      padding: 16px;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    #memeCanvas {
-      width: 100%;
-      height: auto;
-      border-radius: 8px;
-      cursor: move;
-    }
-
-    .meme-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    /* Responsive for Meme Section */
-    @media (max-width: 1200px) {
-      .meme-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .meme-preview-container {
-        grid-column: span 2;
-        order: -1;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .meme-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .meme-preview-container {
-        grid-column: span 1;
-      }
-
-      .meme-templates-grid {
-        grid-template-columns: repeat(4, 1fr);
-        max-height: 200px;
-      }
-
-      .meme-section {
-        padding: 80px 20px;
-      }
-    }
-
     /* Responsive */
     @media (max-width: 1200px) {
       .raffle-grid {
@@ -2097,7 +2024,6 @@
       <a href="#raffle" class="nav-link">Raffle</a>
       <a href="#tools" class="nav-link">Tools</a>
       <a href="#wallpaper" class="nav-link">Wallpaper</a>
-      <a href="#meme" class="nav-link">Meme</a>
       <a href="#about" class="nav-link">About</a>
     </div>
     <div class="nav-social">
@@ -2182,7 +2108,7 @@
     <div class="raffle-container">
       <div class="raffle-header">
         <p class="section-label" style="justify-content: center;">Giveaway</p>
-        <h2 class="section-title" style="text-align: center;" id="rafflePhaseName">Phase 4 - Based Undeads Giveaway</h2>
+        <h2 class="section-title" style="text-align: center;" id="rafflePhaseName">Phase 4 — Based Undeads Giveaway</h2>
       </div>
 
       <!-- Rewards Display -->
@@ -2470,7 +2396,7 @@
         <div class="wallpaper-controls">
           <!-- Background Selection -->
           <div class="control-panel">
-            <p class="control-panel-title">Choose Background</p>
+            <p class="control-panel-title">Gradient Backgrounds</p>
             <div class="bg-options" id="bgOptions">
               <!-- Gradient backgrounds -->
               <div class="bg-option selected" data-bg="linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)" style="background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
@@ -2486,16 +2412,61 @@
               <div class="bg-option" data-bg="linear-gradient(180deg, #11998e 0%, #38ef7d 100%)" style="background: linear-gradient(180deg, #11998e 0%, #38ef7d 100%);"></div>
               <div class="bg-option" data-bg="linear-gradient(180deg, #fc4a1a 0%, #f7b733 100%)" style="background: linear-gradient(180deg, #fc4a1a 0%, #f7b733 100%);"></div>
             </div>
-            <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          </div>
+
+          <!-- Pattern Backgrounds -->
+          <div class="control-panel">
+            <p class="control-panel-title">Pattern Overlays</p>
+            <div class="pattern-options" id="patternOptions">
+              <!-- Patterns loaded dynamically -->
+            </div>
+            <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div>
-                <label class="input-label">Custom Color</label>
-                <input type="color" id="wallpaperBgColor" value="#0f0c29" class="color-input" style="margin-top: 8px;">
+                <label class="input-label" style="font-size: 10px;">Pattern Color</label>
+                <input type="color" id="patternColor" value="#ffffff" class="color-input" style="margin-top: 4px; height: 32px;">
               </div>
               <div>
-                <label class="input-label">Upload Image</label>
-                <input type="file" id="wallpaperBgUpload" accept="image/*" style="margin-top: 8px; font-size: 10px; color: var(--muted);">
+                <label class="input-label" style="font-size: 10px;">Opacity</label>
+                <input type="range" id="patternOpacity" min="5" max="50" value="15" style="margin-top: 8px; width: 100%;">
               </div>
             </div>
+          </div>
+
+          <!-- Custom Gradient Creator -->
+          <div class="control-panel">
+            <p class="control-panel-title">Create Your Gradient</p>
+            <div id="gradientPreview" style="height: 60px; border-radius: 8px; margin-bottom: 12px; background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+              <div>
+                <label class="input-label" style="font-size: 10px;">Color 1</label>
+                <input type="color" id="gradientColor1" value="#0f0c29" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
+              </div>
+              <div>
+                <label class="input-label" style="font-size: 10px;">Color 2</label>
+                <input type="color" id="gradientColor2" value="#302b63" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
+              </div>
+              <div id="gradientColor3Container">
+                <label class="input-label" style="font-size: 10px;">Color 3</label>
+                <input type="color" id="gradientColor3" value="#24243e" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
+              </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label class="input-label" style="font-size: 10px;">Angle: <span id="gradientAngleValue">180°</span></label>
+              <input type="range" id="gradientAngle" min="0" max="360" value="180" style="width: 100%; margin-top: 4px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <input type="checkbox" id="useThreeColors" checked style="accent-color: var(--accent);">
+              <label for="useThreeColors" style="font-size: 11px; color: var(--muted);">Use 3 colors</label>
+            </div>
+            <button id="applyCustomGradient" class="btn-tool primary" style="width: 100%;">
+              <i class="fas fa-palette"></i> Apply Gradient
+            </button>
+          </div>
+
+          <!-- Upload Background -->
+          <div class="control-panel">
+            <p class="control-panel-title">Custom Background</p>
+            <input type="file" id="wallpaperBgUpload" accept="image/*" style="font-size: 11px; color: var(--muted); width: 100%;">
           </div>
 
           <!-- Character Selection -->
@@ -2545,78 +2516,6 @@
     </div>
   </section>
 
-  <!-- Meme Generator Section -->
-  <section class="meme-section" id="meme">
-    <div class="meme-container">
-      <div style="margin-bottom: 60px;">
-        <p class="section-label">Creative Tools</p>
-        <h2 class="section-title">NFT <em>Meme</em> Generator</h2>
-        <p style="color: var(--muted); margin-top: 16px; max-width: 600px;">
-          Turn your NFTs into viral memes! Select a template, add your characters,
-          customize text, and create shareable memes in seconds.
-        </p>
-      </div>
-
-      <div class="meme-grid">
-        <!-- Meme Templates -->
-        <div class="control-panel">
-          <p class="control-panel-title">Choose Template</p>
-          <div id="memeTemplatesGrid" class="meme-templates-grid">
-            <!-- Templates loaded dynamically -->
-          </div>
-          <div style="margin-top: 16px;">
-            <label class="input-label">Or Upload Custom Template</label>
-            <input type="file" id="memeTemplateUpload" accept="image/*" class="input-field" style="margin-top: 8px; padding: 12px;">
-          </div>
-        </div>
-
-        <!-- Meme Preview -->
-        <div class="meme-preview-container">
-          <div class="meme-frame">
-            <canvas id="memeCanvas" width="800" height="600"></canvas>
-          </div>
-          <p style="text-align: center; font-size: 11px; color: var(--muted); margin-top: 12px;">
-            💡 Drag characters to position, corner to resize
-          </p>
-        </div>
-
-        <!-- Meme Controls -->
-        <div class="meme-controls">
-          <div class="control-panel">
-            <p class="control-panel-title">Add Text</p>
-            <div class="input-group" style="margin-bottom: 16px;">
-              <label class="input-label">Top Text</label>
-              <input type="text" id="memeTopText" placeholder="TOP TEXT" class="input-field">
-            </div>
-            <div class="input-group">
-              <label class="input-label">Bottom Text</label>
-              <input type="text" id="memeBottomText" placeholder="BOTTOM TEXT" class="input-field">
-            </div>
-          </div>
-
-          <div class="control-panel">
-            <p class="control-panel-title">Actions</p>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-              <button id="resetMeme" class="btn-tool secondary" style="width: 100%;">
-                <i class="fas fa-redo"></i> Reset Meme
-              </button>
-              <button id="downloadMeme" class="btn-tool primary" style="width: 100%;">
-                <i class="fas fa-download"></i> Download Meme
-              </button>
-            </div>
-          </div>
-
-          <div class="control-panel" style="background: rgba(0,255,136,0.05); border-color: rgba(0,255,136,0.2);">
-            <p style="font-size: 11px; color: var(--muted); line-height: 1.6;">
-              <i class="fas fa-info-circle" style="color: var(--accent);"></i>
-              Click any NFT from your gallery and use the 😂 button to add it to the meme!
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- About Section -->
   <section class="about-section" id="about">
     <div class="about-container">
@@ -2652,7 +2551,7 @@
       <h2 class="section-title" style="text-align: center; margin-bottom: 60px;">Meet the <em>Founder</em></h2>
       <a href="https://x.com/_sxms" target="_blank" class="team-member">
         <div class="team-avatar">
-          <img src="https://pbs.twimg.com/profile_images/2013051300615712769/kA7TYlWK_400x400.jpg" alt="SAM">
+          <img src="https://pbs.twimg.com/profile_images/1974232670402969600/QJdgv717_400x400.jpg" alt="SAM">
         </div>
         <h3 class="team-name">SAM</h3>
         <p class="team-role">Artist • Developer</p>
