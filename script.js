@@ -2088,18 +2088,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Initialize background removal toggle as active
   const bgToggle = document.getElementById('removeBackgroundToggle');
   if (bgToggle) bgToggle.classList.add('active');
-});
 
-(async function initializeLeaderboard() {
-  const checkReady = setInterval(async () => {
-    if (CONFIG.ALCHEMY_API_KEY && document.getElementById('leaderboardList') && raffleState.eligibleNFTs.length > 0) {
-      clearInterval(checkReady);
-      await loadLeaderboard();
-    }
-  }, 100);
-})();
-
-// Viewer Controls
+  // Viewer Controls
   let currentSquiggleToken = 1;
   
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
@@ -2128,3 +2118,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     const iframe = document.getElementById('puzzleFrame');
     iframe.src = iframe.src;
   });
+});
+
+(async function initializeLeaderboard() {
+  const checkReady = setInterval(async () => {
+    if (CONFIG.ALCHEMY_API_KEY && document.getElementById('leaderboardList') && raffleState.eligibleNFTs.length > 0) {
+      clearInterval(checkReady);
+      await loadLeaderboard();
+    }
+  }, 100);
+})();
