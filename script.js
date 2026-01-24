@@ -1,7 +1,7 @@
 // ============================================
 // BASED UNDEADS - ENHANCED SCRIPT
 // All original functionality preserved
-// Enhanced wallpaper maker + Meme generator
+// Enhanced wallpaper maker with patterns & gradients
 // ============================================
 
 let CONFIG = {
@@ -66,6 +66,7 @@ let originalImageData = new Map();
 let wallpaperState = {
   background: 'linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
   backgroundImage: null,
+  pattern: null,
   characters: [],
   selectedCharacter: null,
   isDragging: false,
@@ -76,35 +77,28 @@ let wallpaperState = {
 };
 
 // ============================================
-// MEME GENERATOR STATE
+// WALLPAPER PATTERNS
 // ============================================
-let memeState = {
-  currentTemplate: null,
-  templateImage: null,
-  characters: [],
-  selectedCharacter: null,
-  isDragging: false,
-  isResizing: false,
-  dragOffset: { x: 0, y: 0 },
-  topText: '',
-  bottomText: '',
-  customTemplate: null
-};
-
-const MEME_TEMPLATES = [
-  { id: 'distracted-boyfriend', name: 'Distracted Boyfriend', url: 'https://i.imgflip.com/1ur9b0.jpg', zones: [{ x: 0.52, y: 0.15, w: 0.12 }, { x: 0.75, y: 0.2, w: 0.12 }, { x: 0.25, y: 0.25, w: 0.12 }] },
-  { id: 'drake-hotline', name: 'Drake Hotline Bling', url: 'https://i.imgflip.com/30b1gx.jpg', zones: [{ x: 0.12, y: 0.12, w: 0.25 }, { x: 0.12, y: 0.62, w: 0.25 }] },
-  { id: 'two-buttons', name: 'Two Buttons', url: 'https://i.imgflip.com/1g8my4.jpg', zones: [{ x: 0.55, y: 0.55, w: 0.2 }] },
-  { id: 'change-my-mind', name: 'Change My Mind', url: 'https://i.imgflip.com/24y43o.jpg', zones: [{ x: 0.28, y: 0.25, w: 0.18 }] },
-  { id: 'uno-draw-25', name: 'UNO Draw 25', url: 'https://i.imgflip.com/3lmzyx.jpg', zones: [{ x: 0.55, y: 0.15, w: 0.22 }] },
-  { id: 'waiting-skeleton', name: 'Waiting Skeleton', url: 'https://i.imgflip.com/2fm6x.jpg', zones: [{ x: 0.3, y: 0.15, w: 0.4 }] },
-  { id: 'this-is-fine', name: 'This Is Fine', url: 'https://i.imgflip.com/wxica.jpg', zones: [{ x: 0.35, y: 0.35, w: 0.25 }] },
-  { id: 'always-has-been', name: 'Always Has Been', url: 'https://i.imgflip.com/46e43q.png', zones: [{ x: 0.25, y: 0.25, w: 0.15 }, { x: 0.65, y: 0.3, w: 0.15 }] },
-  { id: 'trade-offer', name: 'Trade Offer', url: 'https://i.imgflip.com/54hjww.jpg', zones: [{ x: 0.35, y: 0.08, w: 0.3 }] },
-  { id: 'guy-explaining', name: 'Guy Explaining', url: 'https://i.imgflip.com/5c7lwq.png', zones: [{ x: 0.05, y: 0.15, w: 0.35 }, { x: 0.55, y: 0.2, w: 0.2 }] },
-  { id: 'woman-yelling', name: 'Woman Yelling at Cat', url: 'https://i.imgflip.com/345v97.jpg', zones: [{ x: 0.15, y: 0.2, w: 0.25 }, { x: 0.7, y: 0.3, w: 0.2 }] },
-  { id: 'button-nut', name: 'Nut Button', url: 'https://i.imgflip.com/1yxkcp.jpg', zones: [{ x: 0.4, y: 0.1, w: 0.25 }] }
+const WALLPAPER_PATTERNS = [
+  { id: 'dots', name: 'Dots', type: 'pattern' },
+  { id: 'grid', name: 'Grid', type: 'pattern' },
+  { id: 'diagonal', name: 'Diagonal Lines', type: 'pattern' },
+  { id: 'waves', name: 'Waves', type: 'pattern' },
+  { id: 'hexagon', name: 'Hexagons', type: 'pattern' },
+  { id: 'circles', name: 'Circles', type: 'pattern' },
+  { id: 'triangles', name: 'Triangles', type: 'pattern' },
+  { id: 'noise', name: 'Noise', type: 'pattern' },
+  { id: 'stars', name: 'Stars', type: 'pattern' },
+  { id: 'crosshatch', name: 'Crosshatch', type: 'pattern' }
 ];
+
+let customGradient = {
+  color1: '#0f0c29',
+  color2: '#302b63',
+  color3: '#24243e',
+  angle: 180,
+  useThreeColors: true
+};
 
 // ============================================
 // CUSTOM CURSOR
@@ -271,6 +265,7 @@ async function loadWalletCollections(walletAddress) {
 
     // OpenSea API
     try {
+      console.log('Fetching NFTs from OpenSea...');
       let openSeaNextCursor = null, openSeaPage = 0;
       do {
         const openSeaUrl = openSeaNextCursor 
@@ -287,6 +282,7 @@ async function loadWalletCollections(walletAddress) {
                 allNFTs.push({ id: nft.identifier, name: nft.name || '#' + nft.identifier, image: getProxiedImageUrl(nft.image_url), collection: nft.collection, contractAddress: nft.contract, raw: nft });
               }
             });
+            console.log('OpenSea page ' + (openSeaPage + 1) + ': Found ' + openSeaData.nfts.length + ' NFTs (Total: ' + allNFTs.length + ')');
             openSeaNextCursor = openSeaData.next; openSeaPage++;
           } else break;
         } else break;
@@ -294,8 +290,49 @@ async function loadWalletCollections(walletAddress) {
       } while (openSeaNextCursor && openSeaPage < 20);
     } catch (error) { console.error('OpenSea API Error:', error); }
 
+    // Moralis API
+    if (CONFIG.MORALIS_API_KEY) {
+      try {
+        console.log('Fetching NFTs from Moralis...');
+        let moralisCursor = null;
+        let moralisPage = 0;
+        do {
+          const moralisUrl = moralisCursor
+            ? MORALIS_API_URL + '/' + walletAddress + '/nft?chain=' + chain.moralisChain + '&format=decimal&limit=100&cursor=' + moralisCursor
+            : MORALIS_API_URL + '/' + walletAddress + '/nft?chain=' + chain.moralisChain + '&format=decimal&limit=100';
+          const moralisResponse = await fetch(moralisUrl, { headers: { 'X-API-Key': CONFIG.MORALIS_API_KEY } });
+          if (moralisResponse.ok) {
+            const moralisData = await moralisResponse.json();
+            if (moralisData.result && moralisData.result.length > 0) {
+              moralisData.result.forEach(nft => {
+                const uniqueId = (nft.token_address || '').toLowerCase() + '_' + normalizeTokenId(nft.token_id);
+                if (!seenNFTs.has(uniqueId)) {
+                  seenNFTs.add(uniqueId);
+                  let metadata = {};
+                  try { metadata = nft.metadata ? JSON.parse(nft.metadata) : {}; } catch (e) {}
+                  allNFTs.push({
+                    id: nft.token_id,
+                    name: nft.name || metadata.name || '#' + nft.token_id,
+                    image: getProxiedImageUrl(metadata.image || metadata.image_url),
+                    collection: nft.name,
+                    contractAddress: nft.token_address,
+                    raw: nft
+                  });
+                }
+              });
+              console.log('Moralis page ' + (moralisPage + 1) + ': Found ' + moralisData.result.length + ' NFTs (Total: ' + allNFTs.length + ')');
+              moralisCursor = moralisData.cursor;
+              moralisPage++;
+            } else break;
+          } else break;
+          if (moralisCursor) await new Promise(resolve => setTimeout(resolve, 300));
+        } while (moralisCursor && moralisPage < 30);
+      } catch (error) { console.error('Moralis API Error:', error); }
+    }
+
     // Alchemy API
     try {
+      console.log('Fetching NFTs from Alchemy...');
       let alchemyPageKey = null, alchemyPage = 0;
       do {
         const alchemyUrl = alchemyPageKey
@@ -313,6 +350,7 @@ async function loadWalletCollections(walletAddress) {
                 if (imageUrl) allNFTs.push({ id: nft.tokenId, name: nft.name || nft.title || '#' + nft.tokenId, image: getProxiedImageUrl(imageUrl), collection: nft.contract?.openSeaMetadata?.collectionName || nft.contract?.name, contractAddress: nft.contract?.address, raw: nft });
               }
             });
+            console.log('Alchemy page ' + (alchemyPage + 1) + ': Found ' + alchemyData.ownedNfts.length + ' NFTs (Total: ' + allNFTs.length + ')');
             alchemyPageKey = alchemyData.pageKey; alchemyPage++;
           } else break;
         } else break;
@@ -320,6 +358,7 @@ async function loadWalletCollections(walletAddress) {
       } while (alchemyPageKey && alchemyPage < 50);
     } catch (error) { console.error('Alchemy API Error:', error); }
 
+    console.log('Total unique NFTs found: ' + allNFTs.length);
     if (allNFTs.length === 0) { nftGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #ffaa00;">No NFTs found in this wallet</div>'; return; }
     allUserNFTs = allNFTs;
     processNFTsByCollection(allNFTs);
@@ -372,10 +411,9 @@ function displayNFTs(nfts) {
   nfts.forEach((nft, index) => {
     const div = document.createElement('div');
     div.className = 'nft-item-wrapper';
-    div.innerHTML = '<img src="' + nft.image + '" alt="' + nft.name + '" class="nft-thumbnail" data-index="' + index + '" loading="lazy" onerror="this.src=\'https://placehold.co/300x300/0a0a0a/00ff88/png?text=NFT\'"/><p style="font-size: 11px; text-align: center; margin-top: 8px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;">' + nft.name + '</p><div class="nft-quick-actions"><button class="quick-btn" data-action="wallpaper" title="Add to Wallpaper"><i class="fas fa-mobile-alt"></i></button><button class="quick-btn" data-action="meme" title="Add to Meme"><i class="fas fa-laugh"></i></button></div>';
+    div.innerHTML = '<img src="' + nft.image + '" alt="' + nft.name + '" class="nft-thumbnail" data-index="' + index + '" loading="lazy" onerror="this.src=\'https://placehold.co/300x300/0a0a0a/00ff88/png?text=NFT\'"/><p style="font-size: 11px; text-align: center; margin-top: 8px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;">' + nft.name + '</p><div class="nft-quick-actions"><button class="quick-btn" data-action="wallpaper" title="Add to Wallpaper"><i class="fas fa-mobile-alt"></i></button></div>';
     div.querySelector('.nft-thumbnail').addEventListener('click', () => handleNFTSelection(index, div));
     div.querySelector('[data-action="wallpaper"]').addEventListener('click', (e) => { e.stopPropagation(); addToWallpaper(nft); document.getElementById('wallpaper')?.scrollIntoView({ behavior: 'smooth' }); });
-    div.querySelector('[data-action="meme"]').addEventListener('click', (e) => { e.stopPropagation(); addToMeme(nft); document.getElementById('meme')?.scrollIntoView({ behavior: 'smooth' }); });
     nftGrid.appendChild(div);
   });
 }
@@ -751,40 +789,35 @@ async function removeBackgroundAdvanced(img) {
   
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
+  const width = canvas.width;
+  const height = canvas.height;
   
-  // Sample edges to find background color
-  const edgeSamples = [];
-  const sampleCount = 20;
+  // Sample ONLY the corner pixels to find the true background color
+  const cornerSamples = [];
+  const cornerSize = 5;
   
-  // Top edge
-  for (let i = 0; i < sampleCount; i++) {
-    const x = Math.floor((i / sampleCount) * canvas.width);
-    const idx = (0 * canvas.width + x) * 4;
-    edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-  }
-  // Bottom edge
-  for (let i = 0; i < sampleCount; i++) {
-    const x = Math.floor((i / sampleCount) * canvas.width);
-    const idx = ((canvas.height - 1) * canvas.width + x) * 4;
-    edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-  }
-  // Left edge
-  for (let i = 0; i < sampleCount; i++) {
-    const y = Math.floor((i / sampleCount) * canvas.height);
-    const idx = (y * canvas.width + 0) * 4;
-    edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
-  }
-  // Right edge
-  for (let i = 0; i < sampleCount; i++) {
-    const y = Math.floor((i / sampleCount) * canvas.height);
-    const idx = (y * canvas.width + (canvas.width - 1)) * 4;
-    edgeSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+  // Four corners only
+  for (let dy = 0; dy < cornerSize; dy++) {
+    for (let dx = 0; dx < cornerSize; dx++) {
+      // Top-left
+      let idx = (dy * width + dx) * 4;
+      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+      // Top-right
+      idx = (dy * width + (width - 1 - dx)) * 4;
+      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+      // Bottom-left
+      idx = ((height - 1 - dy) * width + dx) * 4;
+      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+      // Bottom-right
+      idx = ((height - 1 - dy) * width + (width - 1 - dx)) * 4;
+      cornerSamples.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+    }
   }
   
-  // Find most common color (quantized)
+  // Find most common color with tight quantization
   const colorCounts = {};
-  edgeSamples.forEach(c => {
-    const key = Math.round(c.r / 16) + ',' + Math.round(c.g / 16) + ',' + Math.round(c.b / 16);
+  cornerSamples.forEach(c => {
+    const key = Math.round(c.r / 5) + ',' + Math.round(c.g / 5) + ',' + Math.round(c.b / 5);
     colorCounts[key] = (colorCounts[key] || 0) + 1;
   });
   
@@ -794,20 +827,51 @@ async function removeBackgroundAdvanced(img) {
     if (count > maxCount) { maxCount = count; bgColorKey = key; }
   }
   
-  const [bgR, bgG, bgB] = bgColorKey.split(',').map(v => parseInt(v) * 16);
+  const [bgR, bgG, bgB] = bgColorKey.split(',').map(v => parseInt(v) * 5);
   
-  // Remove background with threshold
-  const threshold = 45;
+  // Check if background is uniform (solid color)
+  let variance = 0;
+  cornerSamples.forEach(c => {
+    variance += Math.abs(c.r - bgR) + Math.abs(c.g - bgG) + Math.abs(c.b - bgB);
+  });
+  const avgVariance = variance / cornerSamples.length;
   
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    const diff = Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
-    
-    if (diff < threshold) {
-      data[i + 3] = 0; // Fully transparent
-    } else if (diff < threshold + 20) {
-      // Soft edge
-      data[i + 3] = Math.floor(255 * (diff - threshold) / 20);
+  // If background is not uniform, be very conservative
+  if (avgVariance > 20) {
+    const result = new Image();
+    result.src = canvas.toDataURL();
+    await new Promise(resolve => result.onload = resolve);
+    return result;
+  }
+  
+  // Very tight threshold - only exact matches
+  const threshold = 18;
+  const edgeOnly = 25; // Only process pixels within 25px of edge
+  
+  // Flood fill from edges only
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const distFromEdge = Math.min(x, width - 1 - x, y, height - 1 - y);
+      
+      // Only process pixels very close to the edge
+      if (distFromEdge > edgeOnly) continue;
+      
+      const i = (y * width + x) * 4;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      
+      const colorDiff = Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
+      
+      // Very strict - only remove if extremely close to background
+      if (colorDiff < threshold) {
+        // Fade based on distance from edge
+        const fadeFactor = distFromEdge / edgeOnly;
+        if (colorDiff < threshold * 0.4) {
+          data[i + 3] = Math.floor(255 * fadeFactor * fadeFactor);
+        } else {
+          const alpha = Math.floor(255 * (colorDiff / threshold));
+          data[i + 3] = Math.min(data[i + 3], Math.max(alpha, Math.floor(255 * fadeFactor)));
+        }
+      }
     }
   }
   
@@ -906,15 +970,31 @@ function renderWallpaper() {
   // Draw background
   if (wallpaperState.backgroundImage) {
     ctx.drawImage(wallpaperState.backgroundImage, 0, 0, canvas.width, canvas.height);
-  } else if (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient')) {
+  } else if (wallpaperState.background === 'custom-gradient') {
+    // Draw custom gradient
+    ctx.fillStyle = getCustomGradient(ctx, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background && (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient'))) {
     const colors = wallpaperState.background.match(/#[0-9a-f]{6}/gi) || ['#0f0c29', '#24243e'];
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     colors.forEach((color, i) => grad.addColorStop(i / (colors.length - 1), color));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  } else {
+  } else if (wallpaperState.background) {
     ctx.fillStyle = wallpaperState.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  
+  // Draw pattern overlay if selected
+  if (wallpaperState.pattern) {
+    const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
+    const patternObj = WALLPAPER_PATTERNS.find(p => p.id === wallpaperState.pattern);
+    if (patternObj && patternObj.draw) {
+      patternObj.draw(ctx, canvas.width, canvas.height, patternColor);
+    }
   }
   
   // Draw all characters
@@ -952,15 +1032,30 @@ function downloadWallpaper() {
   // Draw background
   if (wallpaperState.backgroundImage) {
     ctx.drawImage(wallpaperState.backgroundImage, 0, 0, canvas.width, canvas.height);
-  } else if (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient')) {
+  } else if (wallpaperState.background === 'custom-gradient') {
+    ctx.fillStyle = getCustomGradient(ctx, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background && (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient'))) {
     const colors = wallpaperState.background.match(/#[0-9a-f]{6}/gi) || ['#0f0c29', '#24243e'];
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     colors.forEach((color, i) => grad.addColorStop(i / (colors.length - 1), color));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  } else {
+  } else if (wallpaperState.background) {
     ctx.fillStyle = wallpaperState.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  
+  // Draw pattern overlay if selected
+  if (wallpaperState.pattern) {
+    const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
+    const patternObj = WALLPAPER_PATTERNS.find(p => p.id === wallpaperState.pattern);
+    if (patternObj && patternObj.draw) {
+      patternObj.draw(ctx, canvas.width, canvas.height, patternColor);
+    }
   }
   
   // Draw characters without selection UI
@@ -1003,334 +1098,286 @@ async function downloadCharacter(withBackground) {
 }
 
 // ============================================
-// MEME GENERATOR
+// PATTERN DRAWING FUNCTIONS
 // ============================================
-function initMemeGenerator() {
-  displayMemeTemplates();
-  setupMemeCanvasEvents();
+function drawPattern(ctx, patternId, width, height, color1, color2) {
+  ctx.fillStyle = color1;
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = color2;
+  ctx.fillStyle = color2;
   
-  // Top text input
-  document.getElementById('memeTopText')?.addEventListener('input', (e) => {
-    memeState.topText = e.target.value;
-    renderMeme();
-  });
-  
-  // Bottom text input
-  document.getElementById('memeBottomText')?.addEventListener('input', (e) => {
-    memeState.bottomText = e.target.value;
-    renderMeme();
-  });
-  
-  // Custom template upload
-  document.getElementById('memeTemplateUpload')?.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const img = await loadImage(event.target.result);
-          memeState.customTemplate = img;
-          memeState.templateImage = img;
-          memeState.currentTemplate = { id: 'custom', name: 'Custom', zones: [] };
-          
-          const canvas = document.getElementById('memeCanvas');
-          const aspectRatio = img.width / img.height;
-          canvas.width = 800;
-          canvas.height = 800 / aspectRatio;
-          
-          renderMeme();
-          showNotification('Custom template loaded!', 'success');
-        } catch (err) { showNotification('Failed to load template', 'error'); }
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-  
-  // Reset meme
-  document.getElementById('resetMeme')?.addEventListener('click', () => {
-    memeState.characters = [];
-    memeState.selectedCharacter = null;
-    memeState.topText = '';
-    memeState.bottomText = '';
-    document.getElementById('memeTopText').value = '';
-    document.getElementById('memeBottomText').value = '';
-    renderMeme();
-  });
-  
-  // Download meme
-  document.getElementById('downloadMeme')?.addEventListener('click', downloadMeme);
+  switch(patternId) {
+    case 'dots':
+      const dotSpacing = 40;
+      const dotRadius = 4;
+      for (let y = 0; y < height; y += dotSpacing) {
+        for (let x = 0; x < width; x += dotSpacing) {
+          ctx.beginPath();
+          ctx.arc(x + dotSpacing/2, y + dotSpacing/2, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+      
+    case 'grid':
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+      for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      break;
+      
+    case 'diagonal':
+      ctx.lineWidth = 2;
+      const diagSpacing = 30;
+      for (let i = -height; i < width + height; i += diagSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + height, height);
+        ctx.stroke();
+      }
+      break;
+      
+    case 'waves':
+      ctx.lineWidth = 2;
+      const waveHeight = 20;
+      const waveLength = 60;
+      for (let y = 0; y < height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x < width; x += 5) {
+          ctx.lineTo(x, y + Math.sin(x / waveLength * Math.PI * 2) * waveHeight);
+        }
+        ctx.stroke();
+      }
+      break;
+      
+    case 'hexagon':
+      const hexSize = 30;
+      const hexHeight = hexSize * Math.sqrt(3);
+      for (let row = 0; row < height / hexHeight + 1; row++) {
+        for (let col = 0; col < width / (hexSize * 1.5) + 1; col++) {
+          const x = col * hexSize * 1.5;
+          const y = row * hexHeight + (col % 2 ? hexHeight / 2 : 0);
+          drawHexagon(ctx, x, y, hexSize * 0.9);
+        }
+      }
+      break;
+      
+    case 'circles':
+      const circleSpacing = 80;
+      for (let y = 0; y < height; y += circleSpacing) {
+        for (let x = 0; x < width; x += circleSpacing) {
+          ctx.beginPath();
+          ctx.arc(x + circleSpacing/2, y + circleSpacing/2, circleSpacing/3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      break;
+      
+    case 'triangles':
+      const triSize = 50;
+      const triHeight = triSize * Math.sqrt(3) / 2;
+      ctx.lineWidth = 1;
+      for (let row = 0; row < height / triHeight + 1; row++) {
+        for (let col = 0; col < width / triSize + 1; col++) {
+          const x = col * triSize + (row % 2 ? triSize / 2 : 0);
+          const y = row * triHeight;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + triSize / 2, y + triHeight);
+          ctx.lineTo(x - triSize / 2, y + triHeight);
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+      break;
+      
+    case 'noise':
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const pixels = imgData.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 30;
+        pixels[i] = Math.min(255, Math.max(0, pixels[i] + noise));
+        pixels[i + 1] = Math.min(255, Math.max(0, pixels[i + 1] + noise));
+        pixels[i + 2] = Math.min(255, Math.max(0, pixels[i + 2] + noise));
+      }
+      ctx.putImageData(imgData, 0, 0);
+      break;
+      
+    case 'stars':
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 3 + 1;
+        drawStar(ctx, x, y, size);
+      }
+      break;
+      
+    case 'crosshatch':
+      ctx.lineWidth = 1;
+      const hatchSpacing = 20;
+      for (let i = -height; i < width + height; i += hatchSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + height, height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(i + height, 0);
+        ctx.lineTo(i, height);
+        ctx.stroke();
+      }
+      break;
+  }
 }
 
-function displayMemeTemplates() {
-  const container = document.getElementById('memeTemplatesGrid');
+function drawHexagon(ctx, x, y, size) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (i * 60 - 30) * Math.PI / 180;
+    const hx = x + size * Math.cos(angle);
+    const hy = y + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawStar(ctx, cx, cy, size) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 144 - 90) * Math.PI / 180;
+    const x = cx + size * Math.cos(angle);
+    const y = cy + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ============================================
+// GRADIENT CREATOR
+// ============================================
+function initGradientCreator() {
+  document.getElementById('gradientColor1')?.addEventListener('input', (e) => {
+    customGradient.color1 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientColor2')?.addEventListener('input', (e) => {
+    customGradient.color2 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientColor3')?.addEventListener('input', (e) => {
+    customGradient.color3 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientAngle')?.addEventListener('input', (e) => {
+    customGradient.angle = parseInt(e.target.value);
+    document.getElementById('gradientAngleValue').textContent = customGradient.angle + '°';
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('useThreeColors')?.addEventListener('change', (e) => {
+    customGradient.useThreeColors = e.target.checked;
+    document.getElementById('gradientColor3Container').style.display = e.target.checked ? 'block' : 'none';
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('applyCustomGradient')?.addEventListener('click', () => {
+    wallpaperState.background = 'custom-gradient';
+    wallpaperState.backgroundImage = null;
+    wallpaperState.pattern = null;
+    document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('.pattern-option').forEach(o => o.classList.remove('selected'));
+    renderWallpaper();
+    showNotification('Custom gradient applied!', 'success');
+  });
+  
+  updateGradientPreview();
+}
+
+function updateGradientPreview() {
+  const preview = document.getElementById('gradientPreview');
+  if (!preview) return;
+  
+  let gradientCSS;
+  if (customGradient.useThreeColors) {
+    gradientCSS = 'linear-gradient(' + customGradient.angle + 'deg, ' + customGradient.color1 + ' 0%, ' + customGradient.color2 + ' 50%, ' + customGradient.color3 + ' 100%)';
+  } else {
+    gradientCSS = 'linear-gradient(' + customGradient.angle + 'deg, ' + customGradient.color1 + ' 0%, ' + customGradient.color2 + ' 100%)';
+  }
+  preview.style.background = gradientCSS;
+}
+
+function getCustomGradient(ctx, width, height) {
+  const angleRad = (customGradient.angle - 90) * Math.PI / 180;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const length = Math.sqrt(width * width + height * height) / 2;
+  
+  const x1 = centerX - Math.cos(angleRad) * length;
+  const y1 = centerY - Math.sin(angleRad) * length;
+  const x2 = centerX + Math.cos(angleRad) * length;
+  const y2 = centerY + Math.sin(angleRad) * length;
+  
+  const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+  grad.addColorStop(0, customGradient.color1);
+  if (customGradient.useThreeColors) {
+    grad.addColorStop(0.5, customGradient.color2);
+    grad.addColorStop(1, customGradient.color3);
+  } else {
+    grad.addColorStop(1, customGradient.color2);
+  }
+  return grad;
+}
+
+function initPatternSelector() {
+  const container = document.getElementById('patternOptions');
   if (!container) return;
   
-  container.innerHTML = MEME_TEMPLATES.map(template => `
-    <div class="meme-template" data-id="${template.id}">
-      <img src="${template.url}" alt="${template.name}" loading="lazy" onerror="this.src='https://placehold.co/150x150/1a1a1a/666?text=${encodeURIComponent(template.name)}'">
-      <p>${template.name}</p>
-    </div>
-  `).join('');
+  container.innerHTML = WALLPAPER_PATTERNS.map(p => 
+    '<div class="pattern-option" data-pattern="' + p.id + '" title="' + p.name + '">' +
+    '<div class="pattern-preview pattern-' + p.id + '"></div>' +
+    '<span>' + p.name + '</span></div>'
+  ).join('');
   
-  container.querySelectorAll('.meme-template').forEach(el => {
+  container.querySelectorAll('.pattern-option').forEach(el => {
     el.addEventListener('click', () => {
-      const template = MEME_TEMPLATES.find(t => t.id === el.dataset.id);
-      if (template) selectMemeTemplate(template);
+      // Toggle pattern - click again to deselect
+      if (el.classList.contains('selected')) {
+        el.classList.remove('selected');
+        wallpaperState.pattern = null;
+      } else {
+        document.querySelectorAll('.pattern-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+        wallpaperState.pattern = el.dataset.pattern;
+      }
+      renderWallpaper();
     });
   });
-}
-
-async function selectMemeTemplate(template) {
-  try {
-    const img = await loadImage(template.url);
-    memeState.currentTemplate = template;
-    memeState.templateImage = img;
-    
-    const canvas = document.getElementById('memeCanvas');
-    const aspectRatio = img.width / img.height;
-    canvas.width = 800;
-    canvas.height = 800 / aspectRatio;
-    
-    document.querySelectorAll('.meme-template').forEach(el => el.classList.remove('selected'));
-    document.querySelector('.meme-template[data-id="' + template.id + '"]')?.classList.add('selected');
-    
-    renderMeme();
-    showNotification('Template selected! Add characters from your gallery.', 'success');
-  } catch (error) {
-    console.error('Error loading template:', error);
-    showNotification('Failed to load template', 'error');
-  }
-}
-
-function setupMemeCanvasEvents() {
-  const canvas = document.getElementById('memeCanvas');
-  if (!canvas) return;
   
-  const getCanvasCoords = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
-  };
-  
-  const findCharacterAt = (x, y) => {
-    for (let i = memeState.characters.length - 1; i >= 0; i--) {
-      const char = memeState.characters[i];
-      if (x >= char.x && x <= char.x + char.width && y >= char.y && y <= char.y + char.height) return char;
-    }
-    return null;
-  };
-  
-  const getResizeHandle = (char, x, y) => {
-    const handleSize = 30;
-    const handles = {
-      'se': { x: char.x + char.width, y: char.y + char.height }
-    };
-    for (const [name, pos] of Object.entries(handles)) {
-      if (Math.abs(x - pos.x) < handleSize && Math.abs(y - pos.y) < handleSize) return name;
-    }
-    return null;
-  };
-  
-  const onStart = (e) => {
-    e.preventDefault();
-    const coords = getCanvasCoords(e);
-    
-    if (memeState.selectedCharacter) {
-      const handle = getResizeHandle(memeState.selectedCharacter, coords.x, coords.y);
-      if (handle) { memeState.isResizing = true; return; }
-    }
-    
-    const char = findCharacterAt(coords.x, coords.y);
-    if (char) {
-      memeState.selectedCharacter = char;
-      memeState.isDragging = true;
-      memeState.dragOffset = { x: coords.x - char.x, y: coords.y - char.y };
-      const idx = memeState.characters.indexOf(char);
-      memeState.characters.splice(idx, 1);
-      memeState.characters.push(char);
-      renderMeme();
-    } else {
-      memeState.selectedCharacter = null;
-      renderMeme();
-    }
-  };
-  
-  const onMove = (e) => {
-    e.preventDefault();
-    const coords = getCanvasCoords(e);
-    
-    if (memeState.isDragging && memeState.selectedCharacter) {
-      memeState.selectedCharacter.x = coords.x - memeState.dragOffset.x;
-      memeState.selectedCharacter.y = coords.y - memeState.dragOffset.y;
-      renderMeme();
-    }
-    
-    if (memeState.isResizing && memeState.selectedCharacter) {
-      const char = memeState.selectedCharacter;
-      const aspectRatio = char.originalWidth / char.originalHeight;
-      char.width = Math.max(30, coords.x - char.x);
-      char.height = char.width / aspectRatio;
-      renderMeme();
-    }
-  };
-  
-  const onEnd = () => {
-    memeState.isDragging = false;
-    memeState.isResizing = false;
-  };
-  
-  canvas.addEventListener('mousedown', onStart);
-  canvas.addEventListener('mousemove', onMove);
-  canvas.addEventListener('mouseup', onEnd);
-  canvas.addEventListener('mouseleave', onEnd);
-  canvas.addEventListener('touchstart', onStart);
-  canvas.addEventListener('touchmove', onMove);
-  canvas.addEventListener('touchend', onEnd);
-}
-
-async function addToMeme(nft) {
-  if (!memeState.templateImage) {
-    showNotification('Please select a meme template first', 'error');
-    return;
-  }
-  
-  try {
-    const img = await loadImage(nft.image);
-    const processedImg = await removeBackgroundAdvanced(img);
-    
-    const canvas = document.getElementById('memeCanvas');
-    const defaultSize = Math.min(canvas.width, canvas.height) * 0.25;
-    const aspectRatio = img.width / img.height;
-    
-    const character = {
-      id: generateId(),
-      nft: nft,
-      originalImage: img,
-      processedImage: processedImg,
-      x: canvas.width * 0.3,
-      y: canvas.height * 0.3,
-      width: defaultSize * aspectRatio,
-      height: defaultSize,
-      originalWidth: img.width,
-      originalHeight: img.height
-    };
-    
-    memeState.characters.push(character);
-    memeState.selectedCharacter = character;
-    renderMeme();
-    showNotification('Character added to meme!', 'success');
-  } catch (error) {
-    console.error('Error adding to meme:', error);
-    showNotification('Failed to add character', 'error');
-  }
-}
-
-function renderMeme() {
-  const canvas = document.getElementById('memeCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // Draw template
-  if (memeState.templateImage) {
-    ctx.drawImage(memeState.templateImage, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#666';
-    ctx.font = '24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Select a meme template', canvas.width / 2, canvas.height / 2);
-  }
-  
-  // Draw characters
-  memeState.characters.forEach(char => {
-    ctx.drawImage(char.processedImage, char.x, char.y, char.width, char.height);
-    
-    if (char === memeState.selectedCharacter) {
-      ctx.strokeStyle = '#00ff88';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 4]);
-      ctx.strokeRect(char.x, char.y, char.width, char.height);
-      ctx.setLineDash([]);
-      
-      ctx.fillStyle = '#00ff88';
-      ctx.beginPath();
-      ctx.arc(char.x + char.width, char.y + char.height, 12, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  });
-  
-  // Draw text
-  if (memeState.topText || memeState.bottomText) {
-    ctx.font = 'bold ' + Math.floor(canvas.width / 12) + 'px Impact, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = Math.floor(canvas.width / 100);
-    ctx.strokeStyle = 'black';
-    ctx.fillStyle = 'white';
-    
-    if (memeState.topText) {
-      const topY = canvas.height * 0.1;
-      ctx.strokeText(memeState.topText.toUpperCase(), canvas.width / 2, topY);
-      ctx.fillText(memeState.topText.toUpperCase(), canvas.width / 2, topY);
-    }
-    
-    if (memeState.bottomText) {
-      const bottomY = canvas.height * 0.95;
-      ctx.strokeText(memeState.bottomText.toUpperCase(), canvas.width / 2, bottomY);
-      ctx.fillText(memeState.bottomText.toUpperCase(), canvas.width / 2, bottomY);
-    }
-  }
-}
-
-function downloadMeme() {
-  const canvas = document.getElementById('memeCanvas');
-  if (!memeState.templateImage) {
-    showNotification('Please select a template first', 'error');
-    return;
-  }
-  
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = canvas.width;
-  tempCanvas.height = canvas.height;
-  const ctx = tempCanvas.getContext('2d');
-  
-  ctx.drawImage(memeState.templateImage, 0, 0, canvas.width, canvas.height);
-  
-  memeState.characters.forEach(char => {
-    ctx.drawImage(char.processedImage, char.x, char.y, char.width, char.height);
-  });
-  
-  if (memeState.topText || memeState.bottomText) {
-    ctx.font = 'bold ' + Math.floor(canvas.width / 12) + 'px Impact, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = Math.floor(canvas.width / 100);
-    ctx.strokeStyle = 'black';
-    ctx.fillStyle = 'white';
-    
-    if (memeState.topText) {
-      const topY = canvas.height * 0.1;
-      ctx.strokeText(memeState.topText.toUpperCase(), canvas.width / 2, topY);
-      ctx.fillText(memeState.topText.toUpperCase(), canvas.width / 2, topY);
-    }
-    if (memeState.bottomText) {
-      const bottomY = canvas.height * 0.95;
-      ctx.strokeText(memeState.bottomText.toUpperCase(), canvas.width / 2, bottomY);
-      ctx.fillText(memeState.bottomText.toUpperCase(), canvas.width / 2, bottomY);
-    }
-  }
-  
-  tempCanvas.toBlob(blob => {
-    const link = document.createElement('a');
-    link.download = 'nft-meme.png';
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    URL.revokeObjectURL(link.href);
-  });
+  // Pattern color change
+  document.getElementById('patternColor')?.addEventListener('input', () => renderWallpaper());
+  document.getElementById('patternOpacity')?.addEventListener('input', () => renderWallpaper());
 }
 
 // ============================================
@@ -1908,7 +1955,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   
   initWallpaperMaker();
-  initMemeGenerator();
+  initPatternSelector();
+  initGradientCreator();
   
   const gridModeToggle = document.getElementById('gridModeToggle');
   const gridOptions = document.getElementById('gridOptions');
