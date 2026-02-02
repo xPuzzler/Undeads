@@ -1,3382 +1,2157 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Based Undeads — Rise on Base</title>
-  <meta name="description" content="6,666 undead souls rising on Base blockchain. Join the horde.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+// ============================================
+// BASED UNDEADS - ENHANCED SCRIPT
+// All original functionality preserved
+// Enhanced wallpaper maker with patterns & gradients
+// ============================================
+
+let CONFIG = {
+  ALCHEMY_API_KEY: null,
+  OPENSEA_API_KEY: null,
+  MORALIS_API_KEY: null,
+  BASED_UNDEADS_CONTRACT: '0x4aec4eddfab595c04557f78178f0962e46a02989',
+  BASE_CHAIN_ID: 8453
+};
+
+const RAFFLE_CONFIG = {
+  PHASE: 3,
+  PHASE_NAME: "Phase 4 - Based Undeads Giveaway",
+  TOKEN_RANGE: { min: 3334, max: 4444 },
+  TOTAL_WINNERS: 10,
+  IS_ACTIVE: true,
+  REWARD_OPENSEA_URLS: [
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/666",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/1302",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/1919",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/2633",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/2999",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/3690",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/4165",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/116",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/770",
+    "https://opensea.io/assets/base/0x4aec4eddfab595c04557f78178f0962e46a02989/2182",
+  ],
+  REWARD_TOKENS: []
+};
+
+let raffleState = {
+  eligibleTokens: [],
+  allEligibleEntries: [],
+  walletAddress: '',
+  winners: [],
+  isSpinning: false,
+  eligibleNFTs: []
+};
+
+const SUPPORTED_CHAINS = {
+  base: { name: 'Base', chainId: 8453, alchemyNetwork: 'base-mainnet', openSeaSlug: 'base', apiEndpoint: 'base', moralisChain: 'base', alchemyChain: 'base-mainnet' },
+  apechain: { name: 'ApeChain', chainId: 33139, alchemyNetwork: 'apechain-mainnet', openSeaSlug: 'ape_chain', apiEndpoint: 'ape_chain', moralisChain: 'apechain', alchemyChain: 'apechain-mainnet' },
+  abstract: { name: 'Abstract', chainId: 2741, alchemyNetwork: 'abstract-mainnet', openSeaSlug: 'abstract', apiEndpoint: 'abstract', moralisChain: 'abstract', alchemyChain: 'abstract-mainnet' },
+  ethereum: { name: 'Ethereum', chainId: 1, alchemyNetwork: 'eth-mainnet', openSeaSlug: 'ethereum', apiEndpoint: 'ethereum', moralisChain: 'eth', alchemyChain: 'eth-mainnet' }
+};
+
+const BASE_API_URL = 'https://api.opensea.io/api/v2';
+const MORALIS_API_URL = 'https://deep-index.moralis.io/api/v2';
+
+let currentChain = 'base';
+let userWalletAddress = null;
+let userCollections = new Map();
+let allUserNFTs = [];
+let selectedCollectionNFTs = [];
+let selectedNFTsForGrid = new Set();
+let originalImageData = new Map();
+
+// ============================================
+// ENHANCED WALLPAPER MAKER STATE
+// ============================================
+let wallpaperState = {
+  background: 'linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+  backgroundImage: null,
+  pattern: null,
+  characters: [],
+  selectedCharacter: null,
+  isDragging: false,
+  isResizing: false,
+  dragOffset: { x: 0, y: 0 },
+  resizeHandle: null,
+  removeBackground: true
+};
+
+// ============================================
+// WALLPAPER PATTERNS
+// ============================================
+const WALLPAPER_PATTERNS = [
+  { id: 'dots', name: 'Dots', type: 'pattern' },
+  { id: 'grid', name: 'Grid', type: 'pattern' },
+  { id: 'diagonal', name: 'Diagonal Lines', type: 'pattern' },
+  { id: 'waves', name: 'Waves', type: 'pattern' },
+  { id: 'hexagon', name: 'Hexagons', type: 'pattern' },
+  { id: 'circles', name: 'Circles', type: 'pattern' },
+  { id: 'triangles', name: 'Triangles', type: 'pattern' },
+  { id: 'noise', name: 'Noise', type: 'pattern' },
+  { id: 'stars', name: 'Stars', type: 'pattern' },
+  { id: 'crosshatch', name: 'Crosshatch', type: 'pattern' }
+];
+
+let customGradient = {
+  color1: '#0f0c29',
+  color2: '#302b63',
+  color3: '#24243e',
+  angle: 180,
+  useThreeColors: true
+};
+
+// ============================================
+// CUSTOM CURSOR
+// ============================================
+const cursor = document.querySelector('.cursor');
+const cursorDot = document.querySelector('.cursor-dot');
+
+if (cursor && cursorDot) {
+  let mouseX = 0, mouseY = 0;
+  let cursorX = 0, cursorY = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    cursorDot.style.left = mouseX + 'px';
+    cursorDot.style.top = mouseY + 'px';
+  });
+
+  function animateCursor() {
+    cursorX += (mouseX - cursorX) * 0.15;
+    cursorY += (mouseY - cursorY) * 0.15;
+    cursor.style.left = cursorX + 'px';
+    cursor.style.top = cursorY + 'px';
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+
+  document.addEventListener('mouseover', (e) => {
+    if (e.target.closest('a, button, .nft-thumbnail, .nft-card, .bg-option, select, input, .toggle, .leaderboard-entry, .meme-template, .character-item')) {
+      cursor.classList.add('hover');
+    }
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('a, button, .nft-thumbnail, .nft-card, .bg-option, select, input, .toggle, .leaderboard-entry, .meme-template, .character-item')) {
+      cursor.classList.remove('hover');
+    }
+  });
+}
+
+// ============================================
+// SCROLL PROGRESS
+// ============================================
+const progressBar = document.querySelector('.scroll-progress');
+if (progressBar) {
+  window.addEventListener('scroll', () => {
+    const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (window.pageYOffset / windowHeight) * 100;
+    progressBar.style.width = scrolled + '%';
+  });
+}
+
+// ============================================
+// API INITIALIZATION
+// ============================================
+async function initializeAPIKeys() {
+  try {
+    const response = await fetch('/.netlify/functions/api-keys');
+    if (!response.ok) throw new Error('API keys fetch failed');
+    const data = await response.json();
+    if (!data.apiKeys || !data.apiKeys.opensea || !data.apiKeys.alchemy) throw new Error('API keys missing');
+    CONFIG.ALCHEMY_API_KEY = data.apiKeys.alchemy;
+    CONFIG.OPENSEA_API_KEY = Array.isArray(data.apiKeys.opensea) ? data.apiKeys.opensea[0] : data.apiKeys.opensea;
+    CONFIG.MORALIS_API_KEY = data.apiKeys.moralis;
+    console.log('✅ API keys loaded');
+    return true;
+  } catch (error) {
+    console.error('❌ Error loading API keys:', error);
+    showNotification('Failed to load configuration', 'error');
+    return false;
+  }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function normalizeTokenId(tokenId) {
+  if (!tokenId) return '';
+  if (typeof tokenId === 'string' && tokenId.startsWith('0x')) return parseInt(tokenId, 16).toString();
+  return tokenId.toString();
+}
+
+function getProxiedImageUrl(url) {
+  if (!url) return 'https://placehold.co/300x300/0a0a0a/00ff88/png?text=NFT';
+  if (url.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + url.replace('ipfs://', '');
+  if (url.startsWith('ar://')) return 'https://arweave.net/' + url.replace('ar://', '');
+  return url;
+}
+
+function showNotification(message, type = 'info') {
+  const existing = document.querySelector('.notification');
+  if (existing) existing.remove();
+  const notification = document.createElement('div');
+  notification.className = 'notification ' + type;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 3000);
+}
+
+function isSpamCollection(name) {
+  const nameLower = name.toLowerCase();
+  const spamKeywords = ['claim', 'reward', 'visit', 'voucher', 'airdrop', 'free mint', '.com', '.io', '.xyz', 'http', 'www.', '$', 'usd'];
+  return spamKeywords.some(keyword => nameLower.includes(keyword));
+}
+
+function generateId() {
+  return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// ============================================
+// WALLET & NFT LOADING
+// ============================================
+async function fetchWalletNFTs() {
+  const walletInput = document.getElementById('walletAddress');
+  const wallet = walletInput.value.trim();
+  if (!wallet) { showNotification('Please enter a wallet address or ENS name', 'error'); return; }
+  if (!wallet.endsWith('.eth') && (!wallet.startsWith('0x') || wallet.length !== 42)) { showNotification('Please enter a valid wallet address or ENS name', 'error'); return; }
   
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  let resolvedAddress = wallet;
+  if (wallet.endsWith('.eth')) {
+    showNotification('Resolving ENS name...', 'info');
+    resolvedAddress = await resolveENS(wallet);
+    if (!resolvedAddress) { showNotification('Could not resolve ENS name: ' + wallet, 'error'); return; }
+    showNotification('✓ Resolved to: ' + resolvedAddress.slice(0, 6) + '...' + resolvedAddress.slice(-4), 'success');
+  }
+  userWalletAddress = resolvedAddress;
+  await loadWalletCollections(resolvedAddress);
+}
+
+async function resolveENS(ensName) {
+  try {
+    const response = await fetch('https://api.ensdata.net/' + ensName);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.address) return data.address;
+    }
+    const backupResponse = await fetch('https://api.web3.bio/profile/ens/' + ensName);
+    if (backupResponse.ok) {
+      const backupData = await backupResponse.json();
+      if (backupData && backupData.address) return backupData.address;
+    }
+    return null;
+  } catch (error) { console.error('ENS resolution failed:', error); return null; }
+}
+
+async function loadWalletCollections(walletAddress) {
+  const chain = SUPPORTED_CHAINS[currentChain];
+  const nftGrid = document.getElementById('nftGrid');
+  nftGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);"><i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>Loading your NFTs...</div>';
   
-  <style>
-    :root {
-      --bg: #030303;
-      --bg-secondary: #0a0a0a;
-      --fg: #ffffff;
-      --muted: #666666;
-      --accent: #00ff88;
-      --accent-dim: rgba(0, 255, 136, 0.1);
-      --danger: #ff4444;
-      --border: rgba(255,255,255,0.06);
-      --glass: rgba(255,255,255,0.02);
-      --glass-border: rgba(255,255,255,0.08);
+  try {
+    const seenNFTs = new Set();
+    let allNFTs = [];
+
+    // OpenSea API
+    try {
+      console.log('Fetching NFTs from OpenSea...');
+      let openSeaNextCursor = null, openSeaPage = 0;
+      do {
+        const openSeaUrl = openSeaNextCursor 
+          ? BASE_API_URL + '/chain/' + chain.apiEndpoint + '/account/' + walletAddress + '/nfts?limit=200&next=' + openSeaNextCursor
+          : BASE_API_URL + '/chain/' + chain.apiEndpoint + '/account/' + walletAddress + '/nfts?limit=200';
+        const openSeaResponse = await fetch(openSeaUrl, { headers: { 'X-API-KEY': CONFIG.OPENSEA_API_KEY, 'accept': 'application/json' } });
+        if (openSeaResponse.ok) {
+          const openSeaData = await openSeaResponse.json();
+          if (openSeaData.nfts && openSeaData.nfts.length > 0) {
+            openSeaData.nfts.forEach(nft => {
+              const uniqueId = (nft.contract || '').toLowerCase() + '_' + normalizeTokenId(nft.identifier);
+              if (!seenNFTs.has(uniqueId)) {
+                seenNFTs.add(uniqueId);
+                allNFTs.push({ id: nft.identifier, name: nft.name || '#' + nft.identifier, image: getProxiedImageUrl(nft.image_url), collection: nft.collection, contractAddress: nft.contract, raw: nft });
+              }
+            });
+            console.log('OpenSea page ' + (openSeaPage + 1) + ': Found ' + openSeaData.nfts.length + ' NFTs (Total: ' + allNFTs.length + ')');
+            openSeaNextCursor = openSeaData.next; openSeaPage++;
+          } else break;
+        } else break;
+        if (openSeaNextCursor) await new Promise(resolve => setTimeout(resolve, 300));
+      } while (openSeaNextCursor && openSeaPage < 20);
+    } catch (error) { console.error('OpenSea API Error:', error); }
+
+    // Moralis API
+    if (CONFIG.MORALIS_API_KEY) {
+      try {
+        console.log('Fetching NFTs from Moralis...');
+        let moralisCursor = null;
+        let moralisPage = 0;
+        do {
+          const moralisUrl = moralisCursor
+            ? MORALIS_API_URL + '/' + walletAddress + '/nft?chain=' + chain.moralisChain + '&format=decimal&limit=100&cursor=' + moralisCursor
+            : MORALIS_API_URL + '/' + walletAddress + '/nft?chain=' + chain.moralisChain + '&format=decimal&limit=100';
+          const moralisResponse = await fetch(moralisUrl, { headers: { 'X-API-Key': CONFIG.MORALIS_API_KEY } });
+          if (moralisResponse.ok) {
+            const moralisData = await moralisResponse.json();
+            if (moralisData.result && moralisData.result.length > 0) {
+              moralisData.result.forEach(nft => {
+                const uniqueId = (nft.token_address || '').toLowerCase() + '_' + normalizeTokenId(nft.token_id);
+                if (!seenNFTs.has(uniqueId)) {
+                  seenNFTs.add(uniqueId);
+                  let metadata = {};
+                  try { metadata = nft.metadata ? JSON.parse(nft.metadata) : {}; } catch (e) {}
+                  allNFTs.push({
+                    id: nft.token_id,
+                    name: nft.name || metadata.name || '#' + nft.token_id,
+                    image: getProxiedImageUrl(metadata.image || metadata.image_url),
+                    collection: nft.name,
+                    contractAddress: nft.token_address,
+                    raw: nft
+                  });
+                }
+              });
+              console.log('Moralis page ' + (moralisPage + 1) + ': Found ' + moralisData.result.length + ' NFTs (Total: ' + allNFTs.length + ')');
+              moralisCursor = moralisData.cursor;
+              moralisPage++;
+            } else break;
+          } else break;
+          if (moralisCursor) await new Promise(resolve => setTimeout(resolve, 300));
+        } while (moralisCursor && moralisPage < 30);
+      } catch (error) { console.error('Moralis API Error:', error); }
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    // Alchemy API
+    try {
+      console.log('Fetching NFTs from Alchemy...');
+      let alchemyPageKey = null, alchemyPage = 0;
+      do {
+        const alchemyUrl = alchemyPageKey
+          ? 'https://' + chain.alchemyNetwork + '.g.alchemy.com/nft/v3/' + CONFIG.ALCHEMY_API_KEY + '/getNFTsForOwner?owner=' + walletAddress + '&withMetadata=true&pageSize=100&pageKey=' + alchemyPageKey
+          : 'https://' + chain.alchemyNetwork + '.g.alchemy.com/nft/v3/' + CONFIG.ALCHEMY_API_KEY + '/getNFTsForOwner?owner=' + walletAddress + '&withMetadata=true&pageSize=100';
+        const alchemyResponse = await fetch(alchemyUrl);
+        if (alchemyResponse.ok) {
+          const alchemyData = await alchemyResponse.json();
+          if (alchemyData.ownedNfts && alchemyData.ownedNfts.length > 0) {
+            alchemyData.ownedNfts.forEach(nft => {
+              const uniqueId = ((nft.contract?.address || '')).toLowerCase() + '_' + normalizeTokenId(nft.tokenId);
+              if (!seenNFTs.has(uniqueId)) {
+                seenNFTs.add(uniqueId);
+                const imageUrl = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.raw?.metadata?.image || '';
+                if (imageUrl) allNFTs.push({ id: nft.tokenId, name: nft.name || nft.title || '#' + nft.tokenId, image: getProxiedImageUrl(imageUrl), collection: nft.contract?.openSeaMetadata?.collectionName || nft.contract?.name, contractAddress: nft.contract?.address, raw: nft });
+              }
+            });
+            console.log('Alchemy page ' + (alchemyPage + 1) + ': Found ' + alchemyData.ownedNfts.length + ' NFTs (Total: ' + allNFTs.length + ')');
+            alchemyPageKey = alchemyData.pageKey; alchemyPage++;
+          } else break;
+        } else break;
+        if (alchemyPageKey) await new Promise(resolve => setTimeout(resolve, 300));
+      } while (alchemyPageKey && alchemyPage < 50);
+    } catch (error) { console.error('Alchemy API Error:', error); }
 
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      font-family: 'Syne', sans-serif;
-      background: var(--bg);
-      color: var(--fg);
-      overflow-x: hidden;
-      cursor: none;
-      min-height: 100vh;
-      max-width: 100vw;
-      position: relative;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      max-width: 100%;
-    }
-
-    img, canvas, iframe {
-      max-width: 100%;
-      height: auto;
-    }
-
-    /* Custom Cursor */
-    .cursor {
-      width: 20px;
-      height: 20px;
-      border: 1px solid rgba(0, 255, 136, 0.6);
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transition: transform 0.15s ease, width 0.2s, height 0.2s, border-color 0.2s, background 0.2s;
-      transform: translate(-50%, -50%);
-    }
-
-    .cursor-dot {
-      width: 4px;
-      height: 4px;
-      background: var(--accent);
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-    }
-
-    .cursor.hover {
-      width: 50px;
-      height: 50px;
-      border-color: var(--accent);
-      background: rgba(0, 255, 136, 0.1);
-    }
-
-    /* Noise Overlay */
-    .noise {
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-      opacity: 0.025;
-      pointer-events: none;
-      z-index: 1000;
-    }
-
-    /* Scroll Progress */
-    .scroll-progress {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--accent), #00cc6f);
-      z-index: 9999;
-      transition: width 0.1s ease;
-    }
-
-    /* Typography */
-    .font-display {
-      font-family: 'Instrument Serif', serif;
-    }
-
-    .font-mono {
-      font-family: 'Geist Mono', monospace;
-    }
-
-    .font-creepy {
-      font-family: 'Creepster', cursive;
-    }
-
-    /* Navigation */
-    nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-      padding: 20px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(3, 3, 3, 0.8);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-logo {
-      font-family: 'Creepster', cursive;
-      font-size: 24px;
-      color: var(--accent);
-      text-decoration: none;
-      letter-spacing: 2px;
-      text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-      transition: all 0.3s;
-    }
-
-    .nav-logo:hover {
-      text-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 32px;
-      align-items: center;
-    }
-
-    .nav-link {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--fg);
-      text-decoration: none;
-      opacity: 0.7;
-      transition: all 0.3s;
-      position: relative;
-    }
-
-    .nav-link:hover {
-      opacity: 1;
-      color: var(--accent);
-    }
-
-    .nav-link::after {
-      content: '';
-      position: absolute;
-      bottom: -4px;
-      left: 0;
-      width: 0;
-      height: 1px;
-      background: var(--accent);
-      transition: width 0.3s;
-    }
-
-    .nav-link:hover::after {
-      width: 100%;
-    }
-
-    .nav-social {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .nav-social a {
-      color: var(--fg);
-      opacity: 0.6;
-      transition: all 0.3s;
-      font-size: 18px;
-    }
-
-    .nav-social a:hover {
-      opacity: 1;
-      color: var(--accent);
-    }
-
-    .nav-btn {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 12px 24px;
-      background: var(--accent);
-      color: var(--bg);
-      text-decoration: none;
-      border-radius: 100px;
-      font-weight: 500;
-      transition: all 0.3s;
-    }
-
-    .nav-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
-    }
-
-    .mint-btn {
-  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-  color: #000000;
-  font-weight: 600;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
-  position: relative;
-  overflow: hidden;
+    console.log('Total unique NFTs found: ' + allNFTs.length);
+    if (allNFTs.length === 0) { nftGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #ffaa00;">No NFTs found in this wallet</div>'; return; }
+    allUserNFTs = allNFTs;
+    processNFTsByCollection(allNFTs);
+    displayCollectionSelector();
+  } catch (error) { console.error('Error fetching NFTs:', error); nftGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #ff4444;">Error loading NFTs</div>'; }
 }
 
-.mint-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transition: left 0.5s;
+function processNFTsByCollection(nfts) {
+  userCollections.clear();
+  nfts.forEach(nft => {
+    if (!nft.contractAddress) return;
+    const collectionKey = nft.contractAddress.toLowerCase();
+    const collectionName = nft.collection || 'Unknown Collection';
+    if (isSpamCollection(collectionName)) return;
+    if (!userCollections.has(collectionKey)) userCollections.set(collectionKey, { name: collectionName, contract: nft.contractAddress, nfts: [] });
+    if (nft.image) userCollections.get(collectionKey).nfts.push({ id: nft.id, name: nft.name, image: nft.image, collection: collectionName, contractAddress: nft.contractAddress, raw: nft });
+  });
+  for (const [key, collection] of userCollections.entries()) { if (collection.nfts.length === 0) userCollections.delete(key); }
 }
 
-.mint-btn:hover::before {
-  left: 100%;
+function displayCollectionSelector() {
+  const collectionSection = document.getElementById('collectionSection');
+  const collectionSelect = document.getElementById('collectionSelect');
+  collectionSelect.innerHTML = '<option value="">All Collections (Multi-Select)</option>';
+  const sortedCollections = Array.from(userCollections.values()).sort((a, b) => b.nfts.length - a.nfts.length);
+  sortedCollections.forEach(collection => {
+    const option = document.createElement('option');
+    option.value = collection.contract;
+    option.textContent = collection.name + ' (' + collection.nfts.length + ' NFTs)';
+    collectionSelect.appendChild(option);
+  });
+  collectionSection.classList.remove('hidden');
+  selectedCollectionNFTs = allUserNFTs.filter(nft => nft.image);
+  displayNFTs(selectedCollectionNFTs);
+  const nftCount = document.getElementById('nftCount');
+  if (nftCount) nftCount.textContent = selectedCollectionNFTs.length + ' NFTs';
 }
 
-.mint-btn:hover {
-  background: linear-gradient(135deg, #00ff88 0%, #00ffaa 100%);
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(0, 255, 136, 0.5);
+document.getElementById('collectionSelect')?.addEventListener('change', function() {
+  const selectedContract = this.value;
+  if (!selectedContract) { selectedCollectionNFTs = allUserNFTs.filter(nft => nft.image); displayNFTs(selectedCollectionNFTs); }
+  else { const collection = userCollections.get(selectedContract.toLowerCase()); if (collection) { selectedCollectionNFTs = collection.nfts; displayNFTs(collection.nfts); } }
+  const nftCount = document.getElementById('nftCount');
+  if (nftCount) nftCount.textContent = selectedCollectionNFTs.length + ' NFTs';
+});
+
+function displayNFTs(nfts) {
+  const nftGrid = document.getElementById('nftGrid');
+  nftGrid.innerHTML = '';
+  nfts.forEach((nft, index) => {
+    const div = document.createElement('div');
+    div.className = 'nft-item-wrapper';
+    div.innerHTML = '<img src="' + nft.image + '" alt="' + nft.name + '" class="nft-thumbnail" data-index="' + index + '" loading="lazy" onerror="this.src=\'https://placehold.co/300x300/0a0a0a/00ff88/png?text=NFT\'"/><p style="font-size: 11px; text-align: center; margin-top: 8px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;">' + nft.name + '</p><div class="nft-quick-actions"><button class="quick-btn" data-action="wallpaper" title="Add to Wallpaper"><i class="fas fa-mobile-alt"></i></button></div>';
+    div.querySelector('.nft-thumbnail').addEventListener('click', () => handleNFTSelection(index, div));
+    div.querySelector('[data-action="wallpaper"]').addEventListener('click', (e) => { e.stopPropagation(); addToWallpaper(nft); document.getElementById('wallpaper')?.scrollIntoView({ behavior: 'smooth' }); });
+    nftGrid.appendChild(div);
+  });
 }
 
-.mint-icon {
-  font-size: 14px;
+function handleNFTSelection(index, element) {
+  const selectionMode = document.querySelector('input[name="selectionMode"]:checked')?.value;
+  const gridModeToggle = document.getElementById('gridModeToggle');
+  if (!gridModeToggle?.classList.contains('active')) return;
+  if (selectionMode !== 'manual') return;
+  const nft = selectedCollectionNFTs[index];
+  const nftKey = nft.contractAddress + '_' + nft.id;
+  if (selectedNFTsForGrid.has(nftKey)) { selectedNFTsForGrid.delete(nftKey); element.querySelector('img').classList.remove('selected-for-grid'); }
+  else { selectedNFTsForGrid.add(nftKey); element.querySelector('img').classList.add('selected-for-grid'); }
 }
 
-    /* Mobile Nav */
-    .mobile-menu-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--fg);
-      font-size: 24px;
-      cursor: none;
-      transition: transform 0.3s;
-    }
-
-    .mobile-menu-btn:active {
-      transform: scale(0.9);
-    }
-
-    /* Hero Section */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      padding: 120px 40px;
-      overflow: hidden;
-    }
-
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center bottom, rgba(0, 255, 136, 0.08) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .hero-badge {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--accent);
-      padding: 8px 16px;
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      border-radius: 100px;
-      margin-bottom: 32px;
-      opacity: 0;
-      animation: fadeUp 1s 0.2s forwards;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .hero-badge .pulse {
-      width: 6px;
-      height: 6px;
-      background: var(--accent);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.2); }
-    }
-
-    .hero-title {
-      font-family: 'Creepster', cursive;
-      font-size: clamp(60px, 15vw, 200px);
-      font-weight: 400;
-      line-height: 0.9;
-      text-align: center;
-      letter-spacing: 0.05em;
-      color: var(--fg);
-      text-shadow: 0 0 60px rgba(0, 255, 136, 0.3);
-      margin-bottom: 24px;
-      opacity: 0;
-      animation: fadeUp 1s 0.4s forwards;
-    }
-
-    .hero-subtitle {
-      font-family: 'Instrument Serif', serif;
-      font-size: clamp(24px, 4vw, 48px);
-      font-style: italic;
-      color: var(--accent);
-      margin-bottom: 32px;
-      opacity: 0;
-      animation: fadeUp 1s 0.6s forwards;
-    }
-
-    .hero-description {
-      font-family: 'Geist Mono', monospace;
-      font-size: 13px;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      text-align: center;
-      max-width: 500px;
-      line-height: 1.8;
-      opacity: 0;
-      animation: fadeUp 1s 0.8s forwards;
-    }
-
-    .hero-cta {
-      margin-top: 48px;
-      display: flex;
-      gap: 16px;
-      opacity: 0;
-      animation: fadeUp 1s 1s forwards;
-    }
-
-    .btn-primary {
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 18px 40px;
-      background: var(--accent);
-      color: var(--bg);
-      text-decoration: none;
-      border-radius: 100px;
-      font-weight: 500;
-      border: none;
-      cursor: none;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 20px 60px rgba(0, 255, 136, 0.4);
-    }
-
-    .btn-secondary {
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 18px 40px;
-      background: transparent;
-      color: var(--fg);
-      text-decoration: none;
-      border-radius: 100px;
-      font-weight: 500;
-      border: 1px solid var(--glass-border);
-      cursor: none;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .scroll-indicator {
-      position: absolute;
-      bottom: 40px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      opacity: 0;
-      animation: fadeUp 1s 1.2s forwards;
-    }
-
-    .scroll-indicator span {
-      font-family: 'Geist Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .scroll-line {
-      width: 1px;
-      height: 60px;
-      background: linear-gradient(to bottom, var(--accent), transparent);
-      animation: scrollPulse 2s infinite;
-    }
-
-    @keyframes scrollPulse {
-      0%, 100% { opacity: 0.3; transform: scaleY(1); }
-      50% { opacity: 1; transform: scaleY(1.2); }
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Glass Card */
-    .glass-card {
-      background: var(--glass);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      transition: all 0.4s;
-    }
-
-    .glass-card:hover {
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-
-    /* Section Styles */
-    .section {
-      padding: 120px 40px;
-      position: relative;
-    }
-
-    .section-label {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .section-label::before {
-      content: '';
-      width: 40px;
-      height: 1px;
-      background: var(--accent);
-    }
-
-    .section-title {
-      font-family: 'Instrument Serif', serif;
-      font-size: clamp(36px, 6vw, 64px);
-      font-weight: 400;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-      margin-bottom: 24px;
-    }
-
-    .section-title em {
-      font-style: italic;
-      color: var(--accent);
-    }
-
-    /* Featured NFTs Scroller */
-    .nft-scroller-section {
-      padding: 80px 0;
-      overflow: hidden;
-    }
-
-    .nft-scroller-header {
-      padding: 0 40px;
-      margin-bottom: 48px;
-    }
-
-    .scrolling-container {
-      position: relative;
-      overflow: hidden;
-      padding: 20px 0;
-    }
-
-    .nft-scroll-row {
-      display: flex;
-      gap: 24px;
-      width: max-content;
-    }
-
-    .nft-scroll-left {
-      animation: scrollLeft 60s linear infinite;
-    }
-
-    .nft-scroll-right {
-      animation: scrollRight 60s linear infinite;
-    }
-
-    @keyframes scrollLeft {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-
-    @keyframes scrollRight {
-      0% { transform: translateX(-50%); }
-      100% { transform: translateX(0); }
-    }
-
-    .nft-scroll-row:hover {
-      animation-play-state: paused;
-    }
-
-    .nft-card {
-      width: 220px;
-      flex-shrink: 0;
-      position: relative;
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .nft-card:hover {
-      transform: translateY(-16px) scale(1.05);
-      z-index: 10;
-    }
-
-    .nft-card a {
-      text-decoration: none;
-      display: block;
-    }
-
-    .nft-card img {
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      border-radius: 20px;
-      border: 1px solid var(--glass-border);
-      transition: all 0.4s;
-    }
-
-    .nft-card:hover img {
-      border-color: var(--accent);
-      box-shadow: 0 20px 60px rgba(0, 255, 136, 0.3);
-    }
-
-    .nft-card p {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-      text-align: center;
-      margin-top: 12px;
-      transition: color 0.3s;
-    }
-
-    .nft-card:hover p {
-      color: var(--fg);
-    }
-
-    /* Stats Section */
-    .stats-section {
-      padding: 80px 40px;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .stats-grid {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 24px;
-    }
-
-    .stat-item {
-      text-align: center;
-      padding: 40px 24px;
-      background: var(--glass);
-      border-radius: 20px;
-      border: 1px solid var(--glass-border);
-      transition: all 0.4s;
-    }
-
-    .stat-item:hover {
-      transform: translateY(-8px);
-      border-color: rgba(0, 255, 136, 0.2);
-    }
-
-    .stat-number {
-      font-family: 'Instrument Serif', serif;
-      font-size: clamp(36px, 5vw, 56px);
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .stat-number.accent {
-      color: var(--accent);
-    }
-
-    .stat-label {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    /* Raffle Section */
-    .raffle-section {
-      padding: 120px 40px;
-    }
-
-    .raffle-container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .raffle-header {
-      text-align: center;
-      margin-bottom: 60px;
-    }
-
-    .raffle-grid {
-      display: grid;
-      grid-template-columns: 1fr 1.2fr 1fr;
-      gap: 24px;
-      margin-bottom: 40px;
-    }
-
-    .raffle-panel {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 32px;
-    }
-
-    .raffle-panel-title {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .wheel-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .wheel-wrapper {
-      position: relative;
-      margin: 24px 0;
-    }
-
-    .wheel-pointer {
-      position: absolute;
-      top: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      width: 0;
-      height: 0;
-      border-left: 12px solid transparent;
-      border-right: 12px solid transparent;
-      border-top: 20px solid var(--accent);
-      filter: drop-shadow(0 2px 8px rgba(0, 255, 136, 0.6));
-    }
-
-    #raffleCanvasWheel {
-      border: 3px solid var(--accent);
-      border-radius: 50%;
-      box-shadow: 0 0 40px rgba(0, 255, 136, 0.2);
-    }
-
-    .wheel-controls {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .wheel-btn {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 14px 28px;
-      background: var(--accent);
-      color: var(--bg);
-      border: none;
-      border-radius: 100px;
-      cursor: none;
-      transition: all 0.3s;
-    }
-
-    .wheel-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
-    }
-
-    .wheel-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .wheel-btn.secondary {
-      background: transparent;
-      border: 1px solid var(--glass-border);
-      color: var(--fg);
-    }
-
-    .wheel-btn.secondary:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    /* Rewards Grid */
-    .rewards-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 16px;
-    }
-
-    .reward-item {
-      text-align: center;
-    }
-
-    .reward-item a {
-      display: block;
-      text-decoration: none;
-    }
-
-    .reward-item img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 2px solid var(--accent);
-      transition: all 0.3s;
-    }
-
-    .reward-item:hover img {
-      transform: scale(1.05);
-      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
-    }
-
-    .reward-item p {
-      font-family: 'Geist Mono', monospace;
-      font-size: 9px;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-
-    /* Eligible NFTs Display */
-    .eligible-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
-      max-height: 300px;
-      overflow-y: auto;
-      padding-right: 8px;
-    }
-
-    .eligible-grid::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .eligible-grid::-webkit-scrollbar-track {
-      background: var(--glass);
-      border-radius: 4px;
-    }
-
-    .eligible-grid::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 4px;
-    }
-
-    .eligible-item img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--glass-border);
-    }
-
-    .eligible-item p {
-      font-family: 'Geist Mono', monospace;
-      font-size: 9px;
-      color: var(--muted);
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    /* Leaderboard */
-    .leaderboard-list {
-      max-height: 400px;
-      overflow-y: auto;
-      padding-right: 8px;
-    }
-
-    .leaderboard-entry {
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      margin-bottom: 8px;
-      border: 1px solid transparent;
-      transition: all 0.3s;
-      cursor: pointer;
-    }
-
-    .leaderboard-entry:hover {
-      background: rgba(0, 255, 136, 0.05);
-      border-color: rgba(0, 255, 136, 0.2);
-    }
-
-    /* Wallet Checker */
-    .wallet-input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .input-field {
-      font-family: 'Geist Mono', monospace;
-      font-size: 13px;
-      padding: 16px 20px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      color: var(--fg);
-      width: 100%;
-      transition: all 0.3s;
-    }
-
-    .input-field:focus {
-      outline: none;
-      border-color: var(--accent);
-      background: rgba(0, 255, 136, 0.05);
-    }
-
-    .input-field::placeholder {
-      color: var(--muted);
-    }
-
-    .entries-display {
-      text-align: center;
-      padding: 24px;
-      background: rgba(0, 255, 136, 0.05);
-      border: 1px solid rgba(0, 255, 136, 0.2);
-      border-radius: 16px;
-      margin-top: 16px;
-    }
-
-    .entries-count {
-      font-family: 'Instrument Serif', serif;
-      font-size: 48px;
-      color: var(--accent);
-      line-height: 1;
-    }
-
-    .entries-label {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-
-    /* Winners Display */
-    .winners-list {
-      max-height: 350px;
-      overflow-y: auto;
-    }
-
-    .winner-card {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      margin-bottom: 12px;
-      border: 1px solid rgba(0, 255, 136, 0.2);
-    }
-
-    .winner-rank {
-      font-size: 24px;
-    }
-
-    .winner-img {
-      width: 60px;
-      height: 60px;
-      border-radius: 8px;
-      object-fit: cover;
-      border: 2px solid var(--accent);
-    }
-
-    .winner-info {
-      flex: 1;
-    }
-
-    .winner-name {
-      font-family: 'Geist Mono', monospace;
-      font-size: 13px;
-      color: var(--accent);
-      font-weight: 500;
-    }
-
-    /* Grid Maker Section */
-    .grid-maker-section {
-      padding: 120px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .grid-maker-container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .grid-maker-header {
-      margin-bottom: 60px;
-    }
-
-    .tool-panel {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 32px;
-      margin-bottom: 24px;
-    }
-
-    .tool-panel-title {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--fg);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .tool-panel-title i {
-      color: var(--accent);
-    }
-
-    .input-row {
-      display: grid;
-      grid-template-columns: 1fr 150px 150px;
-      gap: 16px;
-      align-items: end;
-    }
-
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .input-label {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    select {
-      font-family: 'Geist Mono', monospace;
-      font-size: 13px;
-      padding: 16px 20px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      color: var(--fg);
-      width: 100%;
-      cursor: none;
-      transition: all 0.3s;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 16px center;
-    }
-
-    select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
-    /* Grid Options */
-    .grid-options {
-      display: none;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      margin-top: 24px;
-    }
-
-    .grid-options.visible {
-      display: block;
-    }
-
-    .options-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .radio-group {
-      display: flex;
-      gap: 24px;
-    }
-
-    .radio-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: var(--fg);
-      cursor: none;
-    }
-
-    .radio-label input {
-      accent-color: var(--accent);
-      cursor: none;
-    }
-
-    .color-input {
-      width: 100%;
-      height: 50px;
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      cursor: none;
-      background: transparent;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      flex-wrap: wrap;
-    }
-
-    .btn-tool {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      padding: 14px 24px;
-      border-radius: 100px;
-      cursor: none;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-tool.primary {
-      background: var(--accent);
-      color: var(--bg);
-      border: none;
-    }
-
-    .btn-tool.primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
-    }
-
-    .btn-tool.secondary {
-      background: transparent;
-      color: var(--fg);
-      border: 1px solid var(--glass-border);
-    }
-
-    .btn-tool.secondary:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    /* NFT Grid Display */
-    .nft-gallery {
-      margin-top: 40px;
-    }
-
-    .nft-gallery-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    .nft-gallery-title {
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .nft-gallery-count {
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    #nftGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 16px;
-      max-height: 600px;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    #nftGrid::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    #nftGrid::-webkit-scrollbar-track {
-      background: var(--glass);
-      border-radius: 6px;
-    }
-
-    #nftGrid::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 6px;
-    }
-
-    .nft-thumbnail {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-      border-radius: 16px;
-      border: 2px solid transparent;
-      transition: all 0.3s;
-      cursor: none;
-    }
-
-    .nft-thumbnail:hover {
-      border-color: var(--accent);
-      transform: scale(1.03);
-    }
-
-    .nft-thumbnail.selected-for-grid {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
-    }
-
-    /* Grid Preview */
-    #gridPreviewContainer {
-      display: none;
-      margin-top: 40px;
-    }
-
-    #gridPreviewContainer.visible {
-      display: block;
-    }
-
-    .grid-preview-wrapper {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 32px;
-    }
-
-    .grid-preview-title {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
-    #gridPreview {
-      max-width: 100%;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-
-    #gridPreview img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    /* Wallpaper Maker Section */
-    .wallpaper-section {
-      padding: 120px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .wallpaper-container {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .wallpaper-grid {
-      display: grid;
-      grid-template-columns: 1fr 400px;
-      gap: 40px;
-      align-items: start;
-    }
-
-    .wallpaper-preview-container {
-      position: sticky;
-      top: 120px;
-    }
-
-    .phone-frame {
-      background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
-      border-radius: 40px;
-      padding: 12px;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-      max-width: 320px;
-      margin: 0 auto;
-    }
-
-    .phone-screen {
-      background: #000;
-      border-radius: 32px;
-      overflow: hidden;
-      position: relative;
-      aspect-ratio: 9/19.5;
-    }
-
-    .phone-notch {
-      position: absolute;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80px;
-      height: 24px;
-      background: #000;
-      border-radius: 12px;
-      z-index: 10;
-    }
-
-    #wallpaperCanvas {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .wallpaper-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .control-panel {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      padding: 24px;
-    }
-
-    .control-panel-title {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 16px;
-    }
-
-    .bg-options {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
-
-    .bg-option {
-      aspect-ratio: 9/16;
-      border-radius: 12px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: all 0.3s;
-      overflow: hidden;
-    }
-
-    .bg-option:hover {
-      transform: scale(1.05);
-    }
-
-    /* Pattern Options */
-    .pattern-options {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-
-    .pattern-option {
-      aspect-ratio: 1;
-      border-radius: 8px;
-      border: 2px solid var(--glass-border);
-      cursor: pointer;
-      overflow: hidden;
-      transition: all 0.3s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: var(--glass);
-      padding: 4px;
-    }
-
-    .pattern-option:hover {
-      border-color: rgba(0, 255, 136, 0.5);
-      transform: scale(1.05);
-    }
-
-    .pattern-option.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-    }
-
-    .pattern-option span {
-      font-size: 8px;
-      color: var(--muted);
-      margin-top: 2px;
-      text-align: center;
-    }
-
-    .pattern-preview {
-      width: 100%;
-      height: 24px;
-      background: #1a1a1a;
-      border-radius: 4px;
-    }
-
-    .bg-option.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-    }
-
-    .bg-option img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .size-slider {
-      width: 100%;
-      margin-top: 8px;
-      accent-color: var(--accent);
-      cursor: none;
-    }
-
-    .selected-nft-preview {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      min-height: 80px;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      border: 2px dashed var(--glass-border);
-    }
-
-    .selected-nft-item {
-      position: relative;
-      width: 64px;
-      height: 64px;
-    }
-
-    .selected-nft-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid var(--accent);
-    }
-
-    .selected-nft-item .remove-btn {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 20px;
-      height: 20px;
-      background: var(--danger);
-      border: none;
-      border-radius: 50%;
-      color: white;
-      font-size: 12px;
-      cursor: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .selected-nft-item:hover .remove-btn {
-      opacity: 1;
-    }
-
-    /* About Section */
-    .about-section {
-      padding: 160px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .about-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 80px;
-      align-items: center;
-    }
-
-    .about-content p {
-      font-size: 16px;
-      line-height: 1.8;
-      color: var(--muted);
-      margin-bottom: 24px;
-    }
-
-    .about-visual {
-      position: relative;
-    }
-
-    .about-image-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .about-image {
-      aspect-ratio: 1;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--glass-border);
-      transition: all 0.4s;
-    }
-
-    .about-image:hover {
-      transform: scale(1.05);
-      border-color: var(--accent);
-    }
-
-    .about-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      filter: grayscale(100%);
-      transition: filter 0.4s;
-    }
-
-    .about-image:hover img {
-      filter: grayscale(0%);
-    }
-
-    /* Team Section */
-    .team-section {
-      padding: 120px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .team-container {
-      max-width: 600px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    .team-member {
-      display: inline-block;
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.4s;
-    }
-
-    .team-member:hover {
-      transform: translateY(-12px);
-    }
-
-    .team-avatar {
-      width: 160px;
-      height: 160px;
-      border-radius: 50%;
-      margin: 0 auto 24px;
-      overflow: hidden;
-      border: 3px solid var(--glass-border);
-      transition: border-color 0.3s;
-    }
-
-    .team-member:hover .team-avatar {
-      border-color: var(--accent);
-    }
-
-    .team-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      filter: grayscale(100%);
-      transition: filter 0.4s;
-    }
-
-    .team-member:hover .team-avatar img {
-      filter: grayscale(0%);
-    }
-
-    .team-name {
-      font-family: 'Instrument Serif', serif;
-      font-size: 28px;
-      margin-bottom: 4px;
-    }
-
-    .team-role {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    /* Projects Section */
-    .projects-section {
-      padding: 120px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .projects-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .projects-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 32px;
-      margin-top: 60px;
-    }
-
-    .project-card {
-      position: relative;
-      height: 400px;
-      border-radius: 24px;
-      overflow: hidden;
-      border: 1px solid var(--glass-border);
-      transition: all 0.5s;
-    }
-
-    .project-card:hover {
-      transform: translateY(-12px);
-      border-color: var(--accent);
-      box-shadow: 0 30px 80px rgba(0, 255, 136, 0.2);
-    }
-
-    .project-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.5s;
-    }
-
-    .project-card:hover img {
-      transform: scale(1.05);
-    }
-
-    .project-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 32px;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, transparent 100%);
-    }
-
-    .project-title {
-      font-family: 'Instrument Serif', serif;
-      font-size: 28px;
-      margin-bottom: 8px;
-    }
-
-    .project-link {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: gap 0.3s;
-    }
-
-    .project-card:hover .project-link {
-      gap: 12px;
-    }
-
-    /* Viewer Controls */
-    .viewer-panel {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 32px;
-      transition: all 0.4s;
-    }
-
-    .viewer-panel:hover {
-      border-color: rgba(0, 255, 136, 0.2);
-      transform: translateY(-4px);
-    }
-
-    .control-btn {
-      font-family: 'Geist Mono', monospace;
-      transition: all 0.3s;
-    }
-
-    .control-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2);
-      border-color: var(--accent) !important;
-    }
-
-    .control-btn svg {
-      transition: transform 0.3s;
-    }
-
-    .control-btn:hover svg {
-      transform: scale(1.1);
-    }
-
-    /* Footer */
-    footer {
-      padding: 60px 40px;
-      border-top: 1px solid var(--border);
-    }
-
-    .footer-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .footer-logo {
-      font-family: 'Creepster', cursive;
-      font-size: 20px;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .footer-links {
-      display: flex;
-      gap: 32px;
-    }
-
-    .footer-link {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      text-decoration: none;
-      transition: color 0.3s;
-    }
-
-    .footer-link:hover {
-      color: var(--fg);
-    }
-
-    .footer-copy {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-    }
-
-    /* Notification */
-    .notification {
-      position: fixed;
-      top: 100px;
-      right: 24px;
-      padding: 16px 24px;
-      border-radius: 12px;
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      z-index: 1000;
-      animation: slideIn 0.3s ease;
-    }
-
-    .notification.success {
-      background: rgba(0, 255, 136, 0.2);
-      border: 1px solid rgba(0, 255, 136, 0.4);
-      color: var(--accent);
-    }
-
-    .notification.error {
-      background: rgba(255, 68, 68, 0.2);
-      border: 1px solid rgba(255, 68, 68, 0.4);
-      color: var(--danger);
-    }
-
-    .notification.info {
-      background: rgba(68, 136, 255, 0.2);
-      border: 1px solid rgba(68, 136, 255, 0.4);
-      color: #4488ff;
-    }
-
-    @keyframes slideIn {
-      from { transform: translateX(100px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    /* Checkbox Toggle */
-    .toggle-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .toggle {
-      position: relative;
-      width: 48px;
-      height: 26px;
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 100px;
-      cursor: none;
-      transition: all 0.3s;
-    }
-
-    .toggle::after {
-      content: '';
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 18px;
-      height: 18px;
-      background: var(--muted);
-      border-radius: 50%;
-      transition: all 0.3s;
-    }
-
-    .toggle.active {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-
-    .toggle.active::after {
-      left: 25px;
-      background: var(--bg);
-    }
-
-    .toggle-label {
-      font-family: 'Geist Mono', monospace;
-      font-size: 12px;
-      color: var(--fg);
-    }
-
-    /* Listed NFTs */
-    .listed-section {
-      margin-top: 40px;
-    }
-
-    .listed-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 16px;
-    }
-
-    .listed-item {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 2px solid rgba(255, 100, 100, 0.4);
-      transition: all 0.3s;
-    }
-
-    .listed-item:hover {
-      transform: translateY(-8px);
-      border-color: rgba(255, 100, 100, 0.8);
-      box-shadow: 0 15px 40px rgba(255, 100, 100, 0.2);
-    }
-
-    .listed-item img {
-      width: 100%;
-      aspect-ratio: 1;
-      object-fit: cover;
-    }
-
-    .listed-price {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: var(--accent);
-    }
-
-    .listed-info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 12px;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
-    }
-
-    .listed-info p {
-      font-family: 'Geist Mono', monospace;
-      font-size: 11px;
-    }
-
-    /* Hidden utility */
-    .hidden {
-      display: none !important;
-    }
-
-    /* NFT Quick Actions */
-    .nft-item-wrapper {
-      position: relative;
-    }
-
-    .nft-quick-actions {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      display: flex;
-      gap: 4px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .nft-item-wrapper:hover .nft-quick-actions {
-      opacity: 1;
-    }
-
-    .quick-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      border: none;
-      background: rgba(0, 0, 0, 0.8);
-      color: var(--accent);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      transition: all 0.3s;
-    }
-
-    .quick-btn:hover {
-      background: var(--accent);
-      color: var(--bg);
-      transform: scale(1.1);
-    }
-
-    /* Character Items in Wallpaper */
-    .character-item {
-      position: relative;
-      width: 64px;
-      height: 64px;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 2px solid var(--glass-border);
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .character-item.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
-    }
-
-    .character-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .character-item .remove-btn {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 20px;
-      height: 20px;
-      background: var(--danger);
-      border: none;
-      border-radius: 50%;
-      color: white;
-      font-size: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .character-item:hover .remove-btn {
-      opacity: 1;
-    }
-
-    .character-item .char-num {
-      position: absolute;
-      bottom: 2px;
-      left: 2px;
-      background: rgba(0, 0, 0, 0.8);
-      color: var(--accent);
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    /* Responsive */
-    @media (max-width: 1200px) {
-      .raffle-grid {
-        grid-template-columns: 1fr 1fr;
+// ============================================
+// GRID MAKER
+// ============================================
+function getActualGridSize() {
+  const gridSizeSelect = document.getElementById('gridSize');
+  const selected = gridSizeSelect.value;
+  if (selected === 'custom') {
+    const rows = parseInt(document.getElementById('customGridRows').value) || 3;
+    const cols = parseInt(document.getElementById('customGridCols').value) || 3;
+    return { rows: Math.min(rows, 50), cols: Math.min(cols, 50) };
+  }
+  if (selected.startsWith('random-')) {
+    let min, max;
+    switch (selected) {
+      case 'random-small': min = 2; max = 5; break;
+      case 'random-medium': min = 5; max = 10; break;
+      case 'random-large': min = 10; max = 20; break;
+    }
+    const size = Math.floor(Math.random() * (max - min + 1)) + min;
+    return { rows: size, cols: size };
+  }
+  const size = parseInt(selected);
+  return { rows: size, cols: size };
+}
+
+async function previewGrid() {
+  const gridData = getActualGridSize();
+  const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
+  let nftsToUse = [];
+  if (selectionMode === 'random') {
+    const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
+    nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
+  } else {
+    nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
+      const [contract, id] = key.split('_');
+      return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
+    }).filter(Boolean);
+  }
+  if (nftsToUse.length === 0) { showNotification('Please select NFTs for the grid', 'error'); return; }
+  await createGridCanvas(nftsToUse, gridData, true);
+}
+
+async function downloadGrid() {
+  const gridData = getActualGridSize();
+  const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
+  let nftsToUse = [];
+  if (selectionMode === 'random') {
+    const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
+    nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
+  } else {
+    nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
+      const [contract, id] = key.split('_');
+      return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
+    }).filter(Boolean);
+  }
+  if (nftsToUse.length === 0) { showNotification('Please select NFTs for the grid', 'error'); return; }
+  await createGridCanvas(nftsToUse, gridData, false);
+}
+
+async function createGridCanvas(nfts, gridData, isPreview) {
+  const separatorWidth = parseInt(document.getElementById('separatorWidth').value);
+  const separatorColor = document.getElementById('separatorColor').value;
+  const emptyCellColor = document.getElementById('emptyCellColor').value;
+  const cellSize = 400;
+  const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
+  const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = separatorColor;
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  for (let i = 0; i < gridData.rows * gridData.cols; i++) {
+    const row = Math.floor(i / gridData.cols);
+    const col = i % gridData.cols;
+    const x = separatorWidth + col * (cellSize + separatorWidth);
+    const y = separatorWidth + row * (cellSize + separatorWidth);
+    if (nfts[i]) {
+      try {
+        const img = await loadImage(nfts[i].image);
+        ctx.drawImage(img, x, y, cellSize, cellSize);
+      } catch (error) { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
+    } else { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
+  }
+  if (isPreview) { showGridPreview(canvas); }
+  else { downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png'); }
+}
+
+function showGridPreview(canvas) {
+  const container = document.getElementById('gridPreviewContainer');
+  const preview = document.getElementById('gridPreview');
+  preview.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL();
+  img.style.width = '100%';
+  img.style.height = 'auto';
+  preview.appendChild(img);
+  container.classList.add('visible');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function downloadCanvasAsImage(canvas, filename) {
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+async function downloadAllAsZip() {
+  if (selectedCollectionNFTs.length === 0) { showNotification('No NFTs to download', 'error'); return; }
+  const zip = new JSZip();
+  let successCount = 0;
+  showNotification('Preparing ZIP file...', 'info');
+  for (const nft of selectedCollectionNFTs) {
+    try {
+      const response = await fetch(nft.image);
+      if (response.ok) {
+        const blob = await response.blob();
+        const filename = nft.name.replace(/[^a-z0-9]/gi, '_') + '.png';
+        zip.file(filename, blob);
+        successCount++;
       }
-
-      .raffle-grid > *:last-child {
-        grid-column: span 2;
-      }
-
-      .wallpaper-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .wallpaper-preview-container {
-        position: static;
-        order: -1;
-      }
-    }
-
-    @media (max-width: 1024px) {
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .about-container {
-        grid-template-columns: 1fr;
-        gap: 60px;
-      }
-
-      .options-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    @media (max-width: 768px) {
-  nav {
-    padding: 16px 16px;
+    } catch (error) { console.error('Failed to download ' + nft.name + ':', error); }
   }
-
-  body {
-    overflow-x: hidden;
-    width: 100%;
-    padding: 0;
-    margin: 0;
-  }
-
-  * {
-    max-width: 100vw;
-  }
-
-  section {
-    overflow-x: hidden;
-    width: 100%;
-  }
-
-  .raffle-container,
-  .grid-maker-container,
-  .wallpaper-container,
-  .about-container,
-  .team-container,
-  .projects-container,
-  footer .footer-content {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    padding: 0;
-  }
-
-  .stat-item {
-    padding: 24px 12px;
-  }
-
-  .nav-links {
-    display: none;
-  }
-
-  .nav-social {
-    display: none;
-  }
-
-  .mobile-menu-btn {
-    display: block;
-  }
-
-  .hero {
-    padding: 100px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .raffle-container,
-  .grid-maker-container,
-  .wallpaper-container,
-  .about-container,
-  .team-container,
-  .projects-container {
-    padding: 0;
-  }
-
-  .section {
-    padding: 80px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .nft-scroller-section {
-    padding: 60px 0;
-  }
-
-  .nft-scroller-header {
-    padding: 0 16px;
-  }
-
-  .stats-section {
-    padding: 40px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .raffle-section {
-    padding: 60px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .grid-maker-section {
-    padding: 60px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .wallpaper-section {
-    padding: 60px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .about-section {
-    padding: 80px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .team-section {
-    padding: 80px 16px;
-  }
-
-  .projects-section {
-    padding: 80px 16px;
-  }
-
-  footer {
-    padding: 40px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .raffle-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .raffle-grid > *:last-child {
-    grid-column: span 1;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .raffle-grid > *:last-child {
-    grid-column: span 1;
-  }
-
-  .raffle-bottom-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .eligible-grid {
-    grid-template-columns: repeat(4, 1fr);
-    max-height: 350px;
-    gap: 6px;
-    padding: 8px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .eligible-item {
-    min-width: 0;
-  }
-
-  .eligible-item img {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-  }
-
-  .input-row {
-    grid-template-columns: 1fr;
-  }
-
-  .options-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .footer-content {
-    flex-direction: column;
-    gap: 24px;
-    text-align: center;
-  }
-
-  .listed-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  #nftGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .bg-options {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .pattern-options {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .wallpaper-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .phone-frame {
-    max-width: 280px;
-  }
-
-  .phone-frame {
-    max-width: 280px;
-    margin: 0 auto;
-  }
-
-  .wallpaper-preview-container {
-    padding: 0;
-  }
-
-  .wallpaper-controls {
-    padding: 0;
-  }
-
-  .viewer-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .viewer-frame {
-    height: 60vh !important;
-  }
-
-  /* Hide custom cursor on touch devices */
-  .cursor, .cursor-dot {
-    display: none;
-  }
-
-  body {
-    cursor: auto;
-  }
-
-  .btn-primary, .btn-secondary, .btn-tool, .nav-btn, .wheel-btn,
-  a, button, select, input, .toggle, .nft-thumbnail, .bg-option {
-    cursor: pointer;
-  }
-  .nav-links .nav-social .nav-btn {
-    width: 100%;
-    justify-content: center;
-    margin-top: 8px;
-  }
-
-  .nav-links .nav-social a {
-    font-size: 20px;
-  }
-
-  /* Global mobile fixes */
-  .raffle-container,
-  .grid-maker-container,
-  .wallpaper-container,
-  .about-container,
-  .team-container,
-  .projects-container {
-    padding: 0 !important;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .glass-card,
-  .viewer-panel {
-    margin: 0;
-    border-radius: 16px;
-  }
-
-  /* Fix rewards grid on mobile */
-  .rewards-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-  }
-
-  .reward-item img {
-    width: 100%;
-    height: auto;
-  }
-
-  /* Fix wheel on mobile */
-  #raffleCanvasWheel {
-    max-width: 260px;
-    max-height: 260px;
-  }
-
-  .wheel-wrapper {
-    transform: scale(0.95);
-  }
-
-  /* Fix leaderboard on mobile */
-  .leaderboard-list {
-    max-height: 300px;
-  }
-
-  .leaderboard-entry {
-    padding: 12px;
-  }
-
-  /* Ensure no horizontal scroll */
-  html, body {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-  }
-
-  section, div {
-    max-width: 100vw;
-  }
+  if (successCount > 0) {
+    const content = await zip.generateAsync({ type: 'blob' });
+    saveAs(content, 'nfts_collection_' + Date.now() + '.zip');
+    showNotification('Downloaded ' + successCount + ' NFTs', 'success');
+  } else { showNotification('Failed to download NFTs', 'error'); }
 }
 
-@media (max-width: 480px) {
-  .hero-cta {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .hero-cta .btn-primary,
-  .hero-cta .btn-secondary {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .stat-item {
-    padding: 24px 16px;
-  }
-
-  .bg-options {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .pattern-options {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .eligible-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  #nftGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .nav-social {
-    gap: 12px;
-  }
-
-  .nav-social a {
-    font-size: 16px;
-  }
-
-  .tool-panel {
-    padding: 16px 12px;
-    margin-bottom: 12px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  .raffle-panel {
-    padding: 16px 12px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  .control-panel {
-    padding: 16px;
-  }
-
-  .viewer-panel {
-    padding: 20px 16px;
-  }
-
-  .control-panel {
-    padding: 16px 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .viewer-controls {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .control-btn {
-    width: 100% !important;
-  }
+function resetGrid() {
+  selectedNFTsForGrid.clear();
+  document.querySelectorAll('.nft-thumbnail').forEach(img => img.classList.remove('selected-for-grid'));
+  document.getElementById('gridPreviewContainer').classList.remove('visible');
 }
 
-    @media (max-width: 480px) {
-  .hero-cta {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .hero-cta .btn-primary,
-  .hero-cta .btn-secondary {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .stat-item {
-    padding: 20px 12px;
-  }
-
-  .bg-options {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .pattern-options {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-  }
-
-  .eligible-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-  }
-
-  #nftGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .listed-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  /* Smaller text for mobile */
-  .section-title {
-    font-size: clamp(28px, 8vw, 48px);
-  }
-
-  .hero-title {
-    font-size: clamp(48px, 12vw, 120px);
-  }
-
-  /* Fix input fields */
-  .input-field {
-    padding: 12px 14px;
-    font-size: 14px;
-  }
-
-  select {
-    padding: 12px 14px;
-    font-size: 14px;
-  }
-
-  /* Fix buttons */
-  .btn-tool {
-    padding: 12px 16px;
-    font-size: 10px;
-  }
-
-  .wheel-btn {
-    padding: 12px 20px;
-    font-size: 10px;
-  }
-
-  /* Fix wheel size */
-  #raffleCanvasWheel {
-    max-width: 240px;
-    max-height: 240px;
-  }
-
-  .wheel-controls {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .wheel-controls .wheel-btn {
-    width: 100%;
-  }
-}
-
-/* MOBILE FIXES - ADD AT END OF STYLE */
-@media (max-width: 768px) {
-  html, body {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  section {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .raffle-container,
-  .grid-maker-container,
-  .wallpaper-container,
-  .about-container,
-  .team-container,
-  .projects-container,
-  .stats-grid {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    max-width: 100% !important;
-  }
-
-  .tool-panel,
-  .raffle-panel,
-  .control-panel,
-  .viewer-panel {
-    padding: 16px 12px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .eligible-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px !important;
-    max-height: 350px !important;
-    overflow-y: auto !important;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important;
-  }
-
-  #raffleCanvasWheel {
-    max-width: 260px !important;
-    max-height: 260px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .eligible-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
-
-  #raffleCanvasWheel {
-    max-width: 220px !important;
-    max-height: 220px !important;
-  }
-
-  .wheel-controls {
-    flex-direction: column !important;
-  }
-
-  .wheel-controls .wheel-btn {
-    width: 100% !important;
-  }
-}
-
-/* ========================================
-   COMPLETE MOBILE FIXES - ADD AT END
-   ======================================== */
-
-@media (max-width: 768px) {
-  /* Prevent any horizontal scroll */
-  html, body {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* All sections use consistent padding */
-  section,
-  .section,
-  .hero,
-  .nft-scroller-section,
-  .stats-section,
-  .raffle-section,
-  .grid-maker-section,
-  .wallpaper-section,
-  .about-section,
-  .team-section,
-  .projects-section {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Remove padding from containers */
-  .raffle-container,
-  .grid-maker-container,
-  .wallpaper-container,
-  .about-container,
-  .team-container,
-  .projects-container {
-    padding: 0 !important;
-    margin: 0 auto !important;
-    max-width: 100% !important;
-  }
-
-  /* Fix all panels */
-  .tool-panel,
-  .raffle-panel,
-  .control-panel,
-  .viewer-panel,
-  .glass-card {
-    padding: 16px 12px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-  }
-
-  /* Fix grids */
-  .eligible-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px !important;
-    max-height: 350px !important;
-    overflow-y: auto !important;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important;
-  }
-
-  .listed-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-  }
-
-  #nftGrid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-  }
-
-  /* Fix raffle wheel */
-  #raffleCanvasWheel {
-    max-width: 260px !important;
-    max-height: 260px !important;
-  }
-
-  .wheel-wrapper {
-    transform: scale(0.95);
-  }
-
-  .wheel-controls {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-
-  .wheel-controls .wheel-btn {
-    width: 100% !important;
-  }
-
-  /* Fix footer */
-  footer {
-    padding: 40px 12px !important;
-  }
-
-  .footer-content {
-    flex-direction: column !important;
-    gap: 20px !important;
-    text-align: center !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .eligible-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 4px !important;
-  }
-
-  .rewards-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 4px !important;
-  }
-
-  #raffleCanvasWheel {
-    max-width: 220px !important;
-    max-height: 220px !important;
-  }
-
-  .stat-item {
-    padding: 16px 8px !important;
-  }
-
-  .stat-number {
-    font-size: 28px !important;
-  }
-
-  .btn-tool {
-    padding: 10px 14px !important;
-    font-size: 10px !important;
-  }
-
-  .input-field,
-  select {
-    padding: 12px !important;
-    font-size: 13px !important;
-  }
-}
-  </style>
-</head>
-<body>
-  <!-- Custom Cursor -->
-  <div class="cursor"></div>
-  <div class="cursor-dot"></div>
+// ============================================
+// ENHANCED WALLPAPER MAKER - DRAG/DROP/RESIZE
+// ============================================
+function initWallpaperMaker() {
+  const canvas = document.getElementById('wallpaperCanvas');
+  if (!canvas) return;
   
-  <!-- Noise Overlay -->
-  <div class="noise"></div>
+  renderWallpaper();
+  setupWallpaperCanvasEvents();
   
-  <!-- Scroll Progress -->
-  <div class="scroll-progress"></div>
+  // Background selection
+  document.querySelectorAll('.bg-option').forEach(option => {
+    option.addEventListener('click', () => {
+      document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+      option.classList.add('selected');
+      wallpaperState.background = option.dataset.bg;
+      wallpaperState.backgroundImage = null;
+      renderWallpaper();
+    });
+  });
+  
+  // Custom color
+  document.getElementById('wallpaperBgColor')?.addEventListener('input', (e) => {
+    document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+    wallpaperState.background = e.target.value;
+    wallpaperState.backgroundImage = null;
+    renderWallpaper();
+  });
+  
+  // Custom background image upload
+  document.getElementById('wallpaperBgUpload')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const img = await loadImage(event.target.result);
+          wallpaperState.backgroundImage = img;
+          document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+          renderWallpaper();
+          showNotification('Background uploaded!', 'success');
+        } catch (err) { showNotification('Failed to load image', 'error'); }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  // Background removal toggle
+  document.getElementById('removeBackgroundToggle')?.addEventListener('click', function() {
+    this.classList.toggle('active');
+    wallpaperState.removeBackground = this.classList.contains('active');
+    // Re-process all characters
+    wallpaperState.characters.forEach(async (char) => {
+      if (wallpaperState.removeBackground) {
+        char.processedImage = await removeBackgroundAdvanced(char.originalImage);
+      }
+    });
+    renderWallpaper();
+  });
+  
+  // Reset
+  document.getElementById('resetWallpaper')?.addEventListener('click', () => {
+    wallpaperState.characters = [];
+    wallpaperState.selectedCharacter = null;
+    wallpaperState.backgroundImage = null;
+    document.getElementById('wallpaperSelectedNFT').innerHTML = '<p style="color: var(--muted); font-size: 12px; width: 100%; text-align: center;">Click an NFT from your gallery to add</p>';
+    updateCharacterList();
+    renderWallpaper();
+  });
+  
+  // Download wallpaper
+  document.getElementById('downloadWallpaper')?.addEventListener('click', () => downloadWallpaper());
+  
+  // Download character only
+  document.getElementById('downloadCharacter')?.addEventListener('click', () => downloadCharacter(true));
+  document.getElementById('downloadCharacterNoBg')?.addEventListener('click', () => downloadCharacter(false));
+}
 
-  <!-- Navigation -->
-  <nav>
-    <a href="#" class="nav-logo">BASED UNDEADS</a>
-    <div class="nav-links">
-      <a href="#featured" class="nav-link">Featured</a>
-      <a href="#raffle" class="nav-link">Raffle</a>
-      <a href="#tools" class="nav-link">Tools</a>
-      <a href="#wallpaper" class="nav-link">Wallpaper</a>
-      <a href="#about" class="nav-link">About</a>
-    </div>
-    <div class="nav-social">
-      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
-      <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="btn-secondary">
-        <span class="mint-icon">🔥</span> Mint Now
-      </a>
-    </div>
-    <button class="mobile-menu-btn" id="mobileMenuBtn">
-      <i class="fas fa-bars"></i>
-    </button>
-  </nav>
-
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-badge">
-      <span class="pulse"></span>
-      Minting Live on Base
-    </div>
-    <h1 class="hero-title">BASED UNDEADS</h1>
-    <p class="hero-subtitle">Rising on Base</p>
-    <p class="hero-description">
-      6,666 undead souls rising from the blockchain. Each carries its own legend, 
-      forged in fire, bound by chaos, eternally etched on-chain.
-    </p>
-    <div class="hero-cta">
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="btn-primary">
-        <i class="fas fa-fire"></i> Mint Now
-      </a>
-      <a href="#featured" class="btn-secondary">
-        <i class="fas fa-eye"></i> Explore
-      </a>
-    </div>
-    <div class="scroll-indicator">
-      <span>Scroll to explore</span>
-      <div class="scroll-line"></div>
-    </div>
-  </section>
-
-  <!-- Featured NFTs Section -->
-  <section class="nft-scroller-section" id="featured">
-    <div class="nft-scroller-header">
-      <p class="section-label">Featured Collection</p>
-      <h2 class="section-title">The <em>Horde</em> Rises</h2>
-    </div>
-    <div class="scrolling-container">
-      <div id="nftScroller">
-        <div class="text-center py-12" style="color: var(--muted);">
-          <i class="fas fa-spinner fa-spin text-3xl mb-4" style="display: block;"></i>
-          <p>Loading Featured Undeads...</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Stats Section -->
-  <section class="stats-section">
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-number">6,666</div>
-        <div class="stat-label">Total Supply</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number accent">100+</div>
-        <div class="stat-label">Unique Traits</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">100%</div>
-        <div class="stat-label">On-Chain</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">∞</div>
-        <div class="stat-label">Undead Forever</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Raffle Section -->
-  <section class="raffle-section" id="raffle">
-    <div class="raffle-container">
-      <div class="raffle-header">
-        <p class="section-label" style="justify-content: center;">Giveaway</p>
-        <h2 class="section-title" style="text-align: center;" id="rafflePhaseName">Phase 4 — Based Undeads Giveaway</h2>
-      </div>
-
-      <!-- Rewards Display -->
-      <div class="tool-panel" style="margin-bottom: 40px;">
-        <p class="raffle-panel-title"><i class="fas fa-gift"></i> Milestone Rewards</p>
-        <div id="raffleRewardsDisplay" class="rewards-grid">
-          <p style="grid-column: 1/-1; text-align: center; color: var(--muted);">Loading rewards...</p>
-        </div>
-      </div>
-
-      <div class="raffle-grid">
-        <!-- Left: Wallet Checker -->
-        <div class="raffle-panel">
-          <p class="raffle-panel-title"><i class="fas fa-wallet"></i> Check Your Entries</p>
-          <div class="wallet-input-group">
-            <input type="text" id="raffleWalletInput" placeholder="0x..." class="input-field">
-            <button onclick="checkWalletRaffle()" class="btn-tool primary" style="width: 100%;">
-              <i class="fas fa-search"></i> Check Entries
-            </button>
-          </div>
-          <div class="entries-display">
-            <div class="entries-count" id="raffleEntriesCount">0</div>
-            <div class="entries-label">Entries Found</div>
-          </div>
-          <div id="raffleTokensList" style="margin-top: 16px; max-height: 150px; overflow-y: auto;">
-            <p style="text-align: center; color: var(--muted); font-size: 12px; padding: 16px;">Enter wallet to see tokens</p>
-          </div>
-          <div id="raffleFoundNFTsDisplay" class="hidden" style="margin-top: 16px;">
-            <p style="font-size: 11px; color: var(--accent); margin-bottom: 8px;">Your Eligible NFTs:</p>
-            <div id="raffleFoundNFTsGrid" class="eligible-grid" style="grid-template-columns: repeat(3, 1fr);"></div>
-          </div>
-        </div>
-
-        <!-- Center: Wheel -->
-        <div class="raffle-panel wheel-container">
-          <p class="raffle-panel-title"><i class="fas fa-dharmachakra"></i> The Wheel of Fortune</p>
-          <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;" id="wheelStatus">Loading entries...</p>
-          <div class="wheel-wrapper">
-            <div class="wheel-pointer"></div>
-            <canvas id="raffleCanvasWheel" width="280" height="280"></canvas>
-          </div>
-          <div class="wheel-controls">
-            <button id="raffleShuffleBtn" onclick="shuffleRaffleEntries()" class="wheel-btn secondary">
-              <i class="fas fa-random"></i> Shuffle
-            </button>
-            <button id="raffleSpinBtn" onclick="spinWheel()" class="wheel-btn">
-              <i class="fas fa-play"></i> Spin
-            </button>
-          </div>
-        </div>
-
-        <!-- Right: Winners -->
-        <div class="raffle-panel">
-          <p class="raffle-panel-title"><i class="fas fa-trophy"></i> Winners</p>
-          <div id="raffleWinnersList" class="winners-list">
-            <p style="text-align: center; color: var(--muted); font-size: 12px; padding: 32px;">No winners yet</p>
-          </div>
-          <button onclick="resetRaffle()" class="btn-tool secondary" style="width: 100%; margin-top: 16px;">
-            <i class="fas fa-redo"></i> Reset Raffle
-          </button>
-        </div>
-      </div>
-
-      <!-- Eligible NFTs & Leaderboard -->
-      <div class="raffle-bottom-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px;">
-        <!-- Eligible NFTs -->
-        <div class="tool-panel">
-          <p class="raffle-panel-title"><i class="fas fa-ticket-alt"></i> Eligible NFTs (Token #<span id="eligibleRangeDisplay">3334-4444</span>)</p>
-          <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
-            Total Entries: <span id="totalEntriesCount" style="color: var(--accent); font-weight: bold;">Loading...</span>
-          </p>
-          <div id="eligibleNFTsDisplay" class="eligible-grid">
-            <p style="grid-column: 1/-1; text-align: center; color: var(--muted);">Loading eligible NFTs...</p>
-          </div>
-        </div>
-
-        <!-- Leaderboard -->
-        <div class="tool-panel">
-          <p class="raffle-panel-title"><i class="fas fa-crown"></i> Phase 4 Leaderboard</p>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-            <div style="text-align: center; padding: 12px; background: var(--glass); border-radius: 12px;">
-              <p style="font-size: 10px; color: var(--muted);">Wallets</p>
-              <p id="leaderboardTotalWallets" style="font-size: 20px; color: var(--accent);">-</p>
-            </div>
-            <div style="text-align: center; padding: 12px; background: var(--glass); border-radius: 12px;">
-              <p style="font-size: 10px; color: var(--muted);">Minted</p>
-              <p id="leaderboardTotalMinted" style="font-size: 20px; color: var(--accent);">-</p>
-            </div>
-            <div style="text-align: center; padding: 12px; background: var(--glass); border-radius: 12px;">
-              <p style="font-size: 10px; color: var(--muted);">Held</p>
-              <p id="leaderboardTotalHeld" style="font-size: 20px; color: var(--accent);">-</p>
-            </div>
-          </div>
-          <input type="text" id="leaderboardSearch" placeholder="Search wallet..." class="input-field" style="margin-bottom: 16px;">
-          <div id="leaderboardList" class="leaderboard-list">
-            <div style="text-align: center; color: var(--muted); padding: 32px;">
-              <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
-              <p style="font-size: 12px;">Loading leaderboard...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Listed NFTs -->
-      <div id="listedNFTsSection" class="listed-section tool-panel">
-        <p class="raffle-panel-title" style="color: #ff6b6b;"><i class="fas fa-fire-alt"></i> Scoop More Entries!</p>
-        <p style="font-size: 12px; color: var(--muted); margin-bottom: 24px;">These eligible NFTs are listed for sale. Each = 1 extra ticket!</p>
-        <div id="listedNFTsDisplay" class="listed-grid">
-          <p style="grid-column: 1/-1; text-align: center; color: var(--muted);">Loading listings...</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Grid Maker Section -->
-  <section class="grid-maker-section" id="tools">
-    <div class="grid-maker-container">
-      <div class="grid-maker-header">
-        <p class="section-label">Creative Tools</p>
-        <h2 class="section-title">NFT Grid <em>Maker</em></h2>
-      </div>
-
-      <!-- Wallet Input -->
-      <div class="tool-panel">
-        <p class="tool-panel-title"><i class="fas fa-wallet"></i> Connect Your Wallet</p>
-        <div class="input-row">
-          <div class="input-group">
-            <label class="input-label">Wallet Address or ENS</label>
-            <input type="text" id="walletAddress" placeholder="0x... or name.eth" class="input-field">
-          </div>
-          <div class="input-group">
-            <label class="input-label">Chain</label>
-            <select id="chainSelect">
-              <option value="base">Base</option>
-              <option value="apechain">ApeChain</option>
-              <option value="abstract">Abstract</option>
-              <option value="ethereum">Ethereum</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label class="input-label">&nbsp;</label>
-            <button id="fetchNFTs" class="btn-tool primary" style="width: 100%;">
-              <i class="fas fa-search"></i> Load NFTs
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Collection Selector -->
-      <div id="collectionSection" class="tool-panel hidden">
-        <p class="tool-panel-title"><i class="fas fa-layer-group"></i> Select Collection</p>
-        <select id="collectionSelect">
-          <option value="">All Collections (Multi-Select)</option>
-        </select>
-        <p style="font-size: 11px; color: var(--muted); margin-top: 12px;">
-          💡 Leave on "All Collections" to pick from multiple collections, or select one to filter.
-        </p>
-      </div>
-
-      <!-- Grid Options -->
-      <div class="tool-panel">
-        <div class="toggle-wrapper">
-          <div class="toggle" id="gridModeToggle"></div>
-          <span class="toggle-label">Enable Grid Maker</span>
-        </div>
-
-        <div class="grid-options" id="gridOptions">
-          <div class="options-grid">
-            <div class="input-group">
-              <label class="input-label">Selection Mode</label>
-              <div class="radio-group" style="margin-top: 12px;">
-                <label class="radio-label">
-                  <input type="radio" name="selectionMode" value="manual" checked> Manual
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="selectionMode" value="random"> Random
-                </label>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label">Grid Size</label>
-              <select id="gridSize">
-                <option value="3">3×3 (9 NFTs)</option>
-                <option value="4">4×4 (16 NFTs)</option>
-                <option value="5" selected>5×5 (25 NFTs)</option>
-                <option value="6">6×6 (36 NFTs)</option>
-                <option value="8">8×8 (64 NFTs)</option>
-                <option value="10">10×10 (100 NFTs)</option>
-                <option value="random-small">Random Small (2-5)</option>
-                <option value="random-medium">Random Medium (5-10)</option>
-                <option value="random-large">Random Large (10-20)</option>
-                <option value="custom">Custom Size...</option>
-              </select>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label">Separator Width (px)</label>
-              <input type="number" id="separatorWidth" value="10" min="0" max="50" class="input-field">
-            </div>
-          </div>
-
-          <!-- Custom Grid Size -->
-          <div id="customGridSizeInput" class="hidden" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px;">
-            <div class="input-group">
-              <label class="input-label">Rows (max 50)</label>
-              <input type="number" id="customGridRows" value="3" min="1" max="50" class="input-field">
-            </div>
-            <div class="input-group">
-              <label class="input-label">Columns (max 50)</label>
-              <input type="number" id="customGridCols" value="3" min="1" max="50" class="input-field">
-            </div>
-          </div>
-
-          <!-- Colors -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
-            <div class="input-group">
-              <label class="input-label">Separator Color</label>
-              <input type="color" id="separatorColor" value="#000000" class="color-input">
-            </div>
-            <div class="input-group">
-              <label class="input-label">Empty Cell Color</label>
-              <input type="color" id="emptyCellColor" value="#1a1a1a" class="color-input">
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="action-buttons">
-            <button id="previewGrid" class="btn-tool secondary">
-              <i class="fas fa-eye"></i> Preview
-            </button>
-            <button id="resetGrid" class="btn-tool secondary">
-              <i class="fas fa-redo"></i> Reset
-            </button>
-            <button id="downloadGrid" class="btn-tool primary">
-              <i class="fas fa-download"></i> Download Grid
-            </button>
-            <button id="downloadAll" class="btn-tool primary">
-              <i class="fas fa-file-archive"></i> Download ZIP
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Grid Preview -->
-      <div id="gridPreviewContainer">
-        <div class="grid-preview-wrapper">
-          <p class="grid-preview-title">Grid Preview</p>
-          <div id="gridPreview"></div>
-        </div>
-      </div>
-
-      <!-- NFT Gallery -->
-      <div class="nft-gallery">
-        <div class="nft-gallery-header">
-          <p class="nft-gallery-title">Your NFTs</p>
-          <p class="nft-gallery-count" id="nftCount">0 NFTs</p>
-        </div>
-        <div class="tool-panel" style="padding: 16px;">
-          <div id="nftGrid">
-            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted);">
-              <i class="fas fa-wallet" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3;"></i>
-              <p>Enter a wallet address above to load NFTs</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Wallpaper Maker Section -->
-  <section class="wallpaper-section" id="wallpaper">
-    <div class="wallpaper-container">
-      <div style="margin-bottom: 60px;">
-        <p class="section-label">Creative Tools</p>
-        <h2 class="section-title">Phone <em>Wallpaper</em> Maker</h2>
-        <p style="color: var(--muted); margin-top: 16px; max-width: 600px;">
-          Create stunning phone wallpapers with your NFTs. Choose an epic background, 
-          add your character, and download in perfect phone resolution.
-        </p>
-      </div>
-
-      <div class="wallpaper-grid">
-        <!-- Controls -->
-        <div class="wallpaper-controls">
-          <!-- Background Selection -->
-          <div class="control-panel">
-            <p class="control-panel-title">Gradient Backgrounds</p>
-            <div class="bg-options" id="bgOptions">
-              <!-- Gradient backgrounds -->
-              <div class="bg-option selected" data-bg="linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)" style="background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #000428 0%, #004e92 100%)" style="background: linear-gradient(180deg, #000428 0%, #004e92 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" style="background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" style="background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #232526 0%, #414345 100%)" style="background: linear-gradient(180deg, #232526 0%, #414345 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #000000 0%, #0f0f0f 50%, #1a1a1a 100%)" style="background: linear-gradient(180deg, #000000 0%, #0f0f0f 50%, #1a1a1a 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #1d2671 0%, #c33764 100%)" style="background: linear-gradient(180deg, #1d2671 0%, #c33764 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #134e5e 0%, #71b280 100%)" style="background: linear-gradient(180deg, #134e5e 0%, #71b280 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #8E2DE2 0%, #4A00E0 100%)" style="background: linear-gradient(180deg, #8E2DE2 0%, #4A00E0 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #ee0979 0%, #ff6a00 100%)" style="background: linear-gradient(180deg, #ee0979 0%, #ff6a00 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #11998e 0%, #38ef7d 100%)" style="background: linear-gradient(180deg, #11998e 0%, #38ef7d 100%);"></div>
-              <div class="bg-option" data-bg="linear-gradient(180deg, #fc4a1a 0%, #f7b733 100%)" style="background: linear-gradient(180deg, #fc4a1a 0%, #f7b733 100%);"></div>
-            </div>
-          </div>
-
-          <!-- Pattern Backgrounds -->
-          <div class="control-panel">
-            <p class="control-panel-title">Pattern Overlays</p>
-            <div class="pattern-options" id="patternOptions">
-              <!-- Patterns loaded dynamically -->
-            </div>
-            <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <div>
-                <label class="input-label" style="font-size: 10px;">Pattern Color</label>
-                <input type="color" id="patternColor" value="#ffffff" class="color-input" style="margin-top: 4px; height: 32px;">
-              </div>
-              <div>
-                <label class="input-label" style="font-size: 10px;">Opacity</label>
-                <input type="range" id="patternOpacity" min="5" max="50" value="15" style="margin-top: 8px; width: 100%;">
-              </div>
-            </div>
-          </div>
-
-          <!-- Custom Gradient Creator -->
-          <div class="control-panel">
-            <p class="control-panel-title">Create Your Gradient</p>
-            <div id="gradientPreview" style="height: 60px; border-radius: 8px; margin-bottom: 12px; background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
-              <div>
-                <label class="input-label" style="font-size: 10px;">Color 1</label>
-                <input type="color" id="gradientColor1" value="#0f0c29" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
-              </div>
-              <div>
-                <label class="input-label" style="font-size: 10px;">Color 2</label>
-                <input type="color" id="gradientColor2" value="#302b63" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
-              </div>
-              <div id="gradientColor3Container">
-                <label class="input-label" style="font-size: 10px;">Color 3</label>
-                <input type="color" id="gradientColor3" value="#24243e" class="color-input" style="margin-top: 4px; height: 36px; width: 100%;">
-              </div>
-            </div>
-            <div style="margin-bottom: 12px;">
-              <label class="input-label" style="font-size: 10px;">Angle: <span id="gradientAngleValue">180°</span></label>
-              <input type="range" id="gradientAngle" min="0" max="360" value="180" style="width: 100%; margin-top: 4px;">
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-              <input type="checkbox" id="useThreeColors" checked style="accent-color: var(--accent);">
-              <label for="useThreeColors" style="font-size: 11px; color: var(--muted);">Use 3 colors</label>
-            </div>
-            <button id="applyCustomGradient" class="btn-tool primary" style="width: 100%;">
-              <i class="fas fa-palette"></i> Apply Gradient
-            </button>
-          </div>
-
-          <!-- Upload Background -->
-          <div class="control-panel">
-            <p class="control-panel-title">Custom Background</p>
-            <input type="file" id="wallpaperBgUpload" accept="image/*" style="font-size: 11px; color: var(--muted); width: 100%;">
-          </div>
-
-          <!-- Character Selection -->
-          <div class="control-panel">
-            <p class="control-panel-title">Characters (drag to position, corners to resize)</p>
-            <div class="selected-nft-preview" id="wallpaperSelectedNFT">
-              <p style="color: var(--muted); font-size: 12px; width: 100%; text-align: center;">
-                Click an NFT from your gallery to add
-              </p>
-            </div>
-            <div class="toggle-wrapper" style="margin-top: 16px;">
-              <div class="toggle active" id="removeBackgroundToggle"></div>
-              <span class="toggle-label">Remove Background</span>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="control-panel">
-            <p class="control-panel-title">Download Options</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <button id="downloadWallpaper" class="btn-tool primary" style="width: 100%;">
-                <i class="fas fa-mobile-alt"></i> Wallpaper
-              </button>
-              <button id="downloadCharacter" class="btn-tool secondary" style="width: 100%;">
-                <i class="fas fa-user"></i> Character
-              </button>
-              <button id="downloadCharacterNoBg" class="btn-tool secondary" style="width: 100%;">
-                <i class="fas fa-user-slash"></i> No BG
-              </button>
-              <button id="resetWallpaper" class="btn-tool secondary" style="width: 100%;">
-                <i class="fas fa-redo"></i> Reset
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Phone Preview -->
-        <div class="wallpaper-preview-container">
-          <div class="phone-frame">
-            <div class="phone-screen">
-              <div class="phone-notch"></div>
-              <canvas id="wallpaperCanvas" width="1080" height="2340"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- About Section -->
-  <section class="about-section" id="about">
-    <div class="about-container">
-      <div class="about-content">
-        <p class="section-label">The Story</p>
-        <h2 class="section-title">About <em>Based Undeads</em></h2>
-        <p>
-          <strong style="color: var(--accent);">Based Undeads</strong> rise from the ashes on Base, 
-          born in the forge of blockchain immortality. Each of the 6,666 souls carries its own legend, 
-          forged in fire, bound by chaos, and eternally etched on-chain.
-        </p>
-        <p>
-          From skeletal warriors to phantom wanderers, each Undead tells a story written in pixels and pain. 
-          The horde grows stronger. The Undead never die, they evolve, they persist, they <em style="color: var(--accent);">become</em>.
-        </p>
-        <p style="font-style: italic; border-left: 2px solid var(--accent); padding-left: 20px; margin-top: 32px;">
-          This collection marks my first venture into pixel art, a leap from code into canvas, 
-          from developer to digital necromancer. Every sprite, every skull, every shadow was learned stroke by stroke.
-        </p>
-      </div>
-      <div class="about-visual">
-        <div class="about-image-grid" id="aboutImageGrid">
-          <!-- Images will be populated dynamically -->
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Team Section -->
-  <section class="team-section">
-    <div class="team-container">
-      <p class="section-label" style="justify-content: center;">The Creator</p>
-      <h2 class="section-title" style="text-align: center; margin-bottom: 60px;">Meet the <em>Founder</em></h2>
-      <a href="https://x.com/_sxms" target="_blank" class="team-member">
-        <div class="team-avatar">
-          <img src="https://pbs.twimg.com/profile_images/2013051300615712769/kA7TYlWK_400x400.jpg" alt="SAM">
-        </div>
-        <h3 class="team-name">SAM</h3>
-        <p class="team-role">Artist • Developer</p>
-      </a>
-    </div>
-  </section>
-
-  <!-- Interactive Viewers Section -->
-  <section class="projects-section">
-    <div class="projects-container">
-      <p class="section-label">Portfolio</p>
-      <h2 class="section-title">Previous <em>Work</em></h2>
+function setupWallpaperCanvasEvents() {
+  const canvas = document.getElementById('wallpaperCanvas');
+  if (!canvas) return;
+  
+  const getCanvasCoords = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+  
+  const findCharacterAt = (x, y) => {
+    for (let i = wallpaperState.characters.length - 1; i >= 0; i--) {
+      const char = wallpaperState.characters[i];
+      if (x >= char.x && x <= char.x + char.width && y >= char.y && y <= char.y + char.height) {
+        return char;
+      }
+    }
+    return null;
+  };
+  
+  const getResizeHandle = (char, x, y) => {
+    const handleSize = 40;
+    const handles = {
+      'nw': { x: char.x, y: char.y },
+      'ne': { x: char.x + char.width, y: char.y },
+      'sw': { x: char.x, y: char.y + char.height },
+      'se': { x: char.x + char.width, y: char.y + char.height }
+    };
+    for (const [name, pos] of Object.entries(handles)) {
+      if (Math.abs(x - pos.x) < handleSize && Math.abs(y - pos.y) < handleSize) {
+        return name;
+      }
+    }
+    return null;
+  };
+  
+  const onStart = (e) => {
+    e.preventDefault();
+    const coords = getCanvasCoords(e);
+    
+    // Check resize handles first on selected character
+    if (wallpaperState.selectedCharacter) {
+      const handle = getResizeHandle(wallpaperState.selectedCharacter, coords.x, coords.y);
+      if (handle) {
+        wallpaperState.isResizing = true;
+        wallpaperState.resizeHandle = handle;
+        return;
+      }
+    }
+    
+    // Check for character selection
+    const char = findCharacterAt(coords.x, coords.y);
+    if (char) {
+      wallpaperState.selectedCharacter = char;
+      wallpaperState.isDragging = true;
+      wallpaperState.dragOffset = { x: coords.x - char.x, y: coords.y - char.y };
+      // Bring to front
+      const idx = wallpaperState.characters.indexOf(char);
+      wallpaperState.characters.splice(idx, 1);
+      wallpaperState.characters.push(char);
+      renderWallpaper();
+    } else {
+      wallpaperState.selectedCharacter = null;
+      renderWallpaper();
+    }
+  };
+  
+  const onMove = (e) => {
+    e.preventDefault();
+    const coords = getCanvasCoords(e);
+    
+    if (wallpaperState.isDragging && wallpaperState.selectedCharacter) {
+      wallpaperState.selectedCharacter.x = coords.x - wallpaperState.dragOffset.x;
+      wallpaperState.selectedCharacter.y = coords.y - wallpaperState.dragOffset.y;
+      renderWallpaper();
+    }
+    
+    if (wallpaperState.isResizing && wallpaperState.selectedCharacter) {
+      const char = wallpaperState.selectedCharacter;
+      const aspectRatio = char.originalWidth / char.originalHeight;
       
-      <div class="viewer-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px;">
+      switch (wallpaperState.resizeHandle) {
+        case 'se':
+          char.width = Math.max(50, coords.x - char.x);
+          char.height = char.width / aspectRatio;
+          break;
+        case 'sw':
+          const newWidthSW = Math.max(50, char.x + char.width - coords.x);
+          char.x = coords.x;
+          char.width = newWidthSW;
+          char.height = char.width / aspectRatio;
+          break;
+        case 'ne':
+          char.width = Math.max(50, coords.x - char.x);
+          const newHeightNE = char.width / aspectRatio;
+          char.y = char.y + char.height - newHeightNE;
+          char.height = newHeightNE;
+          break;
+        case 'nw':
+          const newWidthNW = Math.max(50, char.x + char.width - coords.x);
+          const newHeightNW = newWidthNW / aspectRatio;
+          char.x = coords.x;
+          char.y = char.y + char.height - newHeightNW;
+          char.width = newWidthNW;
+          char.height = newHeightNW;
+          break;
+      }
+      renderWallpaper();
+    }
+  };
+  
+  const onEnd = () => {
+    wallpaperState.isDragging = false;
+    wallpaperState.isResizing = false;
+    wallpaperState.resizeHandle = null;
+  };
+  
+  canvas.addEventListener('mousedown', onStart);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseup', onEnd);
+  canvas.addEventListener('mouseleave', onEnd);
+  canvas.addEventListener('touchstart', onStart);
+  canvas.addEventListener('touchmove', onMove);
+  canvas.addEventListener('touchend', onEnd);
+}
+
+async function removeBackgroundAdvanced(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Sample corners and edges to detect background color
+  const samples = [];
+  const sampleDepth = Math.min(10, Math.floor(width * 0.05));
+  
+  // Sample all four corners thoroughly
+  for (let i = 0; i < sampleDepth; i++) {
+    for (let j = 0; j < sampleDepth; j++) {
+      // Top-left
+      let idx = (i * width + j) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Top-right
+      idx = (i * width + (width - 1 - j)) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Bottom-left
+      idx = ((height - 1 - i) * width + j) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+      // Bottom-right
+      idx = ((height - 1 - i) * width + (width - 1 - j)) * 4;
+      samples.push([data[idx], data[idx+1], data[idx+2]]);
+    }
+  }
+  
+  // Find the most common color (background)
+  const colorMap = new Map();
+  samples.forEach(([r, g, b]) => {
+    // Quantize to reduce noise
+    const qr = Math.round(r / 8) * 8;
+    const qg = Math.round(g / 8) * 8;
+    const qb = Math.round(b / 8) * 8;
+    const key = `${qr},${qg},${qb}`;
+    colorMap.set(key, (colorMap.get(key) || 0) + 1);
+  });
+  
+  let maxCount = 0;
+  let bgColor = [0, 0, 0];
+  for (const [key, count] of colorMap.entries()) {
+    if (count > maxCount) {
+      maxCount = count;
+      bgColor = key.split(',').map(Number);
+    }
+  }
+  
+  const [bgR, bgG, bgB] = bgColor;
+  
+  // Check if background is uniform enough
+  let uniformCount = 0;
+  samples.forEach(([r, g, b]) => {
+    const diff = Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
+    if (diff < 30) uniformCount++;
+  });
+  
+  // If less than 60% of corners match, background is too complex
+  if (uniformCount / samples.length < 0.6) {
+    console.log('Background too complex, using conservative removal');
+  }
+  
+  // Create alpha mask using flood fill from all edges
+  const visited = new Uint8Array(width * height);
+  const alphaMap = new Uint8Array(width * height).fill(255);
+  
+  // Threshold for background detection (adjustable)
+  const threshold = 32;
+  const softThreshold = 50;
+  
+  function colorDistance(idx) {
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+    return Math.sqrt(Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2));
+  }
+  
+  // Flood fill from edges
+  function floodFillIterative(startX, startY) {
+    const stack = [[startX, startY]];
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop();
+      
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      
+      const pixelIndex = y * width + x;
+      if (visited[pixelIndex]) continue;
+      
+      const dataIndex = pixelIndex * 4;
+      const dist = colorDistance(dataIndex);
+      
+      if (dist > softThreshold) continue;
+      
+      visited[pixelIndex] = 1;
+      
+      // Set alpha based on distance
+      if (dist < threshold) {
+        alphaMap[pixelIndex] = 0;
+      } else {
+        // Soft edge - gradual transparency
+        alphaMap[pixelIndex] = Math.floor(((dist - threshold) / (softThreshold - threshold)) * 255);
+      }
+      
+      // Add neighbors
+      stack.push([x + 1, y]);
+      stack.push([x - 1, y]);
+      stack.push([x, y + 1]);
+      stack.push([x, y - 1]);
+    }
+  }
+  
+  // Start flood fill from all edge pixels
+  for (let x = 0; x < width; x++) {
+    floodFillIterative(x, 0);
+    floodFillIterative(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    floodFillIterative(0, y);
+    floodFillIterative(width - 1, y);
+  }
+  
+  // Apply alpha map with edge smoothing
+  for (let i = 0; i < width * height; i++) {
+    data[i * 4 + 3] = alphaMap[i];
+  }
+  
+  // Apply feathering to smooth edges
+  const tempAlpha = new Uint8Array(alphaMap);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const current = tempAlpha[idx];
+      
+      // Only smooth edge pixels (not fully transparent or opaque)
+      if (current > 0 && current < 255) {
+        let sum = 0;
+        let count = 0;
         
-        <!-- Based Squiggles Viewer -->
-        <div class="viewer-panel">
-          <div class="viewer-header" style="margin-bottom: 24px;">
-            <h3 style="font-family: 'Instrument Serif', serif; font-size: 32px; margin-bottom: 8px;">Based Squiggles</h3>
-            <p style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;">Generative Art on Base</p>
-          </div>
-          <div class="viewer-frame" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; border: 1px solid var(--glass-border); background: var(--glass); backdrop-filter: blur(20px);">
-            <iframe id="squiggleFrame" src="https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=1" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
-          </div>
-          <div class="viewer-controls" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 24px;">
-            <button class="control-btn" id="squiggleReplay" style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 14px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--fg); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 4v6h6M23 20v-6h-6"/>
-                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-              </svg>
-              Replay
-            </button>
-            <button class="control-btn" id="squiggleRandom" style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 14px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--fg); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="16 3 21 3 21 8"/>
-                <line x1="4" y1="20" x2="21" y2="3"/>
-                <polyline points="21 16 21 21 16 21"/>
-                <line x1="15" y1="15" x2="21" y2="21"/>
-                <line x1="4" y1="4" x2="9" y2="9"/>
-              </svg>
-              Random
-            </button>
-            <button class="control-btn" id="squiggleFullscreen" style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 14px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--fg); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 3 21 3 21 9"/>
-                <polyline points="9 21 3 21 3 15"/>
-                <line x1="21" y1="3" x2="14" y2="10"/>
-                <line x1="3" y1="21" x2="10" y2="14"/>
-              </svg>
-              Fullscreen
-            </button>
-            <a href="https://opensea.io/collection/squiggle-on-base/overview" target="_blank" class="control-btn" style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 14px; background: var(--accent); border: 1px solid var(--accent); border-radius: 12px; color: var(--bg); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: 500;">
-              Collection
-              <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="7" y1="17" x2="17" y2="7"/>
-                <polyline points="7 7 17 7 17 17"/>
-              </svg>
-            </a>
-          </div>
-          <div class="viewer-info" style="margin-top: 16px; text-align: center;">
-            <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted);">Viewing: <strong style="color: var(--accent);" id="squiggleTokenDisplay">#0001</strong></span>
-          </div>
-        </div>
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const ni = (y + dy) * width + (x + dx);
+            sum += tempAlpha[ni];
+            count++;
+          }
+        }
+        
+        // Blend with neighbors
+        data[idx * 4 + 3] = Math.floor((current * 2 + sum / count) / 3);
+      }
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  
+  const result = new Image();
+  result.src = canvas.toDataURL('image/png');
+  await new Promise(resolve => result.onload = resolve);
+  return result;
+}
 
-        <!-- Crypto Puzzles Viewer -->
-        <div class="viewer-panel">
-          <div class="viewer-header" style="margin-bottom: 24px;">
-            <h3 style="font-family: 'Instrument Serif', serif; font-size: 32px; margin-bottom: 8px;">Crypto Puzzles</h3>
-            <p style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;">Interactive Brain Teasers</p>
-          </div>
-          <div class="viewer-frame" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; border: 1px solid var(--glass-border); background: var(--glass); backdrop-filter: blur(20px);">
-            <iframe id="puzzleFrame" src="https://ar-io.net/5LYXo-xz95VPuJjMBXTBlNwWmf0XIk8uDmjUMro3yK0/" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
-          </div>
-          <div class="viewer-controls" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 24px;">
-            <button class="control-btn" id="puzzleNew" style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 14px; background: var(--accent); border: 1px solid var(--accent); border-radius: 12px; color: var(--bg); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 500;">
-              <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="16 3 21 3 21 8"/>
-                <line x1="4" y1="20" x2="21" y2="3"/>
-                <polyline points="21 16 21 21 16 21"/>
-                <line x1="15" y1="15" x2="21" y2="21"/>
-                <line x1="4" y1="4" x2="9" y2="9"/>
-              </svg>
-              New Puzzle
-            </button>
-          </div>
-        </div>
+async function addToWallpaper(nft) {
+  try {
+    const img = await loadImage(nft.image);
+    let processedImg = img;
+    
+    if (wallpaperState.removeBackground) {
+      processedImg = await removeBackgroundAdvanced(img);
+    }
+    
+    const canvas = document.getElementById('wallpaperCanvas');
+    const defaultSize = Math.min(canvas.width, canvas.height) * 0.4;
+    const aspectRatio = img.width / img.height;
+    
+    const character = {
+      id: generateId(),
+      nft: nft,
+      originalImage: img,
+      processedImage: processedImg,
+      x: (canvas.width - defaultSize * aspectRatio) / 2,
+      y: canvas.height * 0.4,
+      width: defaultSize * aspectRatio,
+      height: defaultSize,
+      originalWidth: img.width,
+      originalHeight: img.height
+    };
+    
+    wallpaperState.characters.push(character);
+    wallpaperState.selectedCharacter = character;
+    
+    updateCharacterList();
+    renderWallpaper();
+    showNotification('Character added! Drag to position, corners to resize.', 'success');
+  } catch (error) {
+    console.error('Error adding to wallpaper:', error);
+    showNotification('Failed to add character', 'error');
+  }
+}
 
-      </div>
+function updateCharacterList() {
+  const container = document.getElementById('wallpaperSelectedNFT');
+  if (!container) return;
+  
+  if (wallpaperState.characters.length === 0) {
+    container.innerHTML = '<p style="color: var(--muted); font-size: 12px; width: 100%; text-align: center;">Click an NFT from your gallery to add</p>';
+    return;
+  }
+  
+  container.innerHTML = wallpaperState.characters.map((char, idx) => `
+    <div class="character-item ${wallpaperState.selectedCharacter === char ? 'selected' : ''}" data-id="${char.id}">
+      <img src="${char.nft.image}" alt="${char.nft.name}">
+      <button class="remove-btn" onclick="removeCharacter('${char.id}')">×</button>
+      <span class="char-num">${idx + 1}</span>
     </div>
-  </section>
+  `).join('');
+  
+  // Click to select
+  container.querySelectorAll('.character-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-btn')) return;
+      const id = item.dataset.id;
+      wallpaperState.selectedCharacter = wallpaperState.characters.find(c => c.id === id);
+      updateCharacterList();
+      renderWallpaper();
+    });
+  });
+}
 
-  <!-- Footer -->
-  <footer>
-    <div class="footer-content">
-      <a href="#" class="footer-logo">BASED UNDEADS</a>
-      <div class="footer-links">
-        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
-        <a href="https://x.com/BasedUndeads" target="_blank" class="footer-link">Twitter</a>
-        <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
-      </div>
-      <span class="footer-copy">© 2026 Based Undeads. All rights reserved.</span>
-    </div>
-  </footer>
+function removeCharacter(id) {
+  wallpaperState.characters = wallpaperState.characters.filter(c => c.id !== id);
+  if (wallpaperState.selectedCharacter?.id === id) {
+    wallpaperState.selectedCharacter = null;
+  }
+  updateCharacterList();
+  renderWallpaper();
+}
 
-  <!-- Main Script -->
-  <script src="script.js"></script>
-</body>
-</html>
+function renderWallpaper() {
+  const canvas = document.getElementById('wallpaperCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  // Clear
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw background
+  if (wallpaperState.backgroundImage) {
+    ctx.drawImage(wallpaperState.backgroundImage, 0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background === 'custom-gradient') {
+    // Draw custom gradient
+    ctx.fillStyle = getCustomGradient(ctx, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background && (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient'))) {
+    const colors = wallpaperState.background.match(/#[0-9a-f]{6}/gi) || ['#0f0c29', '#24243e'];
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    colors.forEach((color, i) => grad.addColorStop(i / (colors.length - 1), color));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background) {
+    ctx.fillStyle = wallpaperState.background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  
+  // Draw pattern overlay if selected
+  if (wallpaperState.pattern) {
+    const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
+    const patternOpacity = parseInt(document.getElementById('patternOpacity')?.value || 15) / 100;
+    
+    // Create temporary canvas for pattern
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = canvas.width;
+    patternCanvas.height = canvas.height;
+    const patternCtx = patternCanvas.getContext('2d');
+    
+    // Draw pattern
+    drawPattern(patternCtx, wallpaperState.pattern, canvas.width, canvas.height, 'transparent', patternColor);
+    
+    // Apply pattern with opacity
+    ctx.globalAlpha = patternOpacity;
+    ctx.drawImage(patternCanvas, 0, 0);
+    ctx.globalAlpha = 1.0;
+  }
+  
+  // Draw all characters
+  wallpaperState.characters.forEach(char => {
+    const img = wallpaperState.removeBackground ? char.processedImage : char.originalImage;
+    ctx.drawImage(img, char.x, char.y, char.width, char.height);
+    
+    // Draw selection handles if selected
+    if (char === wallpaperState.selectedCharacter) {
+      ctx.strokeStyle = '#00ff88';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([10, 5]);
+      ctx.strokeRect(char.x, char.y, char.width, char.height);
+      ctx.setLineDash([]);
+      
+      // Corner handles
+      const handleSize = 20;
+      ctx.fillStyle = '#00ff88';
+      [[char.x, char.y], [char.x + char.width, char.y], [char.x, char.y + char.height], [char.x + char.width, char.y + char.height]].forEach(([hx, hy]) => {
+        ctx.beginPath();
+        ctx.arc(hx, hy, handleSize, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+  });
+}
+
+function downloadWallpaper() {
+  const canvas = document.getElementById('wallpaperCanvas');
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const ctx = tempCanvas.getContext('2d');
+  
+  // Draw background
+  if (wallpaperState.backgroundImage) {
+    ctx.drawImage(wallpaperState.backgroundImage, 0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background === 'custom-gradient') {
+    ctx.fillStyle = getCustomGradient(ctx, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background && (wallpaperState.background.startsWith('linear-gradient') || wallpaperState.background.startsWith('radial-gradient'))) {
+    const colors = wallpaperState.background.match(/#[0-9a-f]{6}/gi) || ['#0f0c29', '#24243e'];
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    colors.forEach((color, i) => grad.addColorStop(i / (colors.length - 1), color));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (wallpaperState.background) {
+    ctx.fillStyle = wallpaperState.background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  
+  // Draw pattern overlay if selected
+  if (wallpaperState.pattern) {
+    const patternColor = document.getElementById('patternColor')?.value || '#ffffff';
+    const patternOpacity = parseInt(document.getElementById('patternOpacity')?.value || 15) / 100;
+    
+    // Create temporary canvas for pattern
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = canvas.width;
+    patternCanvas.height = canvas.height;
+    const patternCtx = patternCanvas.getContext('2d');
+    
+    // Draw pattern
+    drawPattern(patternCtx, wallpaperState.pattern, canvas.width, canvas.height, 'transparent', patternColor);
+    
+    // Apply pattern with opacity
+    ctx.globalAlpha = patternOpacity;
+    ctx.drawImage(patternCanvas, 0, 0);
+    ctx.globalAlpha = 1.0;
+  }
+  
+  // Draw characters without selection UI
+  wallpaperState.characters.forEach(char => {
+    const img = wallpaperState.removeBackground ? char.processedImage : char.originalImage;
+    ctx.drawImage(img, char.x, char.y, char.width, char.height);
+  });
+  
+  tempCanvas.toBlob(blob => {
+    const link = document.createElement('a');
+    link.download = 'phone-wallpaper.png';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+async function downloadCharacter(withBackground) {
+  if (!wallpaperState.selectedCharacter) {
+    showNotification('Please select a character first', 'error');
+    return;
+  }
+  
+  const char = wallpaperState.selectedCharacter;
+  const img = withBackground ? char.originalImage : char.processedImage;
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = char.originalWidth;
+  canvas.height = char.originalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  
+  canvas.toBlob(blob => {
+    const link = document.createElement('a');
+    link.download = 'character-' + (withBackground ? 'original' : 'nobg') + '.png';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+}
+
+// ============================================
+// PATTERN DRAWING FUNCTIONS
+// ============================================
+function drawPattern(ctx, patternId, width, height, color1, color2) {
+  ctx.fillStyle = color1;
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = color2;
+  ctx.fillStyle = color2;
+  
+  switch(patternId) {
+    case 'dots':
+      const dotSpacing = 40;
+      const dotRadius = 4;
+      for (let y = 0; y < height; y += dotSpacing) {
+        for (let x = 0; x < width; x += dotSpacing) {
+          ctx.beginPath();
+          ctx.arc(x + dotSpacing/2, y + dotSpacing/2, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+      
+    case 'grid':
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+      for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      break;
+      
+    case 'diagonal':
+      ctx.lineWidth = 2;
+      const diagSpacing = 30;
+      for (let i = -height; i < width + height; i += diagSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + height, height);
+        ctx.stroke();
+      }
+      break;
+      
+    case 'waves':
+      ctx.lineWidth = 2;
+      const waveHeight = 20;
+      const waveLength = 60;
+      for (let y = 0; y < height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x < width; x += 5) {
+          ctx.lineTo(x, y + Math.sin(x / waveLength * Math.PI * 2) * waveHeight);
+        }
+        ctx.stroke();
+      }
+      break;
+      
+    case 'hexagon':
+      const hexSize = 30;
+      const hexHeight = hexSize * Math.sqrt(3);
+      for (let row = 0; row < height / hexHeight + 1; row++) {
+        for (let col = 0; col < width / (hexSize * 1.5) + 1; col++) {
+          const x = col * hexSize * 1.5;
+          const y = row * hexHeight + (col % 2 ? hexHeight / 2 : 0);
+          drawHexagon(ctx, x, y, hexSize * 0.9);
+        }
+      }
+      break;
+      
+    case 'circles':
+      const circleSpacing = 80;
+      for (let y = 0; y < height; y += circleSpacing) {
+        for (let x = 0; x < width; x += circleSpacing) {
+          ctx.beginPath();
+          ctx.arc(x + circleSpacing/2, y + circleSpacing/2, circleSpacing/3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      break;
+      
+    case 'triangles':
+      const triSize = 50;
+      const triHeight = triSize * Math.sqrt(3) / 2;
+      ctx.lineWidth = 1;
+      for (let row = 0; row < height / triHeight + 1; row++) {
+        for (let col = 0; col < width / triSize + 1; col++) {
+          const x = col * triSize + (row % 2 ? triSize / 2 : 0);
+          const y = row * triHeight;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + triSize / 2, y + triHeight);
+          ctx.lineTo(x - triSize / 2, y + triHeight);
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+      break;
+      
+    case 'noise':
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const pixels = imgData.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 30;
+        pixels[i] = Math.min(255, Math.max(0, pixels[i] + noise));
+        pixels[i + 1] = Math.min(255, Math.max(0, pixels[i + 1] + noise));
+        pixels[i + 2] = Math.min(255, Math.max(0, pixels[i + 2] + noise));
+      }
+      ctx.putImageData(imgData, 0, 0);
+      break;
+      
+    case 'stars':
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 3 + 1;
+        drawStar(ctx, x, y, size);
+      }
+      break;
+      
+    case 'crosshatch':
+      ctx.lineWidth = 1;
+      const hatchSpacing = 20;
+      for (let i = -height; i < width + height; i += hatchSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + height, height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(i + height, 0);
+        ctx.lineTo(i, height);
+        ctx.stroke();
+      }
+      break;
+  }
+}
+
+function drawHexagon(ctx, x, y, size) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (i * 60 - 30) * Math.PI / 180;
+    const hx = x + size * Math.cos(angle);
+    const hy = y + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawStar(ctx, cx, cy, size) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 144 - 90) * Math.PI / 180;
+    const x = cx + size * Math.cos(angle);
+    const y = cy + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ============================================
+// GRADIENT CREATOR
+// ============================================
+function initGradientCreator() {
+  document.getElementById('gradientColor1')?.addEventListener('input', (e) => {
+    customGradient.color1 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientColor2')?.addEventListener('input', (e) => {
+    customGradient.color2 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientColor3')?.addEventListener('input', (e) => {
+    customGradient.color3 = e.target.value;
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('gradientAngle')?.addEventListener('input', (e) => {
+    customGradient.angle = parseInt(e.target.value);
+    document.getElementById('gradientAngleValue').textContent = customGradient.angle + '°';
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('useThreeColors')?.addEventListener('change', (e) => {
+    customGradient.useThreeColors = e.target.checked;
+    document.getElementById('gradientColor3Container').style.display = e.target.checked ? 'block' : 'none';
+    updateGradientPreview();
+    renderWallpaper();
+  });
+  
+  document.getElementById('applyCustomGradient')?.addEventListener('click', () => {
+    wallpaperState.background = 'custom-gradient';
+    wallpaperState.backgroundImage = null;
+    wallpaperState.pattern = null;
+    document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+    document.querySelectorAll('.pattern-option').forEach(o => o.classList.remove('selected'));
+    renderWallpaper();
+    showNotification('Custom gradient applied!', 'success');
+  });
+  
+  updateGradientPreview();
+}
+
+function updateGradientPreview() {
+  const preview = document.getElementById('gradientPreview');
+  if (!preview) return;
+  
+  let gradientCSS;
+  if (customGradient.useThreeColors) {
+    gradientCSS = 'linear-gradient(' + customGradient.angle + 'deg, ' + customGradient.color1 + ' 0%, ' + customGradient.color2 + ' 50%, ' + customGradient.color3 + ' 100%)';
+  } else {
+    gradientCSS = 'linear-gradient(' + customGradient.angle + 'deg, ' + customGradient.color1 + ' 0%, ' + customGradient.color2 + ' 100%)';
+  }
+  preview.style.background = gradientCSS;
+}
+
+function getCustomGradient(ctx, width, height) {
+  const angleRad = (customGradient.angle - 90) * Math.PI / 180;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const length = Math.sqrt(width * width + height * height) / 2;
+  
+  const x1 = centerX - Math.cos(angleRad) * length;
+  const y1 = centerY - Math.sin(angleRad) * length;
+  const x2 = centerX + Math.cos(angleRad) * length;
+  const y2 = centerY + Math.sin(angleRad) * length;
+  
+  const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+  grad.addColorStop(0, customGradient.color1);
+  if (customGradient.useThreeColors) {
+    grad.addColorStop(0.5, customGradient.color2);
+    grad.addColorStop(1, customGradient.color3);
+  } else {
+    grad.addColorStop(1, customGradient.color2);
+  }
+  return grad;
+}
+
+function initPatternSelector() {
+  const container = document.getElementById('patternOptions');
+  if (!container) return;
+  
+  container.innerHTML = WALLPAPER_PATTERNS.map(p => 
+    '<div class="pattern-option" data-pattern="' + p.id + '" title="' + p.name + '">' +
+    '<div class="pattern-preview pattern-' + p.id + '"></div>' +
+    '<span>' + p.name + '</span></div>'
+  ).join('');
+  
+  container.querySelectorAll('.pattern-option').forEach(el => {
+    el.addEventListener('click', () => {
+      // Toggle pattern - click again to deselect
+      if (el.classList.contains('selected')) {
+        el.classList.remove('selected');
+        wallpaperState.pattern = null;
+      } else {
+        document.querySelectorAll('.pattern-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+        wallpaperState.pattern = el.dataset.pattern;
+      }
+      renderWallpaper();
+    });
+  });
+  
+  // Pattern color change
+  document.getElementById('patternColor')?.addEventListener('input', () => renderWallpaper());
+  document.getElementById('patternOpacity')?.addEventListener('input', () => renderWallpaper());
+}
+
+// ============================================
+// FEATURED UNDEADS
+// ============================================
+async function loadFeaturedUndeads() {
+  const nftScroller = document.getElementById('nftScroller');
+  if (!nftScroller) return;
+  nftScroller.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>Loading Featured Undeads...</div>';
+  
+  try {
+    const allNFTs = [];
+    const response = await fetch('https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts?limit=200', {
+      method: 'GET',
+      headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY }
+    });
+    if (!response.ok) throw new Error('OpenSea API error: ' + response.status);
+    const data = await response.json();
+    if (data.nfts && data.nfts.length > 0) {
+      allNFTs.push(...data.nfts);
+      let nextCursor = data.next, pageCount = 1;
+      while (nextCursor && pageCount < 25) {
+        const nextResponse = await fetch('https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts?limit=200&next=' + encodeURIComponent(nextCursor), {
+          method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY }
+        });
+        if (!nextResponse.ok) break;
+        const nextData = await nextResponse.json();
+        if (nextData.nfts && nextData.nfts.length > 0) { allNFTs.push(...nextData.nfts); nextCursor = nextData.next; pageCount++; }
+        else break;
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+    if (allNFTs.length > 0) { displayFeaturedNFTs(allNFTs); populateAboutImages(allNFTs); return; }
+  } catch (error) { console.error('Error loading featured undeads:', error); }
+  loadFallbackUndeads();
+}
+
+function loadFallbackUndeads() {
+  const nftScroller = document.getElementById('nftScroller');
+  nftScroller.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>Unable to load Featured Undeads</p><p style="font-size: 12px; margin-top: 8px;">Visit <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" style="color: var(--accent);">OpenSea</a></p></div>';
+}
+
+function displayFeaturedNFTs(nfts) {
+  const nftScroller = document.getElementById('nftScroller');
+  nftScroller.innerHTML = '';
+  const shuffled = [...nfts].sort(() => 0.5 - Math.random());
+  const row1NFTs = shuffled.slice(0, 25);
+  const row2NFTs = shuffled.slice(25, 50);
+  const row1 = createScrollRow(row1NFTs, 'left');
+  const row2 = createScrollRow(row2NFTs, 'right');
+  nftScroller.appendChild(row1);
+  nftScroller.appendChild(row2);
+}
+
+function createScrollRow(nfts, direction) {
+  const row = document.createElement('div');
+  row.className = 'nft-scroll-row nft-scroll-' + direction;
+  [...nfts, ...nfts].forEach(nft => row.appendChild(createNFTCard(nft)));
+  return row;
+}
+
+function createNFTCard(nft) {
+  const card = document.createElement('div');
+  card.className = 'nft-card';
+  const imageUrl = nft.image_url || nft.display_image_url || 'https://placehold.co/220x220/0a0a0a/00ff88/png?text=Undead';
+  const tokenId = nft.identifier;
+  const name = nft.name || 'Based Undead #' + tokenId;
+  card.innerHTML = '<a href="https://opensea.io/assets/base/' + CONFIG.BASED_UNDEADS_CONTRACT + '/' + tokenId + '" target="_blank"><img src="' + imageUrl + '" alt="' + name + '" loading="lazy" onerror="this.src=\'https://placehold.co/220x220/0a0a0a/00ff88/png?text=Undead\'"/><p>' + name + '</p></a>';
+  return card;
+}
+
+function populateAboutImages(nfts) {
+  const grid = document.getElementById('aboutImageGrid');
+  if (!grid) return;
+  const shuffled = [...nfts].sort(() => 0.5 - Math.random()).slice(0, 9);
+  grid.innerHTML = shuffled.map(nft => {
+    const imageUrl = nft.image_url || nft.display_image_url || 'https://placehold.co/200x200/0a0a0a/00ff88/png?text=Undead';
+    return '<div class="about-image"><img src="' + imageUrl + '" alt="Undead" loading="lazy" onerror="this.src=\'https://placehold.co/200x200/0a0a0a/00ff88/png?text=Undead\'"></div>';
+  }).join('');
+}
+
+// ============================================
+// RAFFLE SYSTEM
+// ============================================
+const LEADERBOARD_CONFIG = {
+  EXCLUDED_WALLETS: [],
+  PHASES: { phase2: { min: 1501, max: 2300, name: 'Phase 2' }, phase3: { min: 2301, max: 3333, name: 'Phase 3' }, phase4: { min: 3334, max: 4444, name: 'Phase 4' } }
+};
+
+let leaderboardState = { data: [], isLoading: false, currentPhase: 'phase4' };
+let leaderboardCache = { data: null, holders: new Map(), lastUpdated: null };
+
+function parseOpenSeaUrl(url) {
+  const match = url.match(/\/assets\/([^\/]+)\/([^\/]+)\/(\d+)/);
+  if (match) return { chain: match[1], contract: match[2], tokenId: match[3] };
+  return null;
+}
+
+async function loadRewardNFTs() {
+  const rewards = [];
+  for (const url of RAFFLE_CONFIG.REWARD_OPENSEA_URLS) {
+    const parsed = parseOpenSeaUrl(url);
+    if (!parsed) continue;
+    try {
+      const response = await fetch('https://api.opensea.io/api/v2/chain/' + parsed.chain + '/contract/' + parsed.contract + '/nfts/' + parsed.tokenId, { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+      if (response.ok) {
+        const data = await response.json();
+        const nft = data.nft;
+        rewards.push({ id: rewards.length + 1, name: nft.name || 'Token #' + parsed.tokenId, image: nft.image_url || nft.display_image_url, tokenId: parsed.tokenId, contract: parsed.contract, openseaUrl: url });
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (error) { console.error('Error loading reward NFT from ' + url + ':', error); }
+  }
+  RAFFLE_CONFIG.REWARD_TOKENS = rewards;
+  RAFFLE_CONFIG.TOTAL_WINNERS = rewards.length;
+  return rewards;
+}
+
+async function loadEligibleRaffleNFTs() {
+  try {
+    document.getElementById('wheelStatus').textContent = 'Loading entries...';
+    const response = await fetch('https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts?limit=200', { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+    if (!response.ok) throw new Error('OpenSea API error: ' + response.status);
+    let allNFTs = [];
+    let data = await response.json();
+    if (data.nfts) allNFTs.push(...data.nfts);
+    let nextCursor = data.next, pageCount = 1;
+    while (nextCursor && pageCount < 25) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const nextResponse = await fetch('https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts?limit=200&next=' + encodeURIComponent(nextCursor), { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+      if (!nextResponse.ok) break;
+      const nextData = await nextResponse.json();
+      if (nextData.nfts && nextData.nfts.length > 0) { allNFTs.push(...nextData.nfts); nextCursor = nextData.next; pageCount++; } else break;
+    }
+    const eligibleNFTs = allNFTs.filter(nft => { const tokenId = parseInt(nft.identifier); return tokenId >= RAFFLE_CONFIG.TOKEN_RANGE.min && tokenId <= RAFFLE_CONFIG.TOKEN_RANGE.max; }).sort((a, b) => parseInt(a.identifier) - parseInt(b.identifier));
+    raffleState.eligibleNFTs = eligibleNFTs;
+    raffleState.allEligibleEntries = eligibleNFTs.map(nft => parseInt(nft.identifier));
+    raffleState.shuffledEntries = [...raffleState.allEligibleEntries].sort(() => Math.random() - 0.5);
+    displayEligibleNFTs(eligibleNFTs);
+    displayRewards();
+    updateRaffleInfo();
+    drawWheel(0);
+    checkForListedNFTs(eligibleNFTs);
+  } catch (error) {
+    console.error('Error loading eligible NFTs:', error);
+    document.getElementById('wheelStatus').textContent = 'Error loading entries';
+    document.getElementById('eligibleNFTsDisplay').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff4444;">Failed to load</p>';
+  }
+}
+
+function displayRewards() {
+  const container = document.getElementById('raffleRewardsDisplay');
+  if (RAFFLE_CONFIG.REWARD_TOKENS.length === 0) { container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">Loading rewards...</p>'; return; }
+  container.innerHTML = RAFFLE_CONFIG.REWARD_TOKENS.map((reward, idx) => '<div class="reward-item"><a href="' + reward.openseaUrl + '" target="_blank"><img src="' + reward.image + '" alt="' + reward.name + '" onerror="this.src=\'https://placehold.co/100x100/0a0a0a/00ff88/png?text=Prize+' + (idx + 1) + '\'"/><p>Prize ' + (idx + 1) + '</p></a></div>').join('');
+}
+
+function displayEligibleNFTs(nfts) {
+  const container = document.getElementById('eligibleNFTsDisplay');
+  if (nfts.length === 0) { container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted);">No eligible NFTs found</p>'; return; }
+  container.innerHTML = nfts.map(nft => {
+    const tokenId = parseInt(nft.identifier);
+    const imageUrl = nft.image_url || nft.display_image_url || 'https://placehold.co/80x80/0a0a0a/00ff88/png?text=' + tokenId;
+    return '<div class="eligible-item"><img src="' + imageUrl + '" alt="Undead #' + tokenId + '" loading="lazy" onerror="this.src=\'https://placehold.co/80x80/0a0a0a/00ff88/png?text=' + tokenId + '\'"/><p>#' + tokenId + '</p></div>';
+  }).join('');
+}
+
+function updateRaffleInfo() {
+  document.getElementById('rafflePhaseName').textContent = RAFFLE_CONFIG.PHASE_NAME;
+  document.getElementById('eligibleRangeDisplay').textContent = RAFFLE_CONFIG.TOKEN_RANGE.min + '-' + RAFFLE_CONFIG.TOKEN_RANGE.max;
+  document.getElementById('totalEntriesCount').textContent = raffleState.allEligibleEntries.length;
+  document.getElementById('wheelStatus').textContent = raffleState.allEligibleEntries.length + ' entries loaded';
+}
+
+async function checkWalletRaffle() {
+  const wallet = document.getElementById('raffleWalletInput').value.trim();
+  if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) { showNotification('Please enter a valid Ethereum wallet address', 'error'); return; }
+  const walletLower = wallet.toLowerCase();
+  document.getElementById('raffleTokensList').innerHTML = '<p style="text-align: center; color: var(--muted); font-size: 12px; padding: 16px;">Checking entries...</p>';
+  document.getElementById('raffleEntriesCount').textContent = '...';
+  document.getElementById('raffleFoundNFTsDisplay').classList.add('hidden');
+  
+  if (leaderboardCache.holders && leaderboardCache.holders.size > 0) {
+    if (leaderboardCache.holders.has(walletLower)) {
+      const tokens = leaderboardCache.holders.get(walletLower);
+      raffleState.walletAddress = wallet;
+      raffleState.eligibleTokens = tokens.sort((a, b) => a - b);
+      document.getElementById('raffleEntriesCount').textContent = tokens.length;
+      document.getElementById('raffleTokensList').innerHTML = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">' + tokens.map(token => '<span style="background: rgba(0,255,136,0.1); padding: 4px 12px; border-radius: 100px; font-size: 11px; border: 1px solid rgba(0,255,136,0.3);">#' + token + '</span>').join('') + '</div>';
+      showNotification('Found ' + tokens.length + ' entries!', 'success');
+      displayFoundRaffleNFTs(tokens);
+    } else {
+      raffleState.walletAddress = wallet;
+      raffleState.eligibleTokens = [];
+      document.getElementById('raffleEntriesCount').textContent = '0';
+      document.getElementById('raffleTokensList').innerHTML = '<p style="text-align: center; color: #ffaa00; font-size: 12px; padding: 16px;">No eligible NFTs found in Phase 4 range</p>';
+      showNotification('No entries found', 'info');
+    }
+    return;
+  }
+  showNotification('Leaderboard not loaded yet. Please wait...', 'info');
+}
+
+async function displayFoundRaffleNFTs(tokenIds) {
+  const displaySection = document.getElementById('raffleFoundNFTsDisplay');
+  const grid = document.getElementById('raffleFoundNFTsGrid');
+  displaySection.classList.remove('hidden');
+  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--muted); font-size: 11px;">Loading images...</p>';
+  try {
+    const nftImages = [];
+    for (const tokenId of tokenIds.slice(0, 12)) {
+      try {
+        const response = await fetch('https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts/' + tokenId, { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+        if (response.ok) {
+          const data = await response.json();
+          const imageUrl = data.nft?.image_url || data.nft?.display_image_url || 'https://placehold.co/80x80/0a0a0a/00ff88/png?text=' + tokenId;
+          nftImages.push({ tokenId, imageUrl, openseaUrl: 'https://opensea.io/assets/base/' + CONFIG.BASED_UNDEADS_CONTRACT + '/' + tokenId });
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (err) { console.error('Failed to load token ' + tokenId); }
+    }
+    if (nftImages.length > 0) {
+      grid.innerHTML = nftImages.map(nft => '<a href="' + nft.openseaUrl + '" target="_blank" class="eligible-item"><img src="' + nft.imageUrl + '" alt="Undead #' + nft.tokenId + '" loading="lazy" onerror="this.src=\'https://placehold.co/80x80/0a0a0a/00ff88/png?text=' + nft.tokenId + '\'"/><p>#' + nft.tokenId + '</p></a>').join('');
+    } else { grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff4444; font-size: 11px;">Failed to load images</p>'; }
+  } catch (error) { console.error('Error displaying NFTs:', error); grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff4444; font-size: 11px;">Error loading images</p>'; }
+}
+
+function shuffleRaffleEntries() {
+  if (raffleState.allEligibleEntries.length === 0) { showNotification('No entries to shuffle!', 'error'); return; }
+  raffleState.shuffledEntries = [...raffleState.allEligibleEntries];
+  for (let i = raffleState.shuffledEntries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [raffleState.shuffledEntries[i], raffleState.shuffledEntries[j]] = [raffleState.shuffledEntries[j], raffleState.shuffledEntries[i]];
+  }
+  drawWheel(0);
+  showNotification('Entries shuffled!', 'success');
+}
+
+function spinWheel() {
+  if (raffleState.isSpinning || raffleState.allEligibleEntries.length === 0) { showNotification('No entries available!', 'error'); return; }
+  if (raffleState.winners.length >= RAFFLE_CONFIG.TOTAL_WINNERS) { showNotification('All prizes awarded!', 'info'); return; }
+  raffleState.isSpinning = true;
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  spinBtn.disabled = true;
+  spinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Spinning...';
+  const spins = 5 + Math.floor(Math.random() * 5);
+  const extraDegrees = Math.random() * 360;
+  const totalRotation = spins * 360 + extraDegrees;
+  const duration = 4000;
+  let currentRotation = 0;
+  const startTime = Date.now();
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+    currentRotation = totalRotation * easeOut;
+    drawWheel(currentRotation);
+    if (progress < 1) requestAnimationFrame(animate);
+    else selectWinner(extraDegrees);
+  }
+  animate();
+}
+
+function selectWinner(finalDegree) {
+  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries;
+  const normalizedDegree = (360 - (finalDegree % 360)) % 360;
+  const segmentSize = 360 / Math.min(entries.length, 72);
+  const winningIndex = Math.floor(normalizedDegree / segmentSize) % entries.length;
+  const winningToken = entries[winningIndex];
+  if (raffleState.winners.find(w => w.tokenId === winningToken)) {
+    raffleState.shuffledEntries = raffleState.shuffledEntries.filter(t => t !== winningToken);
+    showNotification('Token #' + winningToken + ' already won! Spinning again...', 'info');
+    setTimeout(() => spinWheel(), 1000);
+    raffleState.isSpinning = false;
+    return;
+  }
+  const winningNFT = raffleState.eligibleNFTs.find(nft => parseInt(nft.identifier) === winningToken);
+  raffleState.winners.push({ position: raffleState.winners.length + 1, tokenId: winningToken, nft: winningNFT });
+  raffleState.shuffledEntries = raffleState.shuffledEntries.filter(t => t !== winningToken);
+  updateWinnersDisplay();
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  if (raffleState.winners.length < RAFFLE_CONFIG.TOTAL_WINNERS) {
+    raffleState.isSpinning = false;
+    spinBtn.disabled = false;
+    spinBtn.innerHTML = '<i class="fas fa-play"></i> Spin (' + (RAFFLE_CONFIG.TOTAL_WINNERS - raffleState.winners.length) + ' left)';
+  } else { raffleState.isSpinning = false; spinBtn.innerHTML = '🎉 Complete!'; spinBtn.disabled = true; }
+}
+
+function updateWinnersDisplay() {
+  const container = document.getElementById('raffleWinnersList');
+  container.innerHTML = raffleState.winners.map((winner, idx) => {
+    const nftImage = winner.nft?.image_url || winner.nft?.display_image_url || 'https://placehold.co/60x60/0a0a0a/00ff88/png?text=' + winner.tokenId;
+    return '<div class="winner-card"><span class="winner-rank">' + (['🥇', '🥈', '🥉'][idx] || '#' + (idx + 1)) + '</span><img src="' + nftImage + '" alt="Undead #' + winner.tokenId + '" class="winner-img" onerror="this.src=\'https://placehold.co/60x60/0a0a0a/00ff88/png?text=' + winner.tokenId + '\'"/><div class="winner-info"><p class="winner-name">Based Undead #' + winner.tokenId + '</p></div></div>';
+  }).join('');
+}
+
+function resetRaffle() {
+  if (raffleState.winners.length > 0 && !confirm('Reset raffle and clear winners?')) return;
+  raffleState.winners = [];
+  raffleState.eligibleTokens = [];
+  raffleState.walletAddress = '';
+  raffleState.isSpinning = false;
+  raffleState.shuffledEntries = [];
+  document.getElementById('raffleWalletInput').value = '';
+  document.getElementById('raffleEntriesCount').textContent = '0';
+  document.getElementById('raffleTokensList').innerHTML = '<p style="text-align: center; color: var(--muted); font-size: 12px; padding: 16px;">Enter wallet to see tokens</p>';
+  document.getElementById('raffleWinnersList').innerHTML = '<p style="text-align: center; color: var(--muted); font-size: 12px; padding: 32px;">No winners yet</p>';
+  document.getElementById('raffleFoundNFTsDisplay').classList.add('hidden');
+  const spinBtn = document.getElementById('raffleSpinBtn');
+  spinBtn.innerHTML = '<i class="fas fa-play"></i> Spin';
+  spinBtn.disabled = false;
+  drawWheel(0);
+}
+
+function drawWheel(rotation) {
+  const canvas = document.getElementById('raffleCanvasWheel');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const entries = raffleState.shuffledEntries || raffleState.allEligibleEntries;
+  if (entries.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath();
+    ctx.arc(140, 140, 130, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = 'var(--muted)';
+    ctx.font = '14px "Geist Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Loading...', 140, 140);
+    return;
+  }
+  const segmentCount = Math.min(entries.length, 72);
+  const segmentAngle = 360 / segmentCount;
+  const colors = ['#00ff88', '#00cc6f', '#00aa5f', '#008844', '#006633', '#ff6b6b', '#ff8787', '#ffa5a5', '#ffc3c3', '#ffe0e0'];
+  const centerX = 140, centerY = 140, radius = 130;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.translate(-centerX, -centerY);
+  for (let i = 0; i < segmentCount; i++) {
+    const tokenId = entries[i % entries.length];
+    const startAngle = (i * segmentAngle - 90) * Math.PI / 180;
+    const endAngle = ((i + 1) * segmentAngle - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const midAngle = (startAngle + endAngle) / 2;
+    const textX = centerX + Math.cos(midAngle) * (radius * 0.65);
+    const textY = centerY + Math.sin(midAngle) * (radius * 0.65);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.font = 'bold 9px "Geist Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('#' + tokenId, textX, textY);
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+  ctx.fillStyle = 'var(--accent)';
+  ctx.fill();
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+async function checkForListedNFTs(eligibleNFTs) {
+  try {
+    const listedNFTs = [];
+    const checkedTokens = new Set();
+    const shuffled = [...eligibleNFTs].sort(() => 0.5 - Math.random());
+    for (const nft of shuffled) {
+      if (listedNFTs.length >= 5) break;
+      const tokenId = nft.identifier;
+      if (checkedTokens.has(tokenId)) continue;
+      checkedTokens.add(tokenId);
+      try {
+        const response = await fetch('https://api.opensea.io/api/v2/orders/base/seaport/listings?asset_contract_address=' + CONFIG.BASED_UNDEADS_CONTRACT + '&token_ids=' + tokenId + '&limit=1', { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.orders && data.orders.length > 0) {
+            const listing = data.orders[0];
+            const priceData = listing.current_price;
+            const price = parseFloat((parseInt(priceData) / Math.pow(10, 18)).toFixed(6));
+            listedNFTs.push({ ...nft, price, priceWei: priceData, currency: 'ETH', openseaUrl: 'https://opensea.io/assets/base/' + CONFIG.BASED_UNDEADS_CONTRACT + '/' + tokenId });
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 400));
+      } catch (err) { }
+      if (checkedTokens.size >= 50) break;
+    }
+    if (listedNFTs.length > 0) displayListedNFTs(listedNFTs);
+    else document.getElementById('listedNFTsSection')?.classList.add('hidden');
+  } catch (error) { document.getElementById('listedNFTsSection')?.classList.add('hidden'); }
+}
+
+function displayListedNFTs(listedNFTs) {
+  const section = document.getElementById('listedNFTsSection');
+  const container = document.getElementById('listedNFTsDisplay');
+  if (listedNFTs.length === 0) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  container.innerHTML = listedNFTs.map(nft => {
+    const imageUrl = nft.image_url || nft.display_image_url || 'https://placehold.co/200x200/0a0a0a/00ff88/png?text=' + nft.identifier;
+    return '<a href="' + nft.openseaUrl + '" target="_blank" class="listed-item"><img src="' + imageUrl + '" alt="Undead #' + nft.identifier + '" loading="lazy" onerror="this.src=\'https://placehold.co/200x200/0a0a0a/00ff88/png?text=' + nft.identifier + '\'"/><span class="listed-price">' + nft.price + ' ETH</span><div class="listed-info"><p style="color: var(--fg); font-weight: 500;">#' + nft.identifier + '</p><p style="color: #ff6b6b; font-size: 10px;">🎫 +1 Entry</p></div></a>';
+  }).join('');
+}
+
+// ============================================
+// LEADERBOARD
+// ============================================
+async function loadLeaderboard() {
+  if (leaderboardState.isLoading) return;
+  leaderboardState.isLoading = true;
+  const leaderboardList = document.getElementById('leaderboardList');
+  leaderboardList.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 32px;"><i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 8px; display: block;"></i><p style="font-size: 11px;">Loading from blockchain...</p><p style="font-size: 10px; margin-top: 8px;" id="leaderboardProgress">Starting...</p></div>';
+  try {
+    const phase = LEADERBOARD_CONFIG.PHASES[leaderboardState.currentPhase];
+    updateProgress('Fetching minted tokens...');
+    const mintedTokens = await fetchMintedTokensFromBasescan(phase.min, phase.max);
+    if (mintedTokens.length === 0) throw new Error('No minted tokens found');
+    updateProgress('Found ' + mintedTokens.length + ' tokens. Fetching owners...');
+    const holders = await fetchOwnersFromOpenSeaOptimized(mintedTokens);
+    const leaderboard = buildLeaderboardFromHolders(holders);
+    leaderboardCache.data = leaderboard;
+    leaderboardCache.holders = holders;
+    leaderboardCache.lastUpdated = Date.now();
+    leaderboardState.data = leaderboard;
+    displayLeaderboard(leaderboard);
+  } catch (error) {
+    console.error('Error loading leaderboard:', error);
+    leaderboardList.innerHTML = '<div style="text-align: center; color: #ff4444; padding: 32px;"><i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 8px; display: block;"></i><p style="font-size: 11px;">Failed to load</p><button onclick="loadLeaderboard()" class="btn-tool secondary" style="margin-top: 16px; font-size: 10px;">Retry</button></div>';
+  } finally { leaderboardState.isLoading = false; }
+}
+
+async function fetchMintedTokensFromBasescan(minToken, maxToken) {
+  const mintedTokens = new Set();
+  try {
+    const baseUrl = 'https://api.basescan.org/api';
+    let page = 1;
+    while (page <= 5) {
+      const params = new URLSearchParams({ module: 'account', action: 'tokennfttx', contractaddress: CONFIG.BASED_UNDEADS_CONTRACT, page: page, offset: 10000, sort: 'asc', apikey: 'CJGZ4QMEE1JYAB1CVHR34EP6892QBKK3FY' });
+      const response = await fetch(baseUrl + '?' + params);
+      const data = await response.json();
+      if (data.status === '1' && data.result && data.result.length > 0) {
+        data.result.forEach(tx => {
+          const tokenId = parseInt(tx.tokenID);
+          if (tx.from === '0x0000000000000000000000000000000000000000' && tokenId >= minToken && tokenId <= maxToken) mintedTokens.add(tokenId);
+        });
+        if (data.result.length < 10000) break;
+        page++;
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } else break;
+    }
+  } catch (error) { console.error('Basescan API error:', error); }
+  if (mintedTokens.size === 0 && raffleState.eligibleNFTs.length > 0) {
+    raffleState.eligibleNFTs.forEach(nft => { const tokenId = parseInt(nft.identifier); if (tokenId >= minToken && tokenId <= maxToken) mintedTokens.add(tokenId); });
+  }
+  return Array.from(mintedTokens).sort((a, b) => a - b);
+}
+
+async function fetchOwnersFromOpenSeaOptimized(tokenIds) {
+  const holders = new Map();
+  let processedCount = 0, foundOwners = 0;
+  const batchSize = 5;
+  for (let i = 0; i < tokenIds.length; i += batchSize) {
+    const batch = tokenIds.slice(i, Math.min(i + batchSize, tokenIds.length));
+    for (const tokenId of batch) {
+      const result = await fetchTokenOwnerFromOpenSea(tokenId);
+      processedCount++;
+      if (result.owner) {
+        foundOwners++;
+        const owner = result.owner.toLowerCase();
+        if (!holders.has(owner)) holders.set(owner, []);
+        holders.get(owner).push(result.tokenId);
+      }
+      if (processedCount % 10 === 0 || processedCount === tokenIds.length) {
+        const percent = Math.round((processedCount / tokenIds.length) * 100);
+        updateProgress(percent + '% complete - ' + holders.size + ' holders found');
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    if (i + batchSize < tokenIds.length) await new Promise(resolve => setTimeout(resolve, 1200));
+  }
+  return holders;
+}
+
+async function fetchTokenOwnerFromOpenSea(tokenId, retries = 2) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = 'https://api.opensea.io/api/v2/chain/base/contract/' + CONFIG.BASED_UNDEADS_CONTRACT + '/nfts/' + tokenId;
+      const response = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY } });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.nft && data.nft.owners && data.nft.owners.length > 0) return { tokenId, owner: data.nft.owners[0].address };
+      }
+      if (response.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000 * (attempt + 1))); continue; }
+    } catch (error) { if (attempt < retries - 1) await new Promise(resolve => setTimeout(resolve, 3000)); }
+  }
+  return { tokenId, owner: null };
+}
+
+function updateProgress(message) {
+  const progressEl = document.getElementById('leaderboardProgress');
+  if (progressEl) progressEl.textContent = message;
+}
+
+function buildLeaderboardFromHolders(holders) {
+  const leaderboard = [];
+  for (const [wallet, tokens] of holders.entries()) {
+    if (tokens.length > 0) leaderboard.push({ wallet: wallet.toLowerCase(), holding: tokens.length, tokens: tokens.sort((a, b) => a - b) });
+  }
+  leaderboard.sort((a, b) => b.holding - a.holding);
+  return leaderboard;
+}
+
+function displayLeaderboard(leaderboard) {
+  const leaderboardList = document.getElementById('leaderboardList');
+  if (leaderboard.length === 0) {
+    leaderboardList.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 32px;"><p style="font-size: 12px;">No holders found</p><button onclick="loadLeaderboard()" class="btn-tool secondary" style="margin-top: 16px; font-size: 10px;">Retry</button></div>';
+    return;
+  }
+  const totalWallets = leaderboard.length;
+  const totalHeld = leaderboard.reduce((sum, entry) => sum + entry.holding, 0);
+  document.getElementById('leaderboardTotalWallets').textContent = totalWallets;
+  document.getElementById('leaderboardTotalMinted').textContent = totalHeld;
+  document.getElementById('leaderboardTotalHeld').textContent = totalHeld;
+  leaderboardList.innerHTML = leaderboard.map((entry, index) => {
+    const shortWallet = entry.wallet.slice(0, 6) + '...' + entry.wallet.slice(-4);
+    const rankBadge = index < 3 ? ['🥇', '🥈', '🥉'][index] : '#' + (index + 1);
+    return '<div class="leaderboard-entry" data-wallet="' + entry.wallet + '"><div style="display: flex; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 12px;"><span style="font-size: 18px;">' + rankBadge + '</span><div><p style="font-family: \'Geist Mono\', monospace; font-size: 12px;" title="' + entry.wallet + '">' + shortWallet + '</p><p style="font-size: 11px; color: var(--accent); margin-top: 4px;">💎 ' + entry.holding + ' NFTs</p></div></div><button onclick="copyToClipboard(\'' + entry.wallet + '\', event)" style="background: none; border: none; color: var(--muted); cursor: pointer; padding: 8px;" title="Copy wallet"><i class="fas fa-copy"></i></button></div></div>';
+  }).join('');
+  document.querySelectorAll('.leaderboard-entry').forEach(el => {
+    el.addEventListener('click', (e) => { if (e.target.closest('button')) return; const wallet = el.dataset.wallet; showWalletDetails(wallet, leaderboard); });
+  });
+}
+
+function showWalletDetails(wallet, leaderboard) {
+  const entry = leaderboard.find(e => e.wallet === wallet);
+  if (!entry) return;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;';
+  modal.innerHTML = '<div class="glass-card" style="max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 32px;"><div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;"><div><p style="font-family: \'Geist Mono\', monospace; font-size: 10px; color: var(--accent); margin-bottom: 8px;">WALLET DETAILS</p><p style="font-family: \'Geist Mono\', monospace; font-size: 12px; word-break: break-all;">' + wallet + '</p></div><button onclick="this.closest(\'div[style*=position: fixed]\').remove()" style="background: none; border: none; color: var(--fg); font-size: 24px; cursor: pointer;">×</button></div><div style="text-align: center; padding: 24px; background: var(--glass); border-radius: 16px; margin-bottom: 24px;"><p style="font-family: \'Instrument Serif\', serif; font-size: 48px; color: var(--accent);">' + entry.holding + '</p><p style="font-family: \'Geist Mono\', monospace; font-size: 10px; color: var(--muted); margin-top: 8px;">NFTs HELD</p></div><div><p style="font-family: \'Geist Mono\', monospace; font-size: 10px; color: var(--muted); margin-bottom: 12px;">OWNED TOKENS (' + entry.tokens.length + ')</p><div style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 200px; overflow-y: auto;">' + entry.tokens.map(tokenId => '<a href="https://opensea.io/assets/base/' + CONFIG.BASED_UNDEADS_CONTRACT + '/' + tokenId + '" target="_blank" style="background: rgba(0,255,136,0.1); padding: 6px 12px; border-radius: 100px; font-size: 11px; border: 1px solid rgba(0,255,136,0.3); text-decoration: none; color: var(--fg);">#' + tokenId + '</a>').join('') + '</div></div><a href="https://opensea.io/' + wallet + '" target="_blank" class="btn-tool secondary" style="width: 100%; margin-top: 24px; justify-content: center; text-decoration: none;">View on OpenSea <i class="fas fa-external-link-alt" style="margin-left: 8px;"></i></a></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function copyToClipboard(text, event) {
+  event.stopPropagation();
+  navigator.clipboard.writeText(text).then(() => showNotification('Wallet address copied!', 'success')).catch(() => showNotification('Failed to copy', 'error'));
+}
+
+document.getElementById('leaderboardSearch')?.addEventListener('input', function(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  const entries = document.querySelectorAll('.leaderboard-entry');
+  entries.forEach(entry => { const wallet = entry.dataset.wallet.toLowerCase(); entry.style.display = wallet.includes(searchTerm) ? '' : 'none'; });
+});
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', async function() {
+  const keysLoaded = await initializeAPIKeys();
+  if (!keysLoaded) return;
+  
+  if (document.getElementById('nftScroller')) loadFeaturedUndeads();
+  
+  if (document.getElementById('raffleCanvasWheel')) {
+    await loadRewardNFTs();
+    await loadEligibleRaffleNFTs();
+  }
+  
+  initWallpaperMaker();
+  initPatternSelector();
+  initGradientCreator();
+  
+  const gridModeToggle = document.getElementById('gridModeToggle');
+  const gridOptions = document.getElementById('gridOptions');
+  gridModeToggle?.addEventListener('click', () => { gridModeToggle.classList.toggle('active'); gridOptions.classList.toggle('visible'); });
+  
+  document.getElementById('gridSize')?.addEventListener('change', function() {
+    const customInput = document.getElementById('customGridSizeInput');
+    if (this.value === 'custom') customInput.classList.remove('hidden');
+    else customInput.classList.add('hidden');
+  });
+  
+  document.getElementById('chainSelect')?.addEventListener('change', function() {
+    currentChain = this.value;
+    userCollections.clear();
+    allUserNFTs = [];
+    selectedCollectionNFTs = [];
+    selectedNFTsForGrid.clear();
+    document.getElementById('collectionSection').classList.add('hidden');
+    document.getElementById('nftGrid').innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted);"><i class="fas fa-wallet" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3;"></i><p>Enter a wallet address above to load NFTs</p></div>';
+    showNotification('Switched to ' + SUPPORTED_CHAINS[currentChain].name, 'info');
+  });
+  
+  document.getElementById('fetchNFTs')?.addEventListener('click', fetchWalletNFTs);
+  document.getElementById('previewGrid')?.addEventListener('click', previewGrid);
+  document.getElementById('downloadGrid')?.addEventListener('click', downloadGrid);
+  document.getElementById('downloadAll')?.addEventListener('click', downloadAllAsZip);
+  document.getElementById('resetGrid')?.addEventListener('click', resetGrid);
+  
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  const navLinks = document.querySelector('.nav-links');
+  const navSocial = document.querySelector('.nav-social');
+  
+  mobileMenuBtn?.addEventListener('click', () => {
+    if (navLinks.style.display === 'flex') {
+      navLinks.style.display = 'none';
+      mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+    } else {
+      // Clone social links and mint button into nav-links for mobile
+      const socialClone = navSocial.cloneNode(true);
+      socialClone.style.cssText = 'display: flex; justify-content: center; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); margin-top: 8px;';
+      
+      // Clear any existing clones
+      const existingClone = navLinks.querySelector('.nav-social');
+      if (existingClone) existingClone.remove();
+      
+      navLinks.appendChild(socialClone);
+      navLinks.style.cssText = 'display: flex; position: fixed; top: 70px; left: 0; right: 0; flex-direction: column; background: rgba(3,3,3,0.98); backdrop-filter: blur(20px); padding: 24px; gap: 16px; border-bottom: 1px solid var(--border); z-index: 99;';
+      mobileMenuBtn.innerHTML = '<i class="fas fa-times"></i>';
+    }
+  });
+  
+  // Close mobile menu when clicking nav links
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        navLinks.style.display = 'none';
+        if (mobileMenuBtn) mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+      }
+    });
+  });
+  
+  // Initialize background removal toggle as active
+  const bgToggle = document.getElementById('removeBackgroundToggle');
+  if (bgToggle) bgToggle.classList.add('active');
+
+  // Viewer Controls
+  let currentSquiggleToken = 1;
+  
+  document.getElementById('squiggleReplay')?.addEventListener('click', () => {
+    const iframe = document.getElementById('squiggleFrame');
+    iframe.src = iframe.src;
+  });
+  
+  document.getElementById('squiggleRandom')?.addEventListener('click', () => {
+    currentSquiggleToken = Math.floor(Math.random() * 3333) + 1;
+    document.getElementById('squiggleFrame').src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    document.getElementById('squiggleTokenDisplay').textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+  });
+  
+  document.getElementById('squiggleFullscreen')?.addEventListener('click', () => {
+    const iframe = document.getElementById('squiggleFrame');
+    if (iframe.requestFullscreen) {
+      iframe.requestFullscreen();
+    } else if (iframe.webkitRequestFullscreen) {
+      iframe.webkitRequestFullscreen();
+    } else if (iframe.msRequestFullscreen) {
+      iframe.msRequestFullscreen();
+    }
+  });
+  
+  document.getElementById('puzzleNew')?.addEventListener('click', () => {
+    const iframe = document.getElementById('puzzleFrame');
+    iframe.src = iframe.src;
+  });
+});
+
+(async function initializeLeaderboard() {
+  const checkReady = setInterval(async () => {
+    if (CONFIG.ALCHEMY_API_KEY && document.getElementById('leaderboardList') && raffleState.eligibleNFTs.length > 0) {
+      clearInterval(checkReady);
+      await loadLeaderboard();
+    }
+  }, 100);
+})();
