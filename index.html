@@ -62,28 +62,32 @@
     }
 
     /* Custom Cursor */
-    .cursor {
-      width: 20px;
-      height: 20px;
-      border: 1px solid rgba(0, 255, 136, 0.6);
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transition: transform 0.15s ease, width 0.2s, height 0.2s, border-color 0.2s, background 0.2s;
-      transform: translate(-50%, -50%);
-    }
+.cursor {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  transition: width 0.2s, height 0.2s, border-color 0.2s, background 0.2s;
+}
 
-    .cursor-dot {
-      width: 4px;
-      height: 4px;
-      background: var(--accent);
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-    }
+.cursor-dot {
+  width: 4px;
+  height: 4px;
+  background: var(--fg);
+  border-radius: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}
 
     .cursor.hover {
       width: 50px;
@@ -92,15 +96,44 @@
       background: rgba(0, 255, 136, 0.1);
     }
 
-    /* Noise Overlay */
-    .noise {
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-      opacity: 0.025;
-      pointer-events: none;
-      z-index: 1000;
-    }
+    /* Constellation Overlay */
+.noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.noise::before,
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 30% 65%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 55% 30%, rgba(0,255,136,0.5), transparent),
+    radial-gradient(1px 1px at 70% 75%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1.5px 1.5px at 20% 80%, rgba(0,255,136,0.4), transparent),
+    radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 45% 90%, rgba(0,255,136,0.3), transparent),
+    radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.35), transparent);
+  background-size: 200px 200px;
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+.noise::after {
+  background-size: 300px 300px;
+  animation: twinkle 6s ease-in-out infinite reverse;
+  opacity: 0.7;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
 
     /* Scroll Progress */
     .scroll-progress {
@@ -2225,8 +2258,22 @@
   }
 
   .viewer-frame {
-    height: 60vh !important;
-  }
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #0a0a0a;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  contain: strict;
+  isolation: isolate;
+}
+
+.viewer-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  will-change: auto;
+}
 
   /* Hide custom cursor on touch devices */
   .cursor, .cursor-dot {
