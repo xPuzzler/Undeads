@@ -2116,20 +2116,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   const bgToggle = document.getElementById('removeBackgroundToggle');
   if (bgToggle) bgToggle.classList.add('active');
 
-  // Viewer Controls - Initialize immediately
-  let currentSquiggleToken = Math.floor(Math.random() * 10000) + 1;
-  
-  // Set iframe src immediately (not waiting for DOMContentLoaded since we're already inside one)
-  setTimeout(() => {
-    const squiggleFrame = document.getElementById('squiggleFrame');
-    const squiggleDisplay = document.getElementById('squiggleTokenDisplay');
-    if (squiggleFrame) {
-      squiggleFrame.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
-      if (squiggleDisplay) {
-        squiggleDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
-      }
-    }
-  }, 100);
+  // Viewer Controls
+  let currentSquiggleToken = 1;
   
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
