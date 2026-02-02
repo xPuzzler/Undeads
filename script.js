@@ -432,11 +432,139 @@ function handleNFTSelection(index, element) {
 // ============================================
 // GRID MAKER
 // ============================================
+// Generate random collage layout - creates unique cell sizes that fit perfectly
+function generateCollageLayout(nftCount, canvasWidth, canvasHeight) {
+  const cells = [];
+  const minRatio = 0.25; // Minimum 25% of parent
+  const maxRatio = 0.75; // Maximum 75% of parent
+  
+  // Recursive function to split rectangles
+  function splitRect(rect, remaining) {
+    // Base case: only 1 NFT left for this area
+    if (remaining <= 1) {
+      cells.push({ ...rect, width: Math.round(rect.width), height: Math.round(rect.height), x: Math.round(rect.x), y: Math.round(rect.y) });
+      return;
+    }
+    
+    // Decide split direction - prefer splitting the longer side
+    const aspectRatio = rect.width / rect.height;
+    let splitVertical;
+    if (aspectRatio > 1.5) splitVertical = true;
+    else if (aspectRatio < 0.67) splitVertical = false;
+    else splitVertical = Math.random() > 0.5;
+    
+    // Random split ratio
+    const ratio = minRatio + Math.random() * (maxRatio - minRatio);
+    
+    // Distribute NFTs between partitions based on area ratio
+    const firstPartition = Math.max(1, Math.min(remaining - 1, Math.round(remaining * ratio)));
+    const secondPartition = remaining - firstPartition;
+    
+    if (splitVertical) {
+      // Split into left and right
+      const splitX = rect.x + rect.width * ratio;
+      splitRect({ x: rect.x, y: rect.y, width: splitX - rect.x, height: rect.height }, firstPartition);
+      splitRect({ x: splitX, y: rect.y, width: rect.x + rect.width - splitX, height: rect.height }, secondPartition);
+    } else {
+      // Split into top and bottom
+      const splitY = rect.y + rect.height * ratio;
+      splitRect({ x: rect.x, y: rect.y, width: rect.width, height: splitY - rect.y }, firstPartition);
+      splitRect({ x: rect.x, y: splitY, width: rect.width, height: rect.y + rect.height - splitY }, secondPartition);
+    }
+  }
+  
+  splitRect({ x: 0, y: 0, width: canvasWidth, height: canvasHeight }, nftCount);
+  
+  // Shuffle cells for random NFT placement
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  
+  return cells;
+}
+
+// Create collage grid canvas
+async function createCollageCanvas(nfts, isPreview) {
+  const separatorWidth = parseInt(document.getElementById('separatorWidth').value);
+  const separatorColor = document.getElementById('separatorColor').value;
+  const emptyCellColor = document.getElementById('emptyCellColor').value;
+  
+  // Canvas size - use a good resolution
+  const canvasSize = 1600;
+  const innerSize = canvasSize - (separatorWidth * 2); // Account for outer border
+  
+  // Generate unique layout
+  const cells = generateCollageLayout(nfts.length, innerSize, innerSize);
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  const ctx = canvas.getContext('2d');
+  
+  // Fill background with separator color
+  ctx.fillStyle = separatorColor;
+  ctx.fillRect(0, 0, canvasSize, canvasSize);
+  
+  // Draw each cell
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    // Offset by separator width for outer border, and shrink each cell for inner separators
+    const x = separatorWidth + cell.x + separatorWidth / 2;
+    const y = separatorWidth + cell.y + separatorWidth / 2;
+    const width = cell.width - separatorWidth;
+    const height = cell.height - separatorWidth;
+    
+    if (nfts[i]) {
+      try {
+        const img = await loadImage(nfts[i].image);
+        
+        // Draw image to fill cell (cover style)
+        const imgAspect = img.width / img.height;
+        const cellAspect = width / height;
+        
+        let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
+        
+        if (imgAspect > cellAspect) {
+          // Image is wider - crop sides
+          sWidth = img.height * cellAspect;
+          sx = (img.width - sWidth) / 2;
+        } else {
+          // Image is taller - crop top/bottom
+          sHeight = img.width / cellAspect;
+          sy = (img.height - sHeight) / 2;
+        }
+        
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
+      } catch (error) {
+        ctx.fillStyle = emptyCellColor;
+        ctx.fillRect(x, y, width, height);
+      }
+    } else {
+      ctx.fillStyle = emptyCellColor;
+      ctx.fillRect(x, y, width, height);
+    }
+  }
+  
+  if (isPreview) {
+    showGridPreview(canvas);
+  } else {
+    // Check for GIFs
+    const hasGifs = typeof hasAnimatedImages === 'function' && hasAnimatedImages(nfts);
+    if (hasGifs) {
+      showNotification('Collage with GIFs - downloading as PNG (animation not supported in collage mode)', 'info');
+    }
+    downloadCanvasAsImage(canvas, 'nft-collage-' + nfts.length + 'nfts-' + Date.now() + '.png');
+  }
+  
+  return canvas;
+}
 // Check if image URL is animated (GIF or potentially animated WebP)
 function isAnimatedFormat(url) {
   if (!url) return false;
   const lower = url.toLowerCase();
-  return lower.includes('.gif') || lower.endsWith('gif');
+  // Check for .gif in URL (handles query params too)
+  return lower.includes('.gif') || lower.match(/\.gif($|\?|#)/i);
 }
 
 // Check if any NFTs in array have animated images
@@ -444,22 +572,215 @@ function hasAnimatedImages(nfts) {
   return nfts.some(nft => isAnimatedFormat(nft.image));
 }
 
-// Load image and get its frames (for GIFs)
-async function loadImageFrames(src) {
+// Fetch GIF as ArrayBuffer
+async function fetchGifBuffer(url) {
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) throw new Error('Failed to fetch');
+    return await response.arrayBuffer();
+  } catch (e) {
+    console.error('Failed to fetch GIF:', url, e);
+    return null;
+  }
+}
+
+// Parse GIF and extract frames using gifuct-js
+async function parseGifFrames(url) {
+  try {
+    const buffer = await fetchGifBuffer(url);
+    if (!buffer) return null;
+    
+    // gifuct-js functions are globally available
+    const gif = parseGIF(buffer);
+    const frames = decompressFrames(gif, true);
+    
+    if (!frames || frames.length === 0) return null;
+    
+    // Convert frames to canvas-ready format
+    const processedFrames = frames.map((frame, index) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = gif.lsd.width;
+      canvas.height = gif.lsd.height;
+      const ctx = canvas.getContext('2d');
+      
+      // For first frame or full frames, just draw
+      // For subsequent frames, we need to handle disposal
+      if (index === 0) {
+        const imageData = ctx.createImageData(frame.dims.width, frame.dims.height);
+        imageData.data.set(frame.patch);
+        ctx.putImageData(imageData, frame.dims.left, frame.dims.top);
+      } else {
+        // Copy previous frame first if needed
+        const prevCanvas = processedFrames[index - 1]?.canvas;
+        if (prevCanvas) {
+          ctx.drawImage(prevCanvas, 0, 0);
+        }
+        
+        // Handle disposal method
+        if (frame.disposalType === 2) {
+          // Clear the frame area
+          ctx.clearRect(frame.dims.left, frame.dims.top, frame.dims.width, frame.dims.height);
+        }
+        
+        // Draw current frame
+        const imageData = ctx.createImageData(frame.dims.width, frame.dims.height);
+        imageData.data.set(frame.patch);
+        ctx.putImageData(imageData, frame.dims.left, frame.dims.top);
+      }
+      
+      return {
+        canvas: canvas,
+        delay: frame.delay || 100,
+        width: gif.lsd.width,
+        height: gif.lsd.height
+      };
+    });
+    
+    return {
+      frames: processedFrames,
+      width: gif.lsd.width,
+      height: gif.lsd.height,
+      frameCount: frames.length,
+      totalDuration: frames.reduce((sum, f) => sum + (f.delay || 100), 0)
+    };
+  } catch (e) {
+    console.error('Failed to parse GIF:', url, e);
+    return null;
+  }
+}
+
+// Render GIF frames properly with disposal handling
+function renderGifFrames(gifData) {
+  if (!gifData || !gifData.frames) return [];
+  
+  const { frames } = gifData;
+  const renderedFrames = [];
+  
+  // Create a master canvas to accumulate frames
+  const masterCanvas = document.createElement('canvas');
+  masterCanvas.width = gifData.width;
+  masterCanvas.height = gifData.height;
+  const masterCtx = masterCanvas.getContext('2d');
+  
+  for (let i = 0; i < frames.length; i++) {
+    const frame = frames[i];
+    
+    // Draw frame onto master canvas
+    masterCtx.drawImage(frame.canvas, 0, 0);
+    
+    // Create a copy for this frame
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = gifData.width;
+    frameCanvas.height = gifData.height;
+    const frameCtx = frameCanvas.getContext('2d');
+    frameCtx.drawImage(masterCanvas, 0, 0);
+    
+    renderedFrames.push({
+      canvas: frameCanvas,
+      delay: frame.delay
+    });
+  }
+  
+  return renderedFrames;
+}
+
+// Load static image as single frame
+async function loadStaticImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve({ img, frames: 1, isAnimated: false });
-    img.onerror = reject;
-    img.src = src;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve({
+        frames: [{ canvas, delay: 100 }],
+        width: img.width,
+        height: img.height,
+        frameCount: 1,
+        isStatic: true
+      });
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = url;
   });
 }
 
-// Create animated GIF grid
+// Load image - either as GIF with frames or static image
+async function loadImageWithFrames(url) {
+  if (isAnimatedFormat(url)) {
+    const gifData = await parseGifFrames(url);
+    if (gifData && gifData.frameCount > 1) {
+      // It's an animated GIF
+      const renderedFrames = renderGifFrames(gifData);
+      return {
+        frames: renderedFrames,
+        width: gifData.width,
+        height: gifData.height,
+        frameCount: renderedFrames.length,
+        isAnimated: true,
+        totalDuration: gifData.totalDuration
+      };
+    }
+  }
+  
+  // Fallback to static image
+  try {
+    return await loadStaticImage(url);
+  } catch (e) {
+    console.error('Failed to load image:', url, e);
+    return null;
+  }
+}
+
+// Create animated GIF grid with proper frame extraction
 async function createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize) {
   return new Promise(async (resolve, reject) => {
     const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
     const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
+    
+    showNotification('Loading and parsing images...', 'info');
+    
+    // Load all images with their frames
+    const loadedImages = [];
+    let maxFrameCount = 1;
+    let hasAnimated = false;
+    
+    for (let i = 0; i < gridData.rows * gridData.cols; i++) {
+      if (nfts[i]) {
+        try {
+          const imageData = await loadImageWithFrames(nfts[i].image);
+          if (imageData) {
+            loadedImages.push(imageData);
+            if (imageData.isAnimated) {
+              hasAnimated = true;
+              maxFrameCount = Math.max(maxFrameCount, imageData.frameCount);
+            }
+          } else {
+            loadedImages.push(null);
+          }
+        } catch (e) {
+          console.error('Failed to load image:', nfts[i].image, e);
+          loadedImages.push(null);
+        }
+      } else {
+        loadedImages.push(null);
+      }
+    }
+    
+    // If no animated images found, fall back to static
+    if (!hasAnimated) {
+      showNotification('No animated GIFs detected, creating static image...', 'info');
+      reject(new Error('No animated GIFs found'));
+      return;
+    }
+    
+    showNotification('Creating animated GIF with ' + maxFrameCount + ' frames...', 'info');
+    
+    // Calculate LCM for smooth animation (cap at 60 frames for performance)
+    const outputFrameCount = Math.min(maxFrameCount, 60);
     
     // Create GIF encoder
     const gif = new GIF({
@@ -470,31 +791,8 @@ async function createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor
       workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
     });
     
-    // Load all images
-    const loadedImages = [];
-    for (let i = 0; i < gridData.rows * gridData.cols; i++) {
-      if (nfts[i]) {
-        try {
-          const img = await loadImage(nfts[i].image);
-          loadedImages.push({
-            img,
-            isGif: isAnimatedFormat(nfts[i].image),
-            url: nfts[i].image
-          });
-        } catch (e) {
-          loadedImages.push(null);
-        }
-      } else {
-        loadedImages.push(null);
-      }
-    }
-    
-    // For GIFs, we need to extract frames - use a simpler approach:
-    // Create multiple frames cycling through the animation
-    const frameCount = 20; // Number of frames in output GIF
-    const frameDelay = 100; // ms per frame
-    
-    for (let frame = 0; frame < frameCount; frame++) {
+    // Generate each output frame
+    for (let frameIndex = 0; frameIndex < outputFrameCount; frameIndex++) {
       const canvas = document.createElement('canvas');
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -511,23 +809,55 @@ async function createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor
         const x = separatorWidth + col * (cellSize + separatorWidth);
         const y = separatorWidth + row * (cellSize + separatorWidth);
         
-        if (loadedImages[i] && loadedImages[i].img) {
-          ctx.drawImage(loadedImages[i].img, x, y, cellSize, cellSize);
+        const imageData = loadedImages[i];
+        
+        if (imageData && imageData.frames && imageData.frames.length > 0) {
+          // Get the appropriate frame for this image
+          const imageFrameIndex = frameIndex % imageData.frames.length;
+          const frame = imageData.frames[imageFrameIndex];
+          
+          if (frame && frame.canvas) {
+            // Draw the frame scaled to fit the cell
+            ctx.drawImage(frame.canvas, 0, 0, imageData.width, imageData.height, x, y, cellSize, cellSize);
+          } else {
+            ctx.fillStyle = emptyCellColor;
+            ctx.fillRect(x, y, cellSize, cellSize);
+          }
         } else {
           ctx.fillStyle = emptyCellColor;
           ctx.fillRect(x, y, cellSize, cellSize);
         }
       }
       
+      // Calculate average delay (default 100ms)
+      let frameDelay = 100;
+      const animatedImages = loadedImages.filter(img => img && img.isAnimated);
+      if (animatedImages.length > 0) {
+        const avgDelay = animatedImages.reduce((sum, img) => {
+          const imgFrameIndex = frameIndex % img.frames.length;
+          return sum + (img.frames[imgFrameIndex]?.delay || 100);
+        }, 0) / animatedImages.length;
+        frameDelay = Math.max(20, Math.round(avgDelay)); // Minimum 20ms
+      }
+      
       gif.addFrame(canvas, { delay: frameDelay, copy: true });
     }
     
     gif.on('finished', (blob) => {
+      showNotification('GIF created successfully!', 'success');
       resolve(blob);
     });
     
     gif.on('error', (err) => {
+      console.error('GIF encoding error:', err);
       reject(err);
+    });
+    
+    gif.on('progress', (progress) => {
+      const percent = Math.round(progress * 100);
+      if (percent % 20 === 0) {
+        showNotification('Encoding GIF: ' + percent + '%...', 'info');
+      }
     });
     
     gif.render();
@@ -557,9 +887,31 @@ function getActualGridSize() {
 }
 
 async function previewGrid() {
-  const gridData = getActualGridSize();
+  const gridSizeValue = document.getElementById('gridSize').value;
   const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
   let nftsToUse = [];
+  
+  // For collage mode
+  if (gridSizeValue === 'collage') {
+    if (selectionMode === 'random') {
+      // Use all NFTs or a random subset
+      const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
+      const count = Math.min(shuffled.length, Math.floor(Math.random() * 10) + 5); // 5-15 random NFTs
+      nftsToUse = shuffled.slice(0, count);
+    } else {
+      nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
+        const [contract, id] = key.split('_');
+        return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
+      }).filter(Boolean);
+    }
+    if (nftsToUse.length === 0) { showNotification('Please select NFTs for the collage', 'error'); return; }
+    if (nftsToUse.length < 2) { showNotification('Select at least 2 NFTs for collage', 'error'); return; }
+    await createCollageCanvas(nftsToUse, true);
+    return;
+  }
+  
+  // Regular grid mode
+  const gridData = getActualGridSize();
   if (selectionMode === 'random') {
     const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
     nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
@@ -574,9 +926,30 @@ async function previewGrid() {
 }
 
 async function downloadGrid() {
-  const gridData = getActualGridSize();
+  const gridSizeValue = document.getElementById('gridSize').value;
   const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
   let nftsToUse = [];
+  
+  // For collage mode
+  if (gridSizeValue === 'collage') {
+    if (selectionMode === 'random') {
+      const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
+      const count = Math.min(shuffled.length, Math.floor(Math.random() * 10) + 5);
+      nftsToUse = shuffled.slice(0, count);
+    } else {
+      nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
+        const [contract, id] = key.split('_');
+        return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
+      }).filter(Boolean);
+    }
+    if (nftsToUse.length === 0) { showNotification('Please select NFTs for the collage', 'error'); return; }
+    if (nftsToUse.length < 2) { showNotification('Select at least 2 NFTs for collage', 'error'); return; }
+    await createCollageCanvas(nftsToUse, false);
+    return;
+  }
+  
+  // Regular grid mode
+  const gridData = getActualGridSize();
   if (selectionMode === 'random') {
     const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
     nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
@@ -595,27 +968,25 @@ async function createGridCanvas(nfts, gridData, isPreview) {
   const separatorColor = document.getElementById('separatorColor').value;
   const emptyCellColor = document.getElementById('emptyCellColor').value;
   const cellSize = 400;
-  const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
-  const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
   
   // Check if any images are GIFs
   const hasGifs = hasAnimatedImages(nfts);
   
   // If downloading (not preview) and has GIFs, create animated GIF
   if (!isPreview && hasGifs) {
-    showNotification('Creating animated GIF... Please wait', 'info');
+    showNotification('Detecting animated GIFs... Please wait', 'info');
     try {
       const blob = await createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.gif';
+      a.download = 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '-animated.gif';
       a.click();
       URL.revokeObjectURL(url);
-      showNotification('Animated GIF downloaded!', 'success');
+      return;
     } catch (error) {
       console.error('GIF creation failed:', error);
-      showNotification('GIF creation failed, downloading as PNG', 'error');
+      showNotification('Creating static PNG instead...', 'info');
       // Fallback to PNG
       await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, false);
     }
@@ -651,12 +1022,21 @@ async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, 
   else { downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png'); }
 }
 
-function showGridPreview(canvas) {
+function showGridPreview(canvas, isAnimatedBlob = null) {
   const container = document.getElementById('gridPreviewContainer');
   const preview = document.getElementById('gridPreview');
   preview.innerHTML = '';
+  
   const img = document.createElement('img');
-  img.src = canvas.toDataURL();
+  
+  if (isAnimatedBlob) {
+    // For animated GIF preview
+    img.src = URL.createObjectURL(isAnimatedBlob);
+    img.onload = () => URL.revokeObjectURL(img.src);
+  } else {
+    img.src = canvas.toDataURL();
+  }
+  
   img.style.width = '100%';
   img.style.height = 'auto';
   preview.appendChild(img);
