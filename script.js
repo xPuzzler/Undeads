@@ -2117,7 +2117,19 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (bgToggle) bgToggle.classList.add('active');
 
   // Viewer Controls
-  let currentSquiggleToken = 1;
+  let currentSquiggleToken = Math.floor(Math.random() * 3333) + 1;
+  
+  // Initialize with random token on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const squiggleFrame = document.getElementById('squiggleFrame');
+    const squiggleDisplay = document.getElementById('squiggleTokenDisplay');
+    if (squiggleFrame) {
+      squiggleFrame.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+      if (squiggleDisplay) {
+        squiggleDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+      }
+    }
+  });
   
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
