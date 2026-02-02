@@ -432,6 +432,108 @@ function handleNFTSelection(index, element) {
 // ============================================
 // GRID MAKER
 // ============================================
+// Check if image URL is animated (GIF or potentially animated WebP)
+function isAnimatedFormat(url) {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.includes('.gif') || lower.endsWith('gif');
+}
+
+// Check if any NFTs in array have animated images
+function hasAnimatedImages(nfts) {
+  return nfts.some(nft => isAnimatedFormat(nft.image));
+}
+
+// Load image and get its frames (for GIFs)
+async function loadImageFrames(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve({ img, frames: 1, isAnimated: false });
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Create animated GIF grid
+async function createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize) {
+  return new Promise(async (resolve, reject) => {
+    const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
+    const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
+    
+    // Create GIF encoder
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: canvasWidth,
+      height: canvasHeight,
+      workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+    });
+    
+    // Load all images
+    const loadedImages = [];
+    for (let i = 0; i < gridData.rows * gridData.cols; i++) {
+      if (nfts[i]) {
+        try {
+          const img = await loadImage(nfts[i].image);
+          loadedImages.push({
+            img,
+            isGif: isAnimatedFormat(nfts[i].image),
+            url: nfts[i].image
+          });
+        } catch (e) {
+          loadedImages.push(null);
+        }
+      } else {
+        loadedImages.push(null);
+      }
+    }
+    
+    // For GIFs, we need to extract frames - use a simpler approach:
+    // Create multiple frames cycling through the animation
+    const frameCount = 20; // Number of frames in output GIF
+    const frameDelay = 100; // ms per frame
+    
+    for (let frame = 0; frame < frameCount; frame++) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw separator background
+      ctx.fillStyle = separatorColor;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      
+      // Draw each cell
+      for (let i = 0; i < gridData.rows * gridData.cols; i++) {
+        const row = Math.floor(i / gridData.cols);
+        const col = i % gridData.cols;
+        const x = separatorWidth + col * (cellSize + separatorWidth);
+        const y = separatorWidth + row * (cellSize + separatorWidth);
+        
+        if (loadedImages[i] && loadedImages[i].img) {
+          ctx.drawImage(loadedImages[i].img, x, y, cellSize, cellSize);
+        } else {
+          ctx.fillStyle = emptyCellColor;
+          ctx.fillRect(x, y, cellSize, cellSize);
+        }
+      }
+      
+      gif.addFrame(canvas, { delay: frameDelay, copy: true });
+    }
+    
+    gif.on('finished', (blob) => {
+      resolve(blob);
+    });
+    
+    gif.on('error', (err) => {
+      reject(err);
+    });
+    
+    gif.render();
+  });
+}
+
 function getActualGridSize() {
   const gridSizeSelect = document.getElementById('gridSize');
   const selected = gridSizeSelect.value;
@@ -493,6 +595,38 @@ async function createGridCanvas(nfts, gridData, isPreview) {
   const separatorColor = document.getElementById('separatorColor').value;
   const emptyCellColor = document.getElementById('emptyCellColor').value;
   const cellSize = 400;
+  const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
+  const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
+  
+  // Check if any images are GIFs
+  const hasGifs = hasAnimatedImages(nfts);
+  
+  // If downloading (not preview) and has GIFs, create animated GIF
+  if (!isPreview && hasGifs) {
+    showNotification('Creating animated GIF... Please wait', 'info');
+    try {
+      const blob = await createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.gif';
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification('Animated GIF downloaded!', 'success');
+    } catch (error) {
+      console.error('GIF creation failed:', error);
+      showNotification('GIF creation failed, downloading as PNG', 'error');
+      // Fallback to PNG
+      await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, false);
+    }
+    return;
+  }
+  
+  // For preview or non-animated, use static canvas
+  await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, isPreview);
+}
+
+async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, isPreview) {
   const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
   const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
   const canvas = document.createElement('canvas');
