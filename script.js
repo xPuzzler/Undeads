@@ -432,53 +432,287 @@ function handleNFTSelection(index, element) {
 // ============================================
 // GRID MAKER
 // ============================================
-// Generate random collage layout - creates unique cell sizes that fit perfectly
-function generateCollageLayout(nftCount, canvasWidth, canvasHeight) {
-  const cells = [];
-  const minRatio = 0.25; // Minimum 25% of parent
-  const maxRatio = 0.75; // Maximum 75% of parent
+// ============================================
+// COLLAGE LAYOUT SYSTEM
+// ============================================
+
+// Get a predefined or generated collage layout based on NFT count
+function getCollageLayout(nftCount, canvasWidth, canvasHeight) {
+  // Predefined layouts for specific counts (magazine-style)
+  const layouts = {
+    2: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight }
+    ],
+    3: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.6, height: canvasHeight },
+      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.6, y: canvasHeight * 0.5, width: canvasWidth * 0.4, height: canvasHeight * 0.5 }
+    ],
+    4: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
+      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.5, height: canvasHeight * 0.5 }
+    ],
+    5: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.6, height: canvasHeight * 0.6 },
+      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.6, y: canvasHeight * 0.3, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
+      { x: 0, y: canvasHeight * 0.6, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.6, width: canvasWidth * 0.5, height: canvasHeight * 0.4 }
+    ],
+    6: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
+      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.33, y: canvasHeight * 0.4, width: canvasWidth * 0.34, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.67, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
+      { x: 0, y: canvasHeight * 0.7, width: canvasWidth, height: canvasHeight * 0.3 }
+    ],
+    7: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.25, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
+      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.33, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.67, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 }
+    ],
+    8: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 }
+    ],
+    9: () => [
+      // 3x3 but with center larger
+      { x: 0, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.3, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.7, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
+      { x: 0, y: canvasHeight * 0.3, width: canvasWidth * 0.3, height: canvasHeight * 0.4 },
+      { x: canvasWidth * 0.3, y: canvasHeight * 0.3, width: canvasWidth * 0.4, height: canvasHeight * 0.4 }, // Center big
+      { x: canvasWidth * 0.7, y: canvasHeight * 0.3, width: canvasWidth * 0.3, height: canvasHeight * 0.4 },
+      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.3, y: canvasHeight * 0.7, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.7, y: canvasHeight * 0.7, width: canvasWidth * 0.3, height: canvasHeight * 0.3 }
+    ],
+    10: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.5 },
+      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.7, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.4, y: canvasHeight * 0.25, width: canvasWidth * 0.6, height: canvasHeight * 0.25 },
+      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: 0, y: canvasHeight * 0.75, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.75, width: canvasWidth * 0.5, height: canvasHeight * 0.25 }
+    ],
+    11: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.2, width: canvasWidth * 0.5, height: canvasHeight * 0.2 },
+      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.33, y: canvasHeight * 0.4, width: canvasWidth * 0.34, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.67, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
+      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 }
+    ],
+    12: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.33 },
+      { x: 0, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.33, width: canvasWidth * 0.5, height: canvasHeight * 0.34 }, // Big center
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
+      { x: 0, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.167, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.333, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.667, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.833, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 }
+    ],
+    13: () => [
+      // Row 1: 4 NFTs
+      { x: 0, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.25, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      // Row 2-3: 1 left, 1 BIG center (spans 2 rows), 1 right each row
+      { x: 0, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.25, width: canvasWidth * 0.5, height: canvasHeight * 0.5 }, // BIG CENTER
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      // Row 4: 4 NFTs
+      { x: 0, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.5, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 }
+    ],
+    14: () => [
+      { x: 0, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.4 },
+      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.8, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.4, y: canvasHeight * 0.2, width: canvasWidth * 0.3, height: canvasHeight * 0.2 },
+      { x: canvasWidth * 0.7, y: canvasHeight * 0.2, width: canvasWidth * 0.3, height: canvasHeight * 0.2 },
+      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.4, width: canvasWidth * 0.5, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.4, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
+      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.2, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.4, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.6, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
+      { x: canvasWidth * 0.8, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 }
+    ],
+    15: () => [
+      // 3 rows of 5, but middle row has big center
+      { x: 0, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.2, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.8, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
+      { x: 0, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
+      { x: canvasWidth * 0.25, y: canvasHeight * 0.33, width: canvasWidth * 0.5, height: canvasHeight * 0.34 },
+      { x: canvasWidth * 0.75, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
+      { x: 0, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.143, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.286, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.429, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.571, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.714, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
+      { x: canvasWidth * 0.857, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 }
+    ],
+    16: () => generateGridLayout(4, 4, canvasWidth, canvasHeight),
+    20: () => generateMagazineLayout(20, canvasWidth, canvasHeight),
+    25: () => generateGridLayout(5, 5, canvasWidth, canvasHeight)
+  };
   
-  // Recursive function to split rectangles
-  function splitRect(rect, remaining) {
-    // Base case: only 1 NFT left for this area
-    if (remaining <= 1) {
-      cells.push({ ...rect, width: Math.round(rect.width), height: Math.round(rect.height), x: Math.round(rect.x), y: Math.round(rect.y) });
-      return;
-    }
-    
-    // Decide split direction - prefer splitting the longer side
-    const aspectRatio = rect.width / rect.height;
-    let splitVertical;
-    if (aspectRatio > 1.5) splitVertical = true;
-    else if (aspectRatio < 0.67) splitVertical = false;
-    else splitVertical = Math.random() > 0.5;
-    
-    // Random split ratio
-    const ratio = minRatio + Math.random() * (maxRatio - minRatio);
-    
-    // Distribute NFTs between partitions based on area ratio
-    const firstPartition = Math.max(1, Math.min(remaining - 1, Math.round(remaining * ratio)));
-    const secondPartition = remaining - firstPartition;
-    
-    if (splitVertical) {
-      // Split into left and right
-      const splitX = rect.x + rect.width * ratio;
-      splitRect({ x: rect.x, y: rect.y, width: splitX - rect.x, height: rect.height }, firstPartition);
-      splitRect({ x: splitX, y: rect.y, width: rect.x + rect.width - splitX, height: rect.height }, secondPartition);
-    } else {
-      // Split into top and bottom
-      const splitY = rect.y + rect.height * ratio;
-      splitRect({ x: rect.x, y: rect.y, width: rect.width, height: splitY - rect.y }, firstPartition);
-      splitRect({ x: rect.x, y: splitY, width: rect.width, height: rect.y + rect.height - splitY }, secondPartition);
-    }
+  // Use predefined layout if available
+  if (layouts[nftCount]) {
+    const cells = layouts[nftCount]();
+    return cells.map(cell => ({
+      x: Math.round(cell.x),
+      y: Math.round(cell.y),
+      width: Math.round(cell.width),
+      height: Math.round(cell.height)
+    }));
   }
   
-  splitRect({ x: 0, y: 0, width: canvasWidth, height: canvasHeight }, nftCount);
+  // For other counts, generate a magazine-style layout
+  return generateMagazineLayout(nftCount, canvasWidth, canvasHeight);
+}
+
+// Generate a standard grid layout
+function generateGridLayout(rows, cols, width, height) {
+  const cells = [];
+  const cellWidth = width / cols;
+  const cellHeight = height / rows;
   
-  // Shuffle cells for random NFT placement
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      cells.push({
+        x: c * cellWidth,
+        y: r * cellHeight,
+        width: cellWidth,
+        height: cellHeight
+      });
+    }
+  }
+  return cells;
+}
+
+// Generate magazine-style layout for any count
+function generateMagazineLayout(nftCount, canvasWidth, canvasHeight) {
+  const cells = [];
+  
+  // Calculate approximate rows needed
+  const approxCols = Math.ceil(Math.sqrt(nftCount));
+  const approxRows = Math.ceil(nftCount / approxCols);
+  
+  // Create a grid-based approach with some larger cells
+  let placed = 0;
+  let currentY = 0;
+  let rowIndex = 0;
+  
+  while (placed < nftCount) {
+    const remaining = nftCount - placed;
+    const rowHeight = canvasHeight / approxRows;
+    
+    // Decide how many cells in this row
+    let cellsInRow;
+    if (remaining <= 4) {
+      cellsInRow = remaining;
+    } else if (rowIndex === 0 || rowIndex === approxRows - 1) {
+      // First and last rows: more smaller cells
+      cellsInRow = Math.min(remaining, Math.ceil(approxCols * 1.2));
+    } else {
+      // Middle rows: mix of sizes
+      cellsInRow = Math.min(remaining, approxCols);
+    }
+    
+    // Check if we should have a big cell in this row
+    const hasBigCell = remaining > 4 && rowIndex > 0 && rowIndex < approxRows - 1 && Math.random() > 0.5;
+    
+    if (hasBigCell && cellsInRow >= 3) {
+      // Create row with one big cell
+      const bigCellIndex = Math.floor(cellsInRow / 2);
+      const smallCellWidth = canvasWidth / (cellsInRow + 1); // +1 because big cell takes 2x
+      
+      let currentX = 0;
+      for (let i = 0; i < cellsInRow - 1; i++) {
+        if (i === bigCellIndex) {
+          // Big cell (2x width)
+          cells.push({
+            x: Math.round(currentX),
+            y: Math.round(currentY),
+            width: Math.round(smallCellWidth * 2),
+            height: Math.round(rowHeight)
+          });
+          currentX += smallCellWidth * 2;
+          placed++;
+        } else {
+          cells.push({
+            x: Math.round(currentX),
+            y: Math.round(currentY),
+            width: Math.round(smallCellWidth),
+            height: Math.round(rowHeight)
+          });
+          currentX += smallCellWidth;
+          placed++;
+        }
+        
+        if (placed >= nftCount) break;
+      }
+    } else {
+      // Regular row with equal cells
+      const cellWidth = canvasWidth / cellsInRow;
+      
+      for (let i = 0; i < cellsInRow && placed < nftCount; i++) {
+        cells.push({
+          x: Math.round(i * cellWidth),
+          y: Math.round(currentY),
+          width: Math.round(cellWidth),
+          height: Math.round(rowHeight)
+        });
+        placed++;
+      }
+    }
+    
+    currentY += rowHeight;
+    rowIndex++;
+    
+    // Safety check to prevent infinite loop
+    if (rowIndex > 50) break;
   }
   
   return cells;
@@ -494,9 +728,17 @@ async function createCollageCanvas(nfts, isPreview) {
   const canvasSize = 1600;
   const innerSize = canvasSize - (separatorWidth * 2); // Account for outer border
   
-  // Generate unique layout
-  const cells = generateCollageLayout(nfts.length, innerSize, innerSize);
+  // Get organized layout (no overlapping!)
+  const cells = getCollageLayout(nfts.length, innerSize, innerSize);
   
+  if (isPreview) {
+    // Use HTML-based preview to preserve animation
+    const htmlGrid = createAnimatedCollagePreview(nfts, cells, separatorWidth, separatorColor, canvasSize);
+    showGridPreview(null, { htmlGrid });
+    return null;
+  }
+  
+  // For download, create canvas
   const canvas = document.createElement('canvas');
   canvas.width = canvasSize;
   canvas.height = canvasSize;
@@ -546,322 +788,12 @@ async function createCollageCanvas(nfts, isPreview) {
     }
   }
   
-  if (isPreview) {
-    showGridPreview(canvas);
-  } else {
-    // Check for GIFs
-    const hasGifs = typeof hasAnimatedImages === 'function' && hasAnimatedImages(nfts);
-    if (hasGifs) {
-      showNotification('Collage with GIFs - downloading as PNG (animation not supported in collage mode)', 'info');
-    }
-    downloadCanvasAsImage(canvas, 'nft-collage-' + nfts.length + 'nfts-' + Date.now() + '.png');
-  }
+  // Download as PNG (static)
+  // Note: For animated download, user should download original files
+  downloadCanvasAsImage(canvas, 'nft-collage-' + nfts.length + 'nfts-' + Date.now() + '.png');
+  showNotification('Collage downloaded! Note: Animations preserved only in preview.', 'info');
   
   return canvas;
-}
-// Check if image URL is animated (GIF or potentially animated WebP)
-function isAnimatedFormat(url) {
-  if (!url) return false;
-  const lower = url.toLowerCase();
-  // Check for .gif in URL (handles query params too)
-  return lower.includes('.gif') || lower.match(/\.gif($|\?|#)/i);
-}
-
-// Check if any NFTs in array have animated images
-function hasAnimatedImages(nfts) {
-  return nfts.some(nft => isAnimatedFormat(nft.image));
-}
-
-// Fetch GIF as ArrayBuffer
-async function fetchGifBuffer(url) {
-  try {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error('Failed to fetch');
-    return await response.arrayBuffer();
-  } catch (e) {
-    console.error('Failed to fetch GIF:', url, e);
-    return null;
-  }
-}
-
-// Parse GIF and extract frames using gifuct-js
-async function parseGifFrames(url) {
-  try {
-    const buffer = await fetchGifBuffer(url);
-    if (!buffer) return null;
-    
-    // gifuct-js functions are globally available
-    const gif = parseGIF(buffer);
-    const frames = decompressFrames(gif, true);
-    
-    if (!frames || frames.length === 0) return null;
-    
-    // Convert frames to canvas-ready format
-    const processedFrames = frames.map((frame, index) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = gif.lsd.width;
-      canvas.height = gif.lsd.height;
-      const ctx = canvas.getContext('2d');
-      
-      // For first frame or full frames, just draw
-      // For subsequent frames, we need to handle disposal
-      if (index === 0) {
-        const imageData = ctx.createImageData(frame.dims.width, frame.dims.height);
-        imageData.data.set(frame.patch);
-        ctx.putImageData(imageData, frame.dims.left, frame.dims.top);
-      } else {
-        // Copy previous frame first if needed
-        const prevCanvas = processedFrames[index - 1]?.canvas;
-        if (prevCanvas) {
-          ctx.drawImage(prevCanvas, 0, 0);
-        }
-        
-        // Handle disposal method
-        if (frame.disposalType === 2) {
-          // Clear the frame area
-          ctx.clearRect(frame.dims.left, frame.dims.top, frame.dims.width, frame.dims.height);
-        }
-        
-        // Draw current frame
-        const imageData = ctx.createImageData(frame.dims.width, frame.dims.height);
-        imageData.data.set(frame.patch);
-        ctx.putImageData(imageData, frame.dims.left, frame.dims.top);
-      }
-      
-      return {
-        canvas: canvas,
-        delay: frame.delay || 100,
-        width: gif.lsd.width,
-        height: gif.lsd.height
-      };
-    });
-    
-    return {
-      frames: processedFrames,
-      width: gif.lsd.width,
-      height: gif.lsd.height,
-      frameCount: frames.length,
-      totalDuration: frames.reduce((sum, f) => sum + (f.delay || 100), 0)
-    };
-  } catch (e) {
-    console.error('Failed to parse GIF:', url, e);
-    return null;
-  }
-}
-
-// Render GIF frames properly with disposal handling
-function renderGifFrames(gifData) {
-  if (!gifData || !gifData.frames) return [];
-  
-  const { frames } = gifData;
-  const renderedFrames = [];
-  
-  // Create a master canvas to accumulate frames
-  const masterCanvas = document.createElement('canvas');
-  masterCanvas.width = gifData.width;
-  masterCanvas.height = gifData.height;
-  const masterCtx = masterCanvas.getContext('2d');
-  
-  for (let i = 0; i < frames.length; i++) {
-    const frame = frames[i];
-    
-    // Draw frame onto master canvas
-    masterCtx.drawImage(frame.canvas, 0, 0);
-    
-    // Create a copy for this frame
-    const frameCanvas = document.createElement('canvas');
-    frameCanvas.width = gifData.width;
-    frameCanvas.height = gifData.height;
-    const frameCtx = frameCanvas.getContext('2d');
-    frameCtx.drawImage(masterCanvas, 0, 0);
-    
-    renderedFrames.push({
-      canvas: frameCanvas,
-      delay: frame.delay
-    });
-  }
-  
-  return renderedFrames;
-}
-
-// Load static image as single frame
-async function loadStaticImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      resolve({
-        frames: [{ canvas, delay: 100 }],
-        width: img.width,
-        height: img.height,
-        frameCount: 1,
-        isStatic: true
-      });
-    };
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = url;
-  });
-}
-
-// Load image - either as GIF with frames or static image
-async function loadImageWithFrames(url) {
-  if (isAnimatedFormat(url)) {
-    const gifData = await parseGifFrames(url);
-    if (gifData && gifData.frameCount > 1) {
-      // It's an animated GIF
-      const renderedFrames = renderGifFrames(gifData);
-      return {
-        frames: renderedFrames,
-        width: gifData.width,
-        height: gifData.height,
-        frameCount: renderedFrames.length,
-        isAnimated: true,
-        totalDuration: gifData.totalDuration
-      };
-    }
-  }
-  
-  // Fallback to static image
-  try {
-    return await loadStaticImage(url);
-  } catch (e) {
-    console.error('Failed to load image:', url, e);
-    return null;
-  }
-}
-
-// Create animated GIF grid with proper frame extraction
-async function createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize) {
-  return new Promise(async (resolve, reject) => {
-    const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
-    const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
-    
-    showNotification('Loading and parsing images...', 'info');
-    
-    // Load all images with their frames
-    const loadedImages = [];
-    let maxFrameCount = 1;
-    let hasAnimated = false;
-    
-    for (let i = 0; i < gridData.rows * gridData.cols; i++) {
-      if (nfts[i]) {
-        try {
-          const imageData = await loadImageWithFrames(nfts[i].image);
-          if (imageData) {
-            loadedImages.push(imageData);
-            if (imageData.isAnimated) {
-              hasAnimated = true;
-              maxFrameCount = Math.max(maxFrameCount, imageData.frameCount);
-            }
-          } else {
-            loadedImages.push(null);
-          }
-        } catch (e) {
-          console.error('Failed to load image:', nfts[i].image, e);
-          loadedImages.push(null);
-        }
-      } else {
-        loadedImages.push(null);
-      }
-    }
-    
-    // If no animated images found, fall back to static
-    if (!hasAnimated) {
-      showNotification('No animated GIFs detected, creating static image...', 'info');
-      reject(new Error('No animated GIFs found'));
-      return;
-    }
-    
-    showNotification('Creating animated GIF with ' + maxFrameCount + ' frames...', 'info');
-    
-    // Calculate LCM for smooth animation (cap at 60 frames for performance)
-    const outputFrameCount = Math.min(maxFrameCount, 60);
-    
-    // Create GIF encoder
-    const gif = new GIF({
-      workers: 2,
-      quality: 10,
-      width: canvasWidth,
-      height: canvasHeight,
-      workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
-    });
-    
-    // Generate each output frame
-    for (let frameIndex = 0; frameIndex < outputFrameCount; frameIndex++) {
-      const canvas = document.createElement('canvas');
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-      const ctx = canvas.getContext('2d');
-      
-      // Draw separator background
-      ctx.fillStyle = separatorColor;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-      
-      // Draw each cell
-      for (let i = 0; i < gridData.rows * gridData.cols; i++) {
-        const row = Math.floor(i / gridData.cols);
-        const col = i % gridData.cols;
-        const x = separatorWidth + col * (cellSize + separatorWidth);
-        const y = separatorWidth + row * (cellSize + separatorWidth);
-        
-        const imageData = loadedImages[i];
-        
-        if (imageData && imageData.frames && imageData.frames.length > 0) {
-          // Get the appropriate frame for this image
-          const imageFrameIndex = frameIndex % imageData.frames.length;
-          const frame = imageData.frames[imageFrameIndex];
-          
-          if (frame && frame.canvas) {
-            // Draw the frame scaled to fit the cell
-            ctx.drawImage(frame.canvas, 0, 0, imageData.width, imageData.height, x, y, cellSize, cellSize);
-          } else {
-            ctx.fillStyle = emptyCellColor;
-            ctx.fillRect(x, y, cellSize, cellSize);
-          }
-        } else {
-          ctx.fillStyle = emptyCellColor;
-          ctx.fillRect(x, y, cellSize, cellSize);
-        }
-      }
-      
-      // Calculate average delay (default 100ms)
-      let frameDelay = 100;
-      const animatedImages = loadedImages.filter(img => img && img.isAnimated);
-      if (animatedImages.length > 0) {
-        const avgDelay = animatedImages.reduce((sum, img) => {
-          const imgFrameIndex = frameIndex % img.frames.length;
-          return sum + (img.frames[imgFrameIndex]?.delay || 100);
-        }, 0) / animatedImages.length;
-        frameDelay = Math.max(20, Math.round(avgDelay)); // Minimum 20ms
-      }
-      
-      gif.addFrame(canvas, { delay: frameDelay, copy: true });
-    }
-    
-    gif.on('finished', (blob) => {
-      showNotification('GIF created successfully!', 'success');
-      resolve(blob);
-    });
-    
-    gif.on('error', (err) => {
-      console.error('GIF encoding error:', err);
-      reject(err);
-    });
-    
-    gif.on('progress', (progress) => {
-      const percent = Math.round(progress * 100);
-      if (percent % 20 === 0) {
-        showNotification('Encoding GIF: ' + percent + '%...', 'info');
-      }
-    });
-    
-    gif.render();
-  });
 }
 
 function getActualGridSize() {
@@ -969,32 +901,15 @@ async function createGridCanvas(nfts, gridData, isPreview) {
   const emptyCellColor = document.getElementById('emptyCellColor').value;
   const cellSize = 400;
   
-  // Check if any images are GIFs
-  const hasGifs = hasAnimatedImages(nfts);
-  
-  // If downloading (not preview) and has GIFs, create animated GIF
-  if (!isPreview && hasGifs) {
-    showNotification('Detecting animated GIFs... Please wait', 'info');
-    try {
-      const blob = await createAnimatedGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '-animated.gif';
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    } catch (error) {
-      console.error('GIF creation failed:', error);
-      showNotification('Creating static PNG instead...', 'info');
-      // Fallback to PNG
-      await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, false);
-    }
+  if (isPreview) {
+    // Use HTML-based preview to preserve animation
+    const htmlGrid = createAnimatedPreviewGrid(nfts, gridData, separatorWidth, separatorColor);
+    showGridPreview(null, { htmlGrid });
     return;
   }
   
-  // For preview or non-animated, use static canvas
-  await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, isPreview);
+  // For download - create canvas (static PNG)
+  await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, false);
 }
 
 async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, isPreview) {
@@ -1006,6 +921,7 @@ async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, 
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = separatorColor;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  
   for (let i = 0; i < gridData.rows * gridData.cols; i++) {
     const row = Math.floor(i / gridData.cols);
     const col = i % gridData.cols;
@@ -1015,33 +931,148 @@ async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, 
       try {
         const img = await loadImage(nfts[i].image);
         ctx.drawImage(img, x, y, cellSize, cellSize);
-      } catch (error) { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
-    } else { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
+      } catch (error) { 
+        ctx.fillStyle = emptyCellColor; 
+        ctx.fillRect(x, y, cellSize, cellSize); 
+      }
+    } else { 
+      ctx.fillStyle = emptyCellColor; 
+      ctx.fillRect(x, y, cellSize, cellSize); 
+    }
   }
-  if (isPreview) { showGridPreview(canvas); }
-  else { downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png'); }
+  
+  if (isPreview) { 
+    showGridPreview(canvas); 
+  } else { 
+    downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png');
+    showNotification('Grid downloaded as PNG. Animations visible only in preview.', 'info');
+  }
 }
 
-function showGridPreview(canvas, isAnimatedBlob = null) {
+// Show grid preview - can be canvas, blob, or HTML grid with actual images
+function showGridPreview(canvasOrNull, options = {}) {
   const container = document.getElementById('gridPreviewContainer');
   const preview = document.getElementById('gridPreview');
   preview.innerHTML = '';
   
-  const img = document.createElement('img');
-  
-  if (isAnimatedBlob) {
-    // For animated GIF preview
-    img.src = URL.createObjectURL(isAnimatedBlob);
-    img.onload = () => URL.revokeObjectURL(img.src);
-  } else {
-    img.src = canvas.toDataURL();
+  // If we have an HTML grid (for animated preview)
+  if (options.htmlGrid) {
+    preview.appendChild(options.htmlGrid);
+    container.classList.add('visible');
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
   }
   
-  img.style.width = '100%';
-  img.style.height = 'auto';
-  preview.appendChild(img);
-  container.classList.add('visible');
-  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // If we have a blob (animated GIF)
+  if (options.blob) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(options.blob);
+    img.onload = () => URL.revokeObjectURL(img.src);
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    preview.appendChild(img);
+    container.classList.add('visible');
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  
+  // Standard canvas preview
+  if (canvasOrNull) {
+    const img = document.createElement('img');
+    img.src = canvasOrNull.toDataURL();
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    preview.appendChild(img);
+    container.classList.add('visible');
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Create HTML-based preview grid that preserves animation
+function createAnimatedPreviewGrid(nfts, gridData, separatorWidth, separatorColor) {
+  const cellSize = 100; // Preview cell size in pixels
+  const gridWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
+  const gridHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
+  
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(${gridData.cols}, ${cellSize}px);
+    gap: ${separatorWidth}px;
+    padding: ${separatorWidth}px;
+    background: ${separatorColor};
+    border-radius: 8px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+  `;
+  
+  for (let i = 0; i < gridData.rows * gridData.cols; i++) {
+    const cell = document.createElement('div');
+    cell.style.cssText = `
+      width: ${cellSize}px;
+      height: ${cellSize}px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #1a1a1a;
+    `;
+    
+    if (nfts[i]) {
+      const img = document.createElement('img');
+      img.src = nfts[i].image;
+      img.alt = nfts[i].name || 'NFT';
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      img.onerror = () => { img.style.display = 'none'; };
+      cell.appendChild(img);
+    }
+    
+    wrapper.appendChild(cell);
+  }
+  
+  return wrapper;
+}
+
+// Create HTML-based collage preview that preserves animation
+function createAnimatedCollagePreview(nfts, cells, separatorWidth, separatorColor, canvasSize) {
+  const scale = 400 / canvasSize; // Scale down for preview
+  
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `
+    position: relative;
+    width: ${canvasSize * scale}px;
+    height: ${canvasSize * scale}px;
+    background: ${separatorColor};
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0 auto;
+  `;
+  
+  cells.forEach((cell, i) => {
+    const cellDiv = document.createElement('div');
+    cellDiv.style.cssText = `
+      position: absolute;
+      left: ${(separatorWidth + cell.x + separatorWidth / 2) * scale}px;
+      top: ${(separatorWidth + cell.y + separatorWidth / 2) * scale}px;
+      width: ${(cell.width - separatorWidth) * scale}px;
+      height: ${(cell.height - separatorWidth) * scale}px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #1a1a1a;
+    `;
+    
+    if (nfts[i]) {
+      const img = document.createElement('img');
+      img.src = nfts[i].image;
+      img.alt = nfts[i].name || 'NFT';
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      img.onerror = () => { img.style.display = 'none'; };
+      cellDiv.appendChild(img);
+    }
+    
+    wrapper.appendChild(cellDiv);
+  });
+  
+  return wrapper;
 }
 
 function downloadCanvasAsImage(canvas, filename) {
