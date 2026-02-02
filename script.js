@@ -103,41 +103,78 @@ let customGradient = {
 // ============================================
 // CUSTOM CURSOR
 // ============================================
+// Custom Cursor - Optimized with iframe detection
 const cursor = document.querySelector('.cursor');
 const cursorDot = document.querySelector('.cursor-dot');
+const viewerFrame = document.querySelector('.viewer-frame');
 
-if (cursor && cursorDot) {
-  let mouseX = 0, mouseY = 0;
-  let cursorX = 0, cursorY = 0;
+let mouseX = 0, mouseY = 0;
+let cursorX = 0, cursorY = 0;
+let rafId = null;
+let isOverIframe = false;
+let lastMoveTime = 0;
 
-  document.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    cursorDot.style.left = mouseX + 'px';
-    cursorDot.style.top = mouseY + 'px';
-  });
-
-  function animateCursor() {
-    cursorX += (mouseX - cursorX) * 0.15;
-    cursorY += (mouseY - cursorY) * 0.15;
-    cursor.style.left = cursorX + 'px';
-    cursor.style.top = cursorY + 'px';
-    requestAnimationFrame(animateCursor);
+function updateCursor() {
+  const now = performance.now();
+  
+  // Throttle to 30fps when over iframe (every 33ms instead of 16ms)
+  if (isOverIframe && now - lastMoveTime < 33) {
+    rafId = requestAnimationFrame(updateCursor);
+    return;
   }
-  animateCursor();
-
-  document.addEventListener('mouseover', (e) => {
-    if (e.target.closest('a, button, .nft-thumbnail, .nft-card, .bg-option, select, input, .toggle, .leaderboard-entry, .meme-template, .character-item')) {
-      cursor.classList.add('hover');
-    }
-  });
-
-  document.addEventListener('mouseout', (e) => {
-    if (e.target.closest('a, button, .nft-thumbnail, .nft-card, .bg-option, select, input, .toggle, .leaderboard-entry, .meme-template, .character-item')) {
-      cursor.classList.remove('hover');
-    }
-  });
+  lastMoveTime = now;
+  
+  // Faster easing when over iframe (less smooth but less CPU)
+  const ease = isOverIframe ? 0.25 : 0.12;
+  cursorX += (mouseX - cursorX) * ease;
+  cursorY += (mouseY - cursorY) * ease;
+  
+  cursor.style.transform = `translate(${cursorX - 10}px, ${cursorY - 10}px)`;
+  
+  rafId = requestAnimationFrame(updateCursor);
 }
+
+rafId = requestAnimationFrame(updateCursor);
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  cursorDot.style.transform = `translate(${mouseX - 2}px, ${mouseY - 2}px)`;
+}, { passive: true });
+
+// Detect when mouse is over the heavy iframe
+if (viewerFrame) {
+  viewerFrame.addEventListener('mouseenter', () => {
+    isOverIframe = true;
+  }, { passive: true });
+
+  viewerFrame.addEventListener('mouseleave', () => {
+    isOverIframe = false;
+  }, { passive: true });
+}
+
+// Cursor hover effect
+document.addEventListener('mouseover', (e) => {
+  if (e.target.closest('a, button, .control-btn, .search-btn, .faq-question, input')) {
+    cursor.classList.add('hover');
+  }
+}, { passive: true });
+
+document.addEventListener('mouseout', (e) => {
+  if (e.target.closest('a, button, .control-btn, .search-btn, .faq-question, input')) {
+    cursor.classList.remove('hover');
+  }
+}, { passive: true });
+
+// Pause when tab hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  } else if (!rafId) {
+    rafId = requestAnimationFrame(updateCursor);
+  }
+});
 
 // ============================================
 // SCROLL PROGRESS
@@ -2116,18 +2153,36 @@ document.addEventListener('DOMContentLoaded', async function() {
   const bgToggle = document.getElementById('removeBackgroundToggle');
   if (bgToggle) bgToggle.classList.add('active');
 
-  // Viewer Controls
-  let currentSquiggleToken = 1;
+  // Viewer Controls - Start with random token
+  let currentSquiggleToken = Math.floor(Math.random() * 10000) + 1;
+  
+  // Set initial random token on page load
+  const squiggleFrame = document.getElementById('squiggleFrame');
+  if (squiggleFrame) {
+    squiggleFrame.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    const tokenDisplay = document.getElementById('squiggleTokenDisplay');
+    if (tokenDisplay) {
+      tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+    }
+  }
   
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
-    iframe.src = iframe.src;
+    if (iframe) {
+      iframe.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    }
   });
   
   document.getElementById('squiggleRandom')?.addEventListener('click', () => {
     currentSquiggleToken = Math.floor(Math.random() * 10000) + 1;
-    document.getElementById('squiggleFrame').src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
-    document.getElementById('squiggleTokenDisplay').textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+    const iframe = document.getElementById('squiggleFrame');
+    const tokenDisplay = document.getElementById('squiggleTokenDisplay');
+    if (iframe) {
+      iframe.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    }
+    if (tokenDisplay) {
+      tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
+    }
   });
   
   document.getElementById('squiggleFullscreen')?.addEventListener('click', () => {
