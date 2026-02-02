@@ -432,370 +432,6 @@ function handleNFTSelection(index, element) {
 // ============================================
 // GRID MAKER
 // ============================================
-// ============================================
-// COLLAGE LAYOUT SYSTEM
-// ============================================
-
-// Get a predefined or generated collage layout based on NFT count
-function getCollageLayout(nftCount, canvasWidth, canvasHeight) {
-  // Predefined layouts for specific counts (magazine-style)
-  const layouts = {
-    2: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight }
-    ],
-    3: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.6, height: canvasHeight },
-      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.6, y: canvasHeight * 0.5, width: canvasWidth * 0.4, height: canvasHeight * 0.5 }
-    ],
-    4: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
-      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.5, height: canvasHeight * 0.5 }
-    ],
-    5: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.6, height: canvasHeight * 0.6 },
-      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.6, y: canvasHeight * 0.3, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
-      { x: 0, y: canvasHeight * 0.6, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.6, width: canvasWidth * 0.5, height: canvasHeight * 0.4 }
-    ],
-    6: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
-      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.33, y: canvasHeight * 0.4, width: canvasWidth * 0.34, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.67, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
-      { x: 0, y: canvasHeight * 0.7, width: canvasWidth, height: canvasHeight * 0.3 }
-    ],
-    7: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.25, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
-      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.33, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.67, y: canvasHeight * 0.5, width: canvasWidth * 0.33, height: canvasHeight * 0.5 }
-    ],
-    8: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.5 }
-    ],
-    9: () => [
-      // 3x3 but with center larger
-      { x: 0, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.3, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.7, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
-      { x: 0, y: canvasHeight * 0.3, width: canvasWidth * 0.3, height: canvasHeight * 0.4 },
-      { x: canvasWidth * 0.3, y: canvasHeight * 0.3, width: canvasWidth * 0.4, height: canvasHeight * 0.4 }, // Center big
-      { x: canvasWidth * 0.7, y: canvasHeight * 0.3, width: canvasWidth * 0.3, height: canvasHeight * 0.4 },
-      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.3, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.3, y: canvasHeight * 0.7, width: canvasWidth * 0.4, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.7, y: canvasHeight * 0.7, width: canvasWidth * 0.3, height: canvasHeight * 0.3 }
-    ],
-    10: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.5 },
-      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.7, y: 0, width: canvasWidth * 0.3, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.4, y: canvasHeight * 0.25, width: canvasWidth * 0.6, height: canvasHeight * 0.25 },
-      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: 0, y: canvasHeight * 0.75, width: canvasWidth * 0.5, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.75, width: canvasWidth * 0.5, height: canvasHeight * 0.25 }
-    ],
-    11: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.4 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.2, width: canvasWidth * 0.5, height: canvasHeight * 0.2 },
-      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.33, y: canvasHeight * 0.4, width: canvasWidth * 0.34, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.67, y: canvasHeight * 0.4, width: canvasWidth * 0.33, height: canvasHeight * 0.3 },
-      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.7, width: canvasWidth * 0.25, height: canvasHeight * 0.3 }
-    ],
-    12: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.5, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.33 },
-      { x: 0, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.33, width: canvasWidth * 0.5, height: canvasHeight * 0.34 }, // Big center
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
-      { x: 0, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.167, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.333, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.667, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.833, y: canvasHeight * 0.67, width: canvasWidth * 0.167, height: canvasHeight * 0.33 }
-    ],
-    13: () => [
-      // Row 1: 4 NFTs
-      { x: 0, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.25, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: 0, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      // Row 2-3: 1 left, 1 BIG center (spans 2 rows), 1 right each row
-      { x: 0, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: 0, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.25, width: canvasWidth * 0.5, height: canvasHeight * 0.5 }, // BIG CENTER
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.25, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.5, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      // Row 4: 4 NFTs
-      { x: 0, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.5, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.75, width: canvasWidth * 0.25, height: canvasHeight * 0.25 }
-    ],
-    14: () => [
-      { x: 0, y: 0, width: canvasWidth * 0.4, height: canvasHeight * 0.4 },
-      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.8, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.4, y: canvasHeight * 0.2, width: canvasWidth * 0.3, height: canvasHeight * 0.2 },
-      { x: canvasWidth * 0.7, y: canvasHeight * 0.2, width: canvasWidth * 0.3, height: canvasHeight * 0.2 },
-      { x: 0, y: canvasHeight * 0.4, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.4, width: canvasWidth * 0.5, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.4, width: canvasWidth * 0.25, height: canvasHeight * 0.3 },
-      { x: 0, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.2, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.4, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.6, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 },
-      { x: canvasWidth * 0.8, y: canvasHeight * 0.7, width: canvasWidth * 0.2, height: canvasHeight * 0.3 }
-    ],
-    15: () => [
-      // 3 rows of 5, but middle row has big center
-      { x: 0, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.2, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.4, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.6, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.8, y: 0, width: canvasWidth * 0.2, height: canvasHeight * 0.33 },
-      { x: 0, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
-      { x: canvasWidth * 0.25, y: canvasHeight * 0.33, width: canvasWidth * 0.5, height: canvasHeight * 0.34 },
-      { x: canvasWidth * 0.75, y: canvasHeight * 0.33, width: canvasWidth * 0.25, height: canvasHeight * 0.34 },
-      { x: 0, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.143, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.286, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.429, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.571, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.714, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 },
-      { x: canvasWidth * 0.857, y: canvasHeight * 0.67, width: canvasWidth * 0.143, height: canvasHeight * 0.33 }
-    ],
-    16: () => generateGridLayout(4, 4, canvasWidth, canvasHeight),
-    20: () => generateMagazineLayout(20, canvasWidth, canvasHeight),
-    25: () => generateGridLayout(5, 5, canvasWidth, canvasHeight)
-  };
-  
-  // Use predefined layout if available
-  if (layouts[nftCount]) {
-    const cells = layouts[nftCount]();
-    return cells.map(cell => ({
-      x: Math.round(cell.x),
-      y: Math.round(cell.y),
-      width: Math.round(cell.width),
-      height: Math.round(cell.height)
-    }));
-  }
-  
-  // For other counts, generate a magazine-style layout
-  return generateMagazineLayout(nftCount, canvasWidth, canvasHeight);
-}
-
-// Generate a standard grid layout
-function generateGridLayout(rows, cols, width, height) {
-  const cells = [];
-  const cellWidth = width / cols;
-  const cellHeight = height / rows;
-  
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      cells.push({
-        x: c * cellWidth,
-        y: r * cellHeight,
-        width: cellWidth,
-        height: cellHeight
-      });
-    }
-  }
-  return cells;
-}
-
-// Generate magazine-style layout for any count
-function generateMagazineLayout(nftCount, canvasWidth, canvasHeight) {
-  const cells = [];
-  
-  // Calculate approximate rows needed
-  const approxCols = Math.ceil(Math.sqrt(nftCount));
-  const approxRows = Math.ceil(nftCount / approxCols);
-  
-  // Create a grid-based approach with some larger cells
-  let placed = 0;
-  let currentY = 0;
-  let rowIndex = 0;
-  
-  while (placed < nftCount) {
-    const remaining = nftCount - placed;
-    const rowHeight = canvasHeight / approxRows;
-    
-    // Decide how many cells in this row
-    let cellsInRow;
-    if (remaining <= 4) {
-      cellsInRow = remaining;
-    } else if (rowIndex === 0 || rowIndex === approxRows - 1) {
-      // First and last rows: more smaller cells
-      cellsInRow = Math.min(remaining, Math.ceil(approxCols * 1.2));
-    } else {
-      // Middle rows: mix of sizes
-      cellsInRow = Math.min(remaining, approxCols);
-    }
-    
-    // Check if we should have a big cell in this row
-    const hasBigCell = remaining > 4 && rowIndex > 0 && rowIndex < approxRows - 1 && Math.random() > 0.5;
-    
-    if (hasBigCell && cellsInRow >= 3) {
-      // Create row with one big cell
-      const bigCellIndex = Math.floor(cellsInRow / 2);
-      const smallCellWidth = canvasWidth / (cellsInRow + 1); // +1 because big cell takes 2x
-      
-      let currentX = 0;
-      for (let i = 0; i < cellsInRow - 1; i++) {
-        if (i === bigCellIndex) {
-          // Big cell (2x width)
-          cells.push({
-            x: Math.round(currentX),
-            y: Math.round(currentY),
-            width: Math.round(smallCellWidth * 2),
-            height: Math.round(rowHeight)
-          });
-          currentX += smallCellWidth * 2;
-          placed++;
-        } else {
-          cells.push({
-            x: Math.round(currentX),
-            y: Math.round(currentY),
-            width: Math.round(smallCellWidth),
-            height: Math.round(rowHeight)
-          });
-          currentX += smallCellWidth;
-          placed++;
-        }
-        
-        if (placed >= nftCount) break;
-      }
-    } else {
-      // Regular row with equal cells
-      const cellWidth = canvasWidth / cellsInRow;
-      
-      for (let i = 0; i < cellsInRow && placed < nftCount; i++) {
-        cells.push({
-          x: Math.round(i * cellWidth),
-          y: Math.round(currentY),
-          width: Math.round(cellWidth),
-          height: Math.round(rowHeight)
-        });
-        placed++;
-      }
-    }
-    
-    currentY += rowHeight;
-    rowIndex++;
-    
-    // Safety check to prevent infinite loop
-    if (rowIndex > 50) break;
-  }
-  
-  return cells;
-}
-
-// Create collage grid canvas
-async function createCollageCanvas(nfts, isPreview) {
-  const separatorWidth = parseInt(document.getElementById('separatorWidth').value);
-  const separatorColor = document.getElementById('separatorColor').value;
-  const emptyCellColor = document.getElementById('emptyCellColor').value;
-  
-  // Canvas size - use a good resolution
-  const canvasSize = 1600;
-  const innerSize = canvasSize - (separatorWidth * 2); // Account for outer border
-  
-  // Get organized layout (no overlapping!)
-  const cells = getCollageLayout(nfts.length, innerSize, innerSize);
-  
-  if (isPreview) {
-    // Use HTML-based preview to preserve animation
-    const htmlGrid = createAnimatedCollagePreview(nfts, cells, separatorWidth, separatorColor, canvasSize);
-    showGridPreview(null, { htmlGrid });
-    return null;
-  }
-  
-  // For download, create canvas
-  const canvas = document.createElement('canvas');
-  canvas.width = canvasSize;
-  canvas.height = canvasSize;
-  const ctx = canvas.getContext('2d');
-  
-  // Fill background with separator color
-  ctx.fillStyle = separatorColor;
-  ctx.fillRect(0, 0, canvasSize, canvasSize);
-  
-  // Draw each cell
-  for (let i = 0; i < cells.length; i++) {
-    const cell = cells[i];
-    // Offset by separator width for outer border, and shrink each cell for inner separators
-    const x = separatorWidth + cell.x + separatorWidth / 2;
-    const y = separatorWidth + cell.y + separatorWidth / 2;
-    const width = cell.width - separatorWidth;
-    const height = cell.height - separatorWidth;
-    
-    if (nfts[i]) {
-      try {
-        const img = await loadImage(nfts[i].image);
-        
-        // Draw image to fill cell (cover style)
-        const imgAspect = img.width / img.height;
-        const cellAspect = width / height;
-        
-        let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
-        
-        if (imgAspect > cellAspect) {
-          // Image is wider - crop sides
-          sWidth = img.height * cellAspect;
-          sx = (img.width - sWidth) / 2;
-        } else {
-          // Image is taller - crop top/bottom
-          sHeight = img.width / cellAspect;
-          sy = (img.height - sHeight) / 2;
-        }
-        
-        ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, width, height);
-      } catch (error) {
-        ctx.fillStyle = emptyCellColor;
-        ctx.fillRect(x, y, width, height);
-      }
-    } else {
-      ctx.fillStyle = emptyCellColor;
-      ctx.fillRect(x, y, width, height);
-    }
-  }
-  
-  // Download as PNG (static)
-  // Note: For animated download, user should download original files
-  downloadCanvasAsImage(canvas, 'nft-collage-' + nfts.length + 'nfts-' + Date.now() + '.png');
-  showNotification('Collage downloaded! Note: Animations preserved only in preview.', 'info');
-  
-  return canvas;
-}
-
 function getActualGridSize() {
   const gridSizeSelect = document.getElementById('gridSize');
   const selected = gridSizeSelect.value;
@@ -819,31 +455,9 @@ function getActualGridSize() {
 }
 
 async function previewGrid() {
-  const gridSizeValue = document.getElementById('gridSize').value;
+  const gridData = getActualGridSize();
   const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
   let nftsToUse = [];
-  
-  // For collage mode
-  if (gridSizeValue === 'collage') {
-    if (selectionMode === 'random') {
-      // Use all NFTs or a random subset
-      const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
-      const count = Math.min(shuffled.length, Math.floor(Math.random() * 10) + 5); // 5-15 random NFTs
-      nftsToUse = shuffled.slice(0, count);
-    } else {
-      nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
-        const [contract, id] = key.split('_');
-        return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
-      }).filter(Boolean);
-    }
-    if (nftsToUse.length === 0) { showNotification('Please select NFTs for the collage', 'error'); return; }
-    if (nftsToUse.length < 2) { showNotification('Select at least 2 NFTs for collage', 'error'); return; }
-    await createCollageCanvas(nftsToUse, true);
-    return;
-  }
-  
-  // Regular grid mode
-  const gridData = getActualGridSize();
   if (selectionMode === 'random') {
     const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
     nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
@@ -858,30 +472,9 @@ async function previewGrid() {
 }
 
 async function downloadGrid() {
-  const gridSizeValue = document.getElementById('gridSize').value;
+  const gridData = getActualGridSize();
   const selectionMode = document.querySelector('input[name="selectionMode"]:checked').value;
   let nftsToUse = [];
-  
-  // For collage mode
-  if (gridSizeValue === 'collage') {
-    if (selectionMode === 'random') {
-      const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
-      const count = Math.min(shuffled.length, Math.floor(Math.random() * 10) + 5);
-      nftsToUse = shuffled.slice(0, count);
-    } else {
-      nftsToUse = Array.from(selectedNFTsForGrid).map(key => {
-        const [contract, id] = key.split('_');
-        return selectedCollectionNFTs.find(nft => nft.contractAddress === contract && nft.id === id);
-      }).filter(Boolean);
-    }
-    if (nftsToUse.length === 0) { showNotification('Please select NFTs for the collage', 'error'); return; }
-    if (nftsToUse.length < 2) { showNotification('Select at least 2 NFTs for collage', 'error'); return; }
-    await createCollageCanvas(nftsToUse, false);
-    return;
-  }
-  
-  // Regular grid mode
-  const gridData = getActualGridSize();
   if (selectionMode === 'random') {
     const shuffled = [...selectedCollectionNFTs].sort(() => 0.5 - Math.random());
     nftsToUse = shuffled.slice(0, gridData.rows * gridData.cols);
@@ -900,19 +493,6 @@ async function createGridCanvas(nfts, gridData, isPreview) {
   const separatorColor = document.getElementById('separatorColor').value;
   const emptyCellColor = document.getElementById('emptyCellColor').value;
   const cellSize = 400;
-  
-  if (isPreview) {
-    // Use HTML-based preview to preserve animation
-    const htmlGrid = createAnimatedPreviewGrid(nfts, gridData, separatorWidth, separatorColor);
-    showGridPreview(null, { htmlGrid });
-    return;
-  }
-  
-  // For download - create canvas (static PNG)
-  await createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, false);
-}
-
-async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, emptyCellColor, cellSize, isPreview) {
   const canvasWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
   const canvasHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
   const canvas = document.createElement('canvas');
@@ -921,7 +501,6 @@ async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, 
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = separatorColor;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-  
   for (let i = 0; i < gridData.rows * gridData.cols; i++) {
     const row = Math.floor(i / gridData.cols);
     const col = i % gridData.cols;
@@ -931,148 +510,24 @@ async function createStaticGrid(nfts, gridData, separatorWidth, separatorColor, 
       try {
         const img = await loadImage(nfts[i].image);
         ctx.drawImage(img, x, y, cellSize, cellSize);
-      } catch (error) { 
-        ctx.fillStyle = emptyCellColor; 
-        ctx.fillRect(x, y, cellSize, cellSize); 
-      }
-    } else { 
-      ctx.fillStyle = emptyCellColor; 
-      ctx.fillRect(x, y, cellSize, cellSize); 
-    }
+      } catch (error) { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
+    } else { ctx.fillStyle = emptyCellColor; ctx.fillRect(x, y, cellSize, cellSize); }
   }
-  
-  if (isPreview) { 
-    showGridPreview(canvas); 
-  } else { 
-    downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png');
-    showNotification('Grid downloaded as PNG. Animations visible only in preview.', 'info');
-  }
+  if (isPreview) { showGridPreview(canvas); }
+  else { downloadCanvasAsImage(canvas, 'nft-grid-' + gridData.rows + 'x' + gridData.cols + '.png'); }
 }
 
-// Show grid preview - can be canvas, blob, or HTML grid with actual images
-function showGridPreview(canvasOrNull, options = {}) {
+function showGridPreview(canvas) {
   const container = document.getElementById('gridPreviewContainer');
   const preview = document.getElementById('gridPreview');
   preview.innerHTML = '';
-  
-  // If we have an HTML grid (for animated preview)
-  if (options.htmlGrid) {
-    preview.appendChild(options.htmlGrid);
-    container.classList.add('visible');
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-  
-  // If we have a blob (animated GIF)
-  if (options.blob) {
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(options.blob);
-    img.onload = () => URL.revokeObjectURL(img.src);
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    preview.appendChild(img);
-    container.classList.add('visible');
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-  
-  // Standard canvas preview
-  if (canvasOrNull) {
-    const img = document.createElement('img');
-    img.src = canvasOrNull.toDataURL();
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    preview.appendChild(img);
-    container.classList.add('visible');
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-
-// Create HTML-based preview grid that preserves animation
-function createAnimatedPreviewGrid(nfts, gridData, separatorWidth, separatorColor) {
-  const cellSize = 100; // Preview cell size in pixels
-  const gridWidth = gridData.cols * cellSize + (gridData.cols + 1) * separatorWidth;
-  const gridHeight = gridData.rows * cellSize + (gridData.rows + 1) * separatorWidth;
-  
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = `
-    display: grid;
-    grid-template-columns: repeat(${gridData.cols}, ${cellSize}px);
-    gap: ${separatorWidth}px;
-    padding: ${separatorWidth}px;
-    background: ${separatorColor};
-    border-radius: 8px;
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
-  `;
-  
-  for (let i = 0; i < gridData.rows * gridData.cols; i++) {
-    const cell = document.createElement('div');
-    cell.style.cssText = `
-      width: ${cellSize}px;
-      height: ${cellSize}px;
-      overflow: hidden;
-      border-radius: 4px;
-      background: #1a1a1a;
-    `;
-    
-    if (nfts[i]) {
-      const img = document.createElement('img');
-      img.src = nfts[i].image;
-      img.alt = nfts[i].name || 'NFT';
-      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-      img.onerror = () => { img.style.display = 'none'; };
-      cell.appendChild(img);
-    }
-    
-    wrapper.appendChild(cell);
-  }
-  
-  return wrapper;
-}
-
-// Create HTML-based collage preview that preserves animation
-function createAnimatedCollagePreview(nfts, cells, separatorWidth, separatorColor, canvasSize) {
-  const scale = 400 / canvasSize; // Scale down for preview
-  
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = `
-    position: relative;
-    width: ${canvasSize * scale}px;
-    height: ${canvasSize * scale}px;
-    background: ${separatorColor};
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 0 auto;
-  `;
-  
-  cells.forEach((cell, i) => {
-    const cellDiv = document.createElement('div');
-    cellDiv.style.cssText = `
-      position: absolute;
-      left: ${(separatorWidth + cell.x + separatorWidth / 2) * scale}px;
-      top: ${(separatorWidth + cell.y + separatorWidth / 2) * scale}px;
-      width: ${(cell.width - separatorWidth) * scale}px;
-      height: ${(cell.height - separatorWidth) * scale}px;
-      overflow: hidden;
-      border-radius: 4px;
-      background: #1a1a1a;
-    `;
-    
-    if (nfts[i]) {
-      const img = document.createElement('img');
-      img.src = nfts[i].image;
-      img.alt = nfts[i].name || 'NFT';
-      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-      img.onerror = () => { img.style.display = 'none'; };
-      cellDiv.appendChild(img);
-    }
-    
-    wrapper.appendChild(cellDiv);
-  });
-  
-  return wrapper;
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL();
+  img.style.width = '100%';
+  img.style.height = 'auto';
+  preview.appendChild(img);
+  container.classList.add('visible');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function downloadCanvasAsImage(canvas, filename) {
