@@ -2126,7 +2126,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   document.getElementById('squiggleRandom')?.addEventListener('click', () => {
     currentSquiggleToken = Math.floor(Math.random() * 3333) + 1;
-    document.getElementById('squiggleFrame').src = `https://ar-io.net/svG43xqmnbW-S19ZYLD0Dn5oUCS3p6XEq2h6_fNtqd8/?tid=${currentSquiggleToken}`;
+    document.getElementById('squiggleFrame').src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
     document.getElementById('squiggleTokenDisplay').textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
   });
   
