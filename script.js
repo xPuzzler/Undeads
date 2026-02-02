@@ -2116,11 +2116,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   const bgToggle = document.getElementById('removeBackgroundToggle');
   if (bgToggle) bgToggle.classList.add('active');
 
-  // Viewer Controls
-  let currentSquiggleToken = Math.floor(Math.random() * 3333) + 1;
+  // Viewer Controls - Initialize immediately
+  let currentSquiggleToken = Math.floor(Math.random() * 10000) + 1;
   
-  // Initialize with random token on page load
-  document.addEventListener('DOMContentLoaded', () => {
+  // Set iframe src immediately (not waiting for DOMContentLoaded since we're already inside one)
+  setTimeout(() => {
     const squiggleFrame = document.getElementById('squiggleFrame');
     const squiggleDisplay = document.getElementById('squiggleTokenDisplay');
     if (squiggleFrame) {
@@ -2129,7 +2129,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         squiggleDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
       }
     }
-  });
+  }, 100);
   
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
