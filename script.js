@@ -2159,7 +2159,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Set initial random token on page load
   const squiggleFrame = document.getElementById('squiggleFrame');
   if (squiggleFrame) {
-    squiggleFrame.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    squiggleFrame.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
     const tokenDisplay = document.getElementById('squiggleTokenDisplay');
     if (tokenDisplay) {
       tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
