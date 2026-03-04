@@ -2169,7 +2169,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
     if (iframe) {
-      iframe.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+      iframe.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
     }
   });
   
@@ -2178,7 +2178,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const iframe = document.getElementById('squiggleFrame');
     const tokenDisplay = document.getElementById('squiggleTokenDisplay');
     if (iframe) {
-      iframe.src = `https://ar-io.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+      iframe.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
     }
     if (tokenDisplay) {
       tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
