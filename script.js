@@ -2159,7 +2159,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Set initial random token on page load
   const squiggleFrame = document.getElementById('squiggleFrame');
   if (squiggleFrame) {
-    squiggleFrame.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+    squiggleFrame.src = `https://squiggler.netlify.app/?tid=${currentSquiggleToken}`;
     const tokenDisplay = document.getElementById('squiggleTokenDisplay');
     if (tokenDisplay) {
       tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
@@ -2169,7 +2169,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('squiggleReplay')?.addEventListener('click', () => {
     const iframe = document.getElementById('squiggleFrame');
     if (iframe) {
-      iframe.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+      iframe.src = `https://squiggler.netlify.app/?tid=${currentSquiggleToken}`;
     }
   });
   
@@ -2178,7 +2178,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const iframe = document.getElementById('squiggleFrame');
     const tokenDisplay = document.getElementById('squiggleTokenDisplay');
     if (iframe) {
-      iframe.src = `https://arweave.net/AtHNQ436njp4SKxtFkW0xnmMN6hKZmQJ93Ew6Z5A_eM/?tid=${currentSquiggleToken}`;
+      iframe.src = `https://squiggler.netlify.app/?tid=${currentSquiggleToken}`;
     }
     if (tokenDisplay) {
       tokenDisplay.textContent = `#${String(currentSquiggleToken).padStart(4, '0')}`;
