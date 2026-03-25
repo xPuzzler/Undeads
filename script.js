@@ -14,8 +14,8 @@ let CONFIG = {
 
 const RAFFLE_CONFIG = {
   PHASE: 3,
-  PHASE_NAME: "Phase 4 - Based Undeads Giveaway",
-  TOKEN_RANGE: { min: 3334, max: 4444 },
+  PHASE_NAME: "Phase 5 - Based Undeads Giveaway",
+  TOKEN_RANGE: { min: 4445, max: 6666 },
   TOTAL_WINNERS: 10,
   IS_ACTIVE: true,
   REWARD_OPENSEA_URLS: [
@@ -1587,7 +1587,7 @@ function populateAboutImages(nfts) {
 // ============================================
 const LEADERBOARD_CONFIG = {
   EXCLUDED_WALLETS: [],
-  PHASES: { phase2: { min: 1501, max: 2300, name: 'Phase 2' }, phase3: { min: 2301, max: 3333, name: 'Phase 3' }, phase4: { min: 3334, max: 4444, name: 'Phase 4' } }
+  PHASES: { phase2: { min: 1501, max: 2300, name: 'Phase 2' }, phase3: { min: 2301, max: 3333, name: 'Phase 3' }, phase4: { min: 4445, max: 6666, name: 'Phase 5' } }
 };
 
 let leaderboardState = { data: [], isLoading: false, currentPhase: 'phase4' };
@@ -1695,7 +1695,7 @@ async function checkWalletRaffle() {
       raffleState.walletAddress = wallet;
       raffleState.eligibleTokens = [];
       document.getElementById('raffleEntriesCount').textContent = '0';
-      document.getElementById('raffleTokensList').innerHTML = '<p style="text-align: center; color: #ffaa00; font-size: 12px; padding: 16px;">No eligible NFTs found in Phase 4 range</p>';
+      document.getElementById('raffleTokensList').innerHTML = '<p style="text-align: center; color: #ffaa00; font-size: 12px; padding: 16px;">No eligible NFTs found in Phase 5 range</p>';
       showNotification('No entries found', 'info');
     }
     return;
