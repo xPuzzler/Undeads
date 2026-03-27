@@ -549,16 +549,7 @@
   <!-- LIVE FEED -->
   <div class="live-bar">
     <div class="live-bar-inner" id="liveBar">
-      <div class="live-event"><span class="dot"></span> Game just created — <span class="hl">Based Undead #421</span></div>
-      <div class="live-event"><span class="dot"></span> <span class="hl">0x8fa3…</span> bought 5 tickets</div>
-      <div class="live-event"><span class="dot"></span> Winner drawn for <span class="hl">Based Undead #69</span></div>
-      <div class="live-event"><span class="dot"></span> <span class="hl">0x1bc2…</span> just won 0.024 ETH prize pool</div>
-      <div class="live-event"><span class="dot"></span> New game listed — <span class="hl">Est. Value $250</span></div>
-      <div class="live-event"><span class="dot"></span> Game just created — <span class="hl">Based Undead #421</span></div>
-      <div class="live-event"><span class="dot"></span> <span class="hl">0x8fa3…</span> bought 5 tickets</div>
-      <div class="live-event"><span class="dot"></span> Winner drawn for <span class="hl">Based Undead #69</span></div>
-      <div class="live-event"><span class="dot"></span> <span class="hl">0x1bc2…</span> just won 0.024 ETH prize pool</div>
-      <div class="live-event"><span class="dot"></span> New game listed — <span class="hl">Est. Value $250</span></div>
+      <div class="live-event"><span class="dot"></span> Loading live activity...</div>
     </div>
   </div>
 
@@ -1088,6 +1079,7 @@ async function loadAllGames(){
     renderExpiredGames();
     renderHallOfWinners();
     if(userAddress) renderYourGames();
+    buildLiveFeed();
   } catch(e){ console.error('loadAllGames:',e); }
 }
 
@@ -1717,6 +1709,63 @@ function startTimer(g){
   },1000);
 }
 
+// ─── Live Feed Builder ────────────────────────────────────────────
+function buildLiveFeed(){
+  const now = Date.now()/1000;
+  const events = [];
+
+  allGames.forEach(g=>{
+    const name = g.nftName || 'Token #'+g.tokenId;
+    const timeLeft = g.endTime - now;
+
+    // Active game just created (started less than 1 hour ago)
+    if(g.active && !g.drawn && (now - (g.endTime - (g.endTime > now ? timeLeft : 0))) < 3600){
+      // We don't have createdAt but endTime - duration approximates it
+      // Just flag very new games (less than 10 tickets, active)
+      if(g.ticketCount <= 5){
+        events.push({ type:'new', name, valUSD: ((g.assetValueUSD||0)/100).toFixed(0) });
+      }
+    }
+
+    // Ending soon (less than 1 hour left, still active)
+    if(g.active && !g.drawn && timeLeft > 0 && timeLeft < 3600){
+      events.push({ type:'ending', name, timeLeft });
+    }
+
+    // Ticket purchases — show top buyer if tickets exist
+    if(g.active && !g.drawn && g.ticketCount > 0){
+      events.push({ type:'tickets', name, count: g.ticketCount });
+    }
+
+    // Winner announced
+    if(g.drawn && g.winner && g.winner !== ethers.constants.AddressZero){
+      const pool = parseFloat(g.totalETH||0).toFixed(4);
+      events.push({ type:'winner', name, winner: g.winner, pool });
+    }
+  });
+
+  // If nothing real yet, show a placeholder
+  if(!events.length){
+    events.push({ type:'waiting' });
+  }
+
+  // Build HTML — duplicate for seamless scroll loop
+  const makeItem = ev => {
+    if(ev.type === 'new')
+      return `<div class="live-event"><span class="dot"></span> New game live — <span class="hl">${ev.name}</span> · Est. $${ev.valUSD}</div>`;
+    if(ev.type === 'ending')
+      return `<div class="live-event"><span class="dot"></span> ⏳ Ending in ${formatTime(ev.timeLeft)} — <span class="hl">${ev.name}</span></div>`;
+    if(ev.type === 'tickets')
+      return `<div class="live-event"><span class="dot"></span> <span class="hl">${ev.count} ticket${ev.count!==1?'s':''}</span> sold in <span class="hl">${ev.name}</span></div>`;
+    if(ev.type === 'winner')
+      return `<div class="live-event"><span class="dot"></span> 🏆 <span class="hl">${ev.winner.slice(0,6)}…${ev.winner.slice(-4)}</span> won <span class="hl">${ev.name}</span> · ${ev.pool} ETH pool</div>`;
+    return `<div class="live-event"><span class="dot"></span> No active games yet — <span class="hl">be the first to create one!</span></div>`;
+  };
+
+  const html = [...events, ...events].map(makeItem).join('');
+  document.getElementById('liveBar').innerHTML = html;
+}
+
 // ─── Demo mode ────────────────────────────────────────────────────
 // FIX: All fields now fully populated to prevent .toLowerCase() errors
 function renderDemoGames(){
@@ -1747,6 +1796,7 @@ function renderDemoGames(){
     },
   ];
   allGames=demoGames;
+  buildLiveFeed();
   document.getElementById('statActive').textContent='3';
   document.getElementById('statCompleted').textContent='0';
   document.getElementById('statVolume').textContent='0 ETH';
