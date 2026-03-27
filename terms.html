@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms & Conditions — Based Undeads</title>
+  <meta name="description" content="Terms and conditions for participating in Based Undeads $1 NFT raffle games.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Creepster&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #030303; --bg2: #0a0a0a; --fg: #ffffff;
+      --muted: #666666; --accent: #00ff88;
+      --accent-dim: rgba(0,255,136,0.08);
+      --border: rgba(255,255,255,0.06);
+      --glass: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.08);
+      --danger: #ff4444; --warn: #ffaa00;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:'Syne',sans-serif; background:var(--bg); color:var(--fg); overflow-x:hidden; line-height:1.7; }
+
+    /* Nav */
+    nav { position:fixed; top:0; left:0; right:0; z-index:100; padding:20px 40px; display:flex; justify-content:space-between; align-items:center; background:rgba(3,3,3,0.9); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); }
+    .nav-logo { font-family:'Creepster',cursive; font-size:22px; color:var(--accent); text-decoration:none; letter-spacing:2px; text-shadow:0 0 20px rgba(0,255,136,0.5); }
+    .nav-back { font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); text-decoration:none; transition:color .3s; display:flex; align-items:center; gap:8px; }
+    .nav-back:hover { color:var(--accent); }
+
+    /* Hero */
+    .hero { padding:140px 40px 60px; text-align:center; border-bottom:1px solid var(--border); background:radial-gradient(ellipse at 50% 0%, rgba(0,255,136,0.04) 0%, transparent 60%); }
+    .hero-badge { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); padding:6px 14px; border:1px solid rgba(0,255,136,0.3); border-radius:100px; display:inline-block; margin-bottom:24px; }
+    .hero-title { font-family:'Creepster',cursive; font-size:clamp(40px,8vw,80px); margin-bottom:16px; text-shadow:0 0 60px rgba(0,255,136,0.2); }
+    .hero-sub { font-family:'Geist Mono',monospace; font-size:13px; color:var(--muted); max-width:600px; margin:0 auto; }
+    .hero-date { font-family:'Geist Mono',monospace; font-size:11px; color:var(--muted); margin-top:16px; }
+
+    /* Layout */
+    .container { max-width:860px; margin:0 auto; padding:60px 40px 120px; }
+
+    /* Warning box */
+    .warning-box { background:rgba(255,170,0,0.07); border:1px solid rgba(255,170,0,0.3); border-radius:16px; padding:28px 32px; margin-bottom:48px; }
+    .warning-box .warn-label { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--warn); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .warning-box .warn-label::before { content:'⚠'; font-size:14px; }
+    .warning-box p { font-family:'Geist Mono',monospace; font-size:12px; color:rgba(255,170,0,0.85); line-height:1.8; }
+
+    /* Section */
+    .toc { background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; padding:28px 32px; margin-bottom:48px; }
+    .toc-title { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
+    .toc-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .toc-list a { font-family:'Geist Mono',monospace; font-size:12px; color:var(--muted); text-decoration:none; display:flex; align-items:center; gap:10px; transition:color .2s; }
+    .toc-list a:hover { color:var(--accent); }
+    .toc-list a::before { content:attr(data-n); font-size:10px; color:var(--accent); opacity:.6; width:20px; flex-shrink:0; }
+
+    .section { margin-bottom:56px; padding-top:16px; }
+    .section-num { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+    .section-title { font-family:'Instrument Serif',serif; font-size:clamp(20px,3vw,28px); font-weight:400; margin-bottom:20px; line-height:1.2; }
+    .section-title em { font-style:italic; color:var(--accent); }
+    .body-text { font-family:'Geist Mono',monospace; font-size:12px; color:rgba(255,255,255,0.65); line-height:1.9; margin-bottom:16px; }
+    .body-text strong { color:var(--fg); font-weight:500; }
+    .body-text a { color:var(--accent); text-decoration:none; }
+    .body-text a:hover { text-decoration:underline; }
+
+    /* List */
+    .term-list { list-style:none; display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+    .term-list li { font-family:'Geist Mono',monospace; font-size:12px; color:rgba(255,255,255,0.65); padding-left:20px; position:relative; line-height:1.8; }
+    .term-list li::before { content:'—'; position:absolute; left:0; color:var(--accent); }
+    .term-list li strong { color:var(--fg); }
+
+    /* Highlight box */
+    .highlight-box { background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.15); border-radius:12px; padding:20px 24px; margin:20px 0; }
+    .highlight-box p { font-family:'Geist Mono',monospace; font-size:12px; color:rgba(0,255,136,0.8); line-height:1.8; }
+
+    /* Danger box */
+    .danger-box { background:rgba(255,68,68,0.06); border:1px solid rgba(255,68,68,0.25); border-radius:12px; padding:20px 24px; margin:20px 0; }
+    .danger-box p { font-family:'Geist Mono',monospace; font-size:12px; color:rgba(255,120,120,0.9); line-height:1.8; }
+
+    /* Divider */
+    .divider { border:none; border-top:1px solid var(--border); margin:48px 0; }
+
+    /* Footer */
+    footer { border-top:1px solid var(--border); padding:40px; text-align:center; }
+    footer p { font-family:'Geist Mono',monospace; font-size:11px; color:var(--muted); }
+    footer a { color:var(--accent); text-decoration:none; }
+
+    @media(max-width:768px) {
+      nav { padding:14px 16px; }
+      .hero { padding:100px 16px 40px; }
+      .container { padding:40px 16px 80px; }
+      .toc, .warning-box { padding:20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">BASED UNDEADS</a>
+    <a href="/" class="nav-back">← Back to Games</a>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-badge">Legal Document</div>
+    <h1 class="hero-title">☠ Terms & Conditions</h1>
+    <p class="hero-sub">Please read this entire document before participating in any game on Based Undeads.</p>
+    <p class="hero-date">Effective: 2026. Last updated: March 2026.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- Critical warning -->
+    <div class="warning-box">
+      <div class="warn-label">Critical Risk Warning</div>
+      <p>
+        Based Undeads operates fully on-chain raffle games. All transactions are <strong>irreversible</strong> once submitted to the blockchain. You may lose the ETH you spend on tickets. NFT prizes are created by third-party game creators whose claims about asset value are <strong>unverified and self-reported</strong>. Only participate in games you have independently researched. Do Your Own Research (DYOR) before purchasing any ticket.
+      </p>
+    </div>
+
+    <!-- TOC -->
+    <div class="toc">
+      <div class="toc-title">Table of Contents</div>
+      <ul class="toc-list">
+        <li><a href="#s1" data-n="01">Acceptance of Terms</a></li>
+        <li><a href="#s2" data-n="02">What Based Undeads Is</a></li>
+        <li><a href="#s3" data-n="03">How Games Work — Full Rules</a></li>
+        <li><a href="#s4" data-n="04">Ticket Purchases & Pricing</a></li>
+        <li><a href="#s5" data-n="05">Prize Claims & NFT Delivery</a></li>
+        <li><a href="#s6" data-n="06">Creator Obligations & Risks</a></li>
+        <li><a href="#s7" data-n="07">No Refunds Policy</a></li>
+        <li><a href="#s8" data-n="08">Prohibited Use</a></li>
+        <li><a href="#s9" data-n="09">Randomness & Fairness</a></li>
+        <li><a href="#s10" data-n="10">Platform Fees</a></li>
+        <li><a href="#s11" data-n="11">Smart Contract Risk</a></li>
+        <li><a href="#s12" data-n="12">DYOR — Know What You're Entering</a></li>
+        <li><a href="#s13" data-n="13">Limitation of Liability</a></li>
+        <li><a href="#s14" data-n="14">No Warranties</a></li>
+        <li><a href="#s15" data-n="15">Jurisdiction & Regulatory Compliance</a></li>
+        <li><a href="#s16" data-n="16">Amendments</a></li>
+        <li><a href="#s17" data-n="17">Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Section 1 -->
+    <div class="section" id="s1">
+      <div class="section-num">01</div>
+      <h2 class="section-title">Acceptance of <em>Terms</em></h2>
+      <p class="body-text">
+        By connecting your wallet, purchasing a ticket, creating a game, or interacting in any way with the Based Undeads smart contract or frontend interface, you agree to be bound by these Terms & Conditions in full. If you do not agree, do not use this platform.
+      </p>
+      <p class="body-text">
+        These terms apply to all users globally, including ticket buyers, game creators, and observers. Use of this platform constitutes your electronic signature and agreement to these terms.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 2 -->
+    <div class="section" id="s2">
+      <div class="section-num">02</div>
+      <h2 class="section-title">What Based Undeads <em>Is</em></h2>
+      <p class="body-text">
+        Based Undeads is a fully decentralized, on-chain raffle protocol deployed on the Base blockchain. It allows any wallet holder to create a raffle for any ERC721 NFT they own, and allows other wallet holders to purchase entry tickets priced at $1 USD worth of ETH each.
+      </p>
+      <p class="body-text">
+        <strong>Based Undeads is not a lottery operator, financial institution, or regulated gambling service.</strong> It is a smart contract protocol. The smart contract code is immutable once deployed and executes automatically without human intervention.
+      </p>
+      <div class="highlight-box">
+        <p>The platform interface (this website) is a frontend only. It does not hold custody of your funds or NFTs at any time. All assets are held exclusively by the on-chain smart contract. The platform team does not control game outcomes, ticket sales, or fund distribution.</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 3 -->
+    <div class="section" id="s3">
+      <div class="section-num">03</div>
+      <h2 class="section-title">How Games Work — <em>Full Rules</em></h2>
+      <p class="body-text">The following rules are enforced entirely by the smart contract and cannot be overridden by the platform team or game creators:</p>
+      <ul class="term-list">
+        <li><strong>Game creation:</strong> A creator deposits an ERC721 NFT into the smart contract escrow. The NFT is locked until the game concludes.</li>
+        <li><strong>Ticket pricing:</strong> Every ticket costs exactly $1.00 USD worth of ETH, calculated live from the Chainlink ETH/USD price oracle on Base mainnet.</li>
+        <li><strong>Duration:</strong> Games run for a creator-defined period between 1 hour and 7 days. The end time is set at creation and cannot be changed.</li>
+        <li><strong>Ticket limit:</strong> A maximum of 100 tickets may be purchased per transaction. There is no per-wallet cap on total tickets.</li>
+        <li><strong>Winner selection:</strong> One winner is selected algorithmically from all ticket holders after the game ends. The selection uses on-chain entropy. It is transparent, verifiable, and cannot be manually influenced by the platform.</li>
+        <li><strong>NFT delivery:</strong> Upon winner selection, the smart contract transfers the escrowed NFT directly to the winner's wallet. No manual claim is required.</li>
+        <li><strong>Creator payout:</strong> The creator receives 90% of all ticket sale revenue instantly as each ticket is sold. The platform receives 10%.</li>
+        <li><strong>No cancellation after ticket sales:</strong> Once any ticket is sold, the game cannot be cancelled. The creator has already received their payout. The game MUST resolve via the draw.</li>
+        <li><strong>Zero-ticket reclaim:</strong> If a game ends with zero tickets sold, only the creator may reclaim their NFT. No ETH was collected.</li>
+      </ul>
+      <div class="danger-box">
+        <p><strong>Important:</strong> Anyone can trigger the winner draw after a game ends — not just the creator. If the creator does not call drawWinner, any other participant or third party can do so. The contract does not require creator involvement to conclude a game.</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 4 -->
+    <div class="section" id="s4">
+      <div class="section-num">04</div>
+      <h2 class="section-title">Ticket Purchases <em>& Pricing</em></h2>
+      <p class="body-text">
+        Ticket prices are denominated in ETH and calculated at transaction time from the Chainlink price oracle. Due to ETH price volatility, the exact ETH amount may differ from previous estimates. The contract accepts payments within 1% of the precise price to account for price movement between quote and settlement.
+      </p>
+      <ul class="term-list">
+        <li><strong>All purchases are final.</strong> There are no refunds under any circumstances once a transaction is confirmed on-chain.</li>
+        <li><strong>Overpayment:</strong> Any ETH sent above the ticket cost is automatically refunded in the same transaction.</li>
+        <li><strong>Underpayment:</strong> Transactions that underpay by more than 1% are automatically reverted. No tickets are issued and no funds are deducted.</li>
+        <li><strong>Network fees:</strong> Blockchain gas fees are separate from ticket prices. Gas is paid to the Base network, not to Based Undeads. Gas fees are non-refundable even if a transaction reverts.</li>
+        <li><strong>You bear all price risk.</strong> If the ETH price drops significantly, your tickets purchased at a higher price still cost $1 USD equivalent. No adjustment is made post-purchase.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 5 -->
+    <div class="section" id="s5">
+      <div class="section-num">05</div>
+      <h2 class="section-title">Prize Claims <em>& NFT Delivery</em></h2>
+      <p class="body-text">
+        The smart contract transfers the prize NFT directly to the winner's wallet address during the drawWinner transaction. No claim action is required from the winner.
+      </p>
+      <ul class="term-list">
+        <li>Winners are determined by the on-chain selection algorithm. Results are final and cannot be disputed.</li>
+        <li>The platform cannot manually override, change, or reassign a winner.</li>
+        <li>If the winner's wallet cannot receive the NFT (e.g. a broken contract wallet), the draw transaction may fail. In this case, the emergency recovery function may be invoked by the platform owner after a 30-day delay — the NFT is then held by the platform owner who will make reasonable efforts to resolve delivery.</li>
+        <li><strong>Based Undeads makes no warranty that an NFT prize has the value stated by the game creator.</strong> Asset values are self-reported and unverified.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 6 -->
+    <div class="section" id="s6">
+      <div class="section-num">06</div>
+      <h2 class="section-title">Creator Obligations <em>& Risks</em></h2>
+      <p class="body-text">
+        Game creators are solely responsible for the NFTs they list, the descriptions they provide, and the accuracy of any value claims.
+      </p>
+      <ul class="term-list">
+        <li><strong>Accurate descriptions:</strong> Creators must not misrepresent the NFT, its value, its rarity, or any other material attribute. Misleading listings may constitute fraud under applicable law.</li>
+        <li><strong>NFT ownership:</strong> Creators must own the NFT at the time of listing. Listing an NFT you do not own is prohibited.</li>
+        <li><strong>Instant payout acknowledgement:</strong> By creating a game, creators acknowledge that they receive ETH from ticket sales immediately and irrevocably. Once tickets are sold, the creator cannot reclaim the NFT under any circumstances outside of a zero-ticket scenario.</li>
+        <li><strong>No market manipulation:</strong> Creators must not purchase tickets in their own games for the purpose of influencing outcomes or deceiving other participants.</li>
+      </ul>
+      <div class="danger-box">
+        <p><strong>Buyer risk from creator behaviour:</strong> Because creators are paid before the game concludes, there is an inherent trust element. A creator whose NFT turns out to be worth less than stated suffers no on-chain consequence. Based Undeads does not screen creators or verify asset values. Participate only in games you have independently verified.</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 7 -->
+    <div class="section" id="s7">
+      <div class="section-num">07</div>
+      <h2 class="section-title">No <em>Refunds</em> Policy</h2>
+      <p class="body-text">
+        <strong>All ticket purchases are completely and permanently non-refundable.</strong>
+      </p>
+      <p class="body-text">
+        Blockchain transactions are irreversible by design. Once your buyTickets transaction is confirmed, the ETH is split between the creator and the platform and cannot be recovered. This is true regardless of:
+      </p>
+      <ul class="term-list">
+        <li>Whether you win or lose</li>
+        <li>Whether the NFT prize meets your expectations</li>
+        <li>Whether the creator provided accurate information</li>
+        <li>Whether the game was cancelled (games with sold tickets cannot be cancelled)</li>
+        <li>Any technical issues with your wallet or device</li>
+        <li>Any change in ETH or NFT market value</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 8 -->
+    <div class="section" id="s8">
+      <div class="section-num">08</div>
+      <h2 class="section-title">Prohibited <em>Use</em></h2>
+      <p class="body-text">The following activities are strictly prohibited:</p>
+      <ul class="term-list">
+        <li>Using the platform in any jurisdiction where participation in on-chain raffles or NFT-based games is illegal</li>
+        <li>Attempting to manipulate the winner selection algorithm</li>
+        <li>Creating games with NFTs you do not own or are not authorised to escrow</li>
+        <li>Listing fraudulent, plagiarised, or stolen NFTs</li>
+        <li>Using automated bots to purchase tickets in bulk without disclosure</li>
+        <li>Any form of money laundering, wash trading, or financial crime</li>
+        <li>Misrepresenting the value, rarity, or attributes of any listed NFT</li>
+        <li>Attempting to exploit smart contract vulnerabilities</li>
+      </ul>
+      <p class="body-text">Prohibited use may result in being blocked from the frontend interface. However, the underlying smart contract is permissionless — the platform cannot prevent direct contract interaction.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 9 -->
+    <div class="section" id="s9">
+      <div class="section-num">09</div>
+      <h2 class="section-title">Randomness <em>& Fairness</em></h2>
+      <p class="body-text">
+        Winner selection uses a combination of on-chain entropy sources including Ethereum RANDAO (block.prevrandao) and block hash data. This method is transparent and publicly verifiable on-chain.
+      </p>
+      <p class="body-text">
+        <strong>This is not cryptographically perfect randomness.</strong> On Base mainnet, the sequencer has theoretical ability to influence block timing. For the low prize values typical of a $1 game, this attack is economically irrational. However:
+      </p>
+      <div class="danger-box">
+        <p>Based Undeads does not guarantee that winner selection is perfectly unbiasable. By purchasing tickets you accept the randomness methodology as described. For high-value games, you should consider whether the prize value justifies the theoretical manipulation risk.</p>
+      </div>
+      <p class="body-text">
+        All ticket ranges, game parameters, and winner indices are publicly accessible on-chain. Any participant can independently verify the draw result.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 10 -->
+    <div class="section" id="s10">
+      <div class="section-num">10</div>
+      <h2 class="section-title">Platform <em>Fees</em></h2>
+      <p class="body-text">
+        Based Undeads collects a <strong>10% platform fee</strong> from all ticket sales. This fee is deducted automatically by the smart contract during each ticket purchase. The fee is forwarded to the platform wallet immediately and is non-refundable.
+      </p>
+      <ul class="term-list">
+        <li>For creator-listed games: 90% to creator, 10% to platform</li>
+        <li>For platform-created games: 100% to platform</li>
+        <li>No other fees are charged to ticket buyers</li>
+        <li>Gas fees on the Base network are separate and go to Base validators, not to Based Undeads</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 11 -->
+    <div class="section" id="s11">
+      <div class="section-num">11</div>
+      <h2 class="section-title">Smart Contract <em>Risk</em></h2>
+      <p class="body-text">
+        The Based Undeads protocol runs on an immutable smart contract on Base mainnet. While the contract has been carefully designed, <strong>no smart contract is without risk</strong>.
+      </p>
+      <ul class="term-list">
+        <li>The contract has not been formally audited by a third-party security firm. Use at your own risk.</li>
+        <li>Bugs in the contract code, the Chainlink oracle, or the Base network could result in loss of funds or NFTs.</li>
+        <li>Based Undeads cannot modify, upgrade, or patch the deployed contract.</li>
+        <li>In the event of a critical vulnerability, the platform team has limited emergency recovery functions, but these cannot guarantee recovery of all user funds.</li>
+        <li>The platform is not responsible for losses arising from smart contract bugs, oracle failures, or network outages.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 12 -->
+    <div class="section" id="s12">
+      <div class="section-num">12</div>
+      <h2 class="section-title">DYOR — Know What <em>You're Entering</em></h2>
+      <p class="body-text">
+        <strong>"Do Your Own Research"</strong> is not a suggestion here — it is a requirement for responsible participation.
+      </p>
+      <div class="warning-box">
+        <div class="warn-label">Before Buying Any Ticket, Verify</div>
+        <p>
+          ① The NFT contract address is legitimate and not a copy or impersonation of a real collection.<br>
+          ② The collection has genuine trading history on OpenSea, Blur, or another reputable marketplace.<br>
+          ③ The floor price or last sale price supports the creator's stated asset value.<br>
+          ④ The creator wallet has a legitimate history (not freshly created).<br>
+          ⑤ You are comfortable with the maximum loss being the total ETH spent on tickets ($1 per ticket + gas).
+        </p>
+      </div>
+      <p class="body-text">
+        Based Undeads provides tools to view the NFT contract address and token ID for every game. You are responsible for independently verifying these details before purchasing. The platform does not verify, endorse, or recommend any specific game or NFT collection.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 13 -->
+    <div class="section" id="s13">
+      <div class="section-num">13</div>
+      <h2 class="section-title">Limitation of <em>Liability</em></h2>
+      <p class="body-text">
+        To the maximum extent permitted by applicable law, Based Undeads, its founders, operators, contributors, and associated entities shall not be liable for:
+      </p>
+      <ul class="term-list">
+        <li>Any loss of funds, tokens, or NFTs arising from use of the platform</li>
+        <li>Any losses resulting from smart contract bugs, oracle failures, or blockchain network issues</li>
+        <li>Any losses resulting from fraudulent or inaccurate game listings created by third-party creators</li>
+        <li>Any indirect, incidental, special, or consequential damages</li>
+        <li>Loss of profits, data, or business opportunities</li>
+        <li>Actions or omissions of game creators</li>
+        <li>Regulatory action taken against users in their jurisdiction</li>
+      </ul>
+      <p class="body-text">
+        Your total maximum liability claim against Based Undeads shall not exceed the total ETH you paid in platform fees (10% of your ticket purchases) in the 30 days prior to your claim.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 14 -->
+    <div class="section" id="s14">
+      <div class="section-num">14</div>
+      <h2 class="section-title">No <em>Warranties</em></h2>
+      <p class="body-text">
+        The Based Undeads platform and smart contract are provided <strong>"as is" and "as available"</strong> without any warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, title, or non-infringement.
+      </p>
+      <p class="body-text">
+        We do not warrant that the platform will be uninterrupted, error-free, or free of harmful components. We do not warrant the accuracy of any information displayed on the platform including asset values, prize descriptions, or user-submitted content.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 15 -->
+    <div class="section" id="s15">
+      <div class="section-num">15</div>
+      <h2 class="section-title">Jurisdiction <em>& Regulatory Compliance</em></h2>
+      <p class="body-text">
+        Participation in blockchain-based raffle or gaming activities may be restricted or prohibited in your jurisdiction. <strong>You are solely responsible for determining whether use of this platform is legal where you reside.</strong>
+      </p>
+      <ul class="term-list">
+        <li>This platform is not available to residents of jurisdictions where online gambling or raffle participation is prohibited by law.</li>
+        <li>By connecting your wallet you represent that you are legally permitted to participate in your jurisdiction.</li>
+        <li>Based Undeads does not operate under any gambling licence and does not accept responsibility for regulatory compliance on behalf of users.</li>
+        <li>These terms are governed by the laws of a jurisdiction to be specified by the platform operators. Disputes shall be resolved by binding arbitration where permitted by law.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 16 -->
+    <div class="section" id="s16">
+      <div class="section-num">16</div>
+      <h2 class="section-title"><em>Amendments</em></h2>
+      <p class="body-text">
+        Based Undeads reserves the right to update these Terms & Conditions at any time. Updates will be posted on this page with a revised effective date. Your continued use of the platform after an update constitutes acceptance of the revised terms.
+      </p>
+      <p class="body-text">
+        The smart contract itself is immutable and cannot be changed. These terms govern the frontend interface and your relationship with the platform team — they do not alter the on-chain behaviour of the smart contract.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 17 -->
+    <div class="section" id="s17">
+      <div class="section-num">17</div>
+      <h2 class="section-title"><em>Contact</em></h2>
+      <p class="body-text">
+        For questions, support, or legal enquiries:
+      </p>
+      <ul class="term-list">
+        <li>Discord: <a href="https://discord.gg/9Jh6ywjNdV" target="_blank">discord.gg/9Jh6ywjNdV</a></li>
+        <li>Twitter / X: <a href="https://x.com/BasedUndeads" target="_blank">@BasedUndeads</a></li>
+      </ul>
+      <div class="highlight-box">
+        <p>By using Based Undeads you confirm you have read, understood, and agreed to these Terms & Conditions in full. You acknowledge the risks of blockchain-based gaming and agree to participate at your own risk.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>© 2026 Based Undeads. Games run on Base. &nbsp;·&nbsp; <a href="/">Home</a> &nbsp;·&nbsp; <a href="https://discord.gg/9Jh6ywjNdV" target="_blank">Discord</a> &nbsp;·&nbsp; <a href="https://x.com/BasedUndeads" target="_blank">Twitter</a></p>
+    <p style="margin-top:8px; font-size:10px; color:#444">This is not financial advice. Not a regulated gambling service. DYOR.</p>
+  </footer>
+
+</body>
+</html>
