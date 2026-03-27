@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The $1 Game — Based Undeads</title>
+  <meta name="description" content="Any NFT. One dollar a ticket. One winner. Fully on-chain.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #030303; --bg2: #0a0a0a; --fg: #ffffff;
+      --muted: #666666; --accent: #00ff88;
+      --accent-glow: rgba(0,255,136,0.25); --accent-dim: rgba(0,255,136,0.08);
+      --border: rgba(255,255,255,0.06); --glass: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.08); --danger: #ff4444;
+      --gold: #ffaa00; --silver: #aaaaaa;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family:'Syne',sans-serif; background:var(--bg); color:var(--fg); overflow-x:hidden; cursor:none; }
+
+    /* ── Cursor ── */
+    .cursor { width:20px;height:20px;border:1px solid rgba(255,255,255,0.5);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;will-change:transform;transition:width .2s,height .2s,border-color .2s,background .2s; }
+    .cursor-dot { width:4px;height:4px;background:var(--fg);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;will-change:transform; }
+    .cursor.hover { width:50px;height:50px;border-color:var(--accent);background:rgba(0,255,136,0.1); }
+
+    /* ── Constellation ── */
+    .noise { position:fixed;inset:0;pointer-events:none;z-index:1000; }
+    .noise::before,.noise::after { content:'';position:absolute;inset:0;
+      background-image:radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 30% 65%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 55% 30%,rgba(0,255,136,0.5),transparent),radial-gradient(1px 1px at 70% 75%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 85% 15%,rgba(255,255,255,0.4),transparent),radial-gradient(1.5px 1.5px at 20% 80%,rgba(0,255,136,0.4),transparent),radial-gradient(1px 1px at 45% 90%,rgba(0,255,136,0.3),transparent);
+      background-size:200px 200px;animation:twinkle 4s ease-in-out infinite; }
+    .noise::after { background-size:300px 300px;animation:twinkle 6s ease-in-out infinite reverse;opacity:0.7; }
+    @keyframes twinkle { 0%,100%{opacity:0.6}50%{opacity:1} }
+
+    .scroll-progress { position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--accent),#00cc6f);z-index:9999;transition:width .1s; }
+
+    /* ── Nav ── */
+    nav { position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;background:rgba(3,3,3,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border); }
+    .nav-logo { font-family:'Creepster',cursive;font-size:22px;color:var(--accent);text-decoration:none;letter-spacing:2px;text-shadow:0 0 20px rgba(0,255,136,0.5); }
+    .nav-links { display:flex;gap:24px;align-items:center; }
+    .nav-link { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);text-decoration:none;opacity:.6;transition:all .3s; }
+    .nav-link:hover,.nav-link.active { opacity:1;color:var(--accent); }
+    .nav-right { display:flex;gap:16px;align-items:center; }
+    .nav-social a { color:var(--fg);opacity:.6;transition:all .3s;font-size:18px;text-decoration:none; }
+    .nav-social a:hover { opacity:1;color:var(--accent); }
+    .connect-btn { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:10px 22px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:600;transition:all .3s; }
+    .connect-btn:hover { transform:scale(1.05);box-shadow:0 10px 30px var(--accent-glow); }
+    .connect-btn.connected { background:var(--glass);border:1px solid var(--glass-border);color:var(--fg);font-size:10px; }
+    .mobile-nav-btn { display:none;background:none;border:none;color:var(--fg);font-size:22px;cursor:none; }
+
+    /* ── Hero ── */
+    .hero { min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;padding:120px 40px 80px;text-align:center;overflow:hidden; }
+    .hero-bg { position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(0,255,136,0.07) 0%,transparent 65%);pointer-events:none; }
+    .skull-float { position:absolute;font-size:14px;opacity:0;animation:floatSkull var(--dur) var(--delay) infinite ease-in;left:var(--x);bottom:-30px;pointer-events:none; }
+    @keyframes floatSkull { 0%{opacity:0;transform:translateY(0) rotate(0)} 20%{opacity:.15} 80%{opacity:.08} 100%{opacity:0;transform:translateY(-100vh) rotate(360deg)} }
+    .hero-badge { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);padding:8px 16px;border:1px solid rgba(0,255,136,0.3);border-radius:100px;margin-bottom:28px;display:inline-flex;align-items:center;gap:8px;opacity:0;animation:fadeUp 1s .2s forwards; }
+    .pulse-dot { width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pDot 2s infinite; }
+    @keyframes pDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
+    .hero-title { font-family:'Creepster',cursive;font-size:clamp(60px,14vw,180px);font-weight:400;line-height:.9;letter-spacing:.04em;text-shadow:0 0 80px rgba(0,255,136,0.25);margin-bottom:16px;opacity:0;animation:fadeUp 1s .3s forwards; }
+    .hero-title .green { color:var(--accent); }
+    .hero-subtitle { font-family:'Instrument Serif',serif;font-size:clamp(18px,3vw,28px);font-style:italic;color:var(--muted);margin-bottom:40px;opacity:0;animation:fadeUp 1s .5s forwards; }
+    .hero-stats { display:flex;gap:40px;opacity:0;animation:fadeUp 1s .7s forwards; }
+    .hero-stat { text-align:center; }
+    .hero-stat-num { font-family:'Instrument Serif',serif;font-size:32px;color:var(--accent); }
+    .hero-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:2px; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Live Feed Bar ── */
+    .live-bar { background:rgba(0,255,136,0.06);border-top:1px solid rgba(0,255,136,0.1);border-bottom:1px solid rgba(0,255,136,0.1);padding:10px 0;overflow:hidden;position:relative; }
+    .live-bar-inner { display:flex;gap:60px;width:max-content;animation:tickerScroll 40s linear infinite; }
+    .live-bar-inner:hover { animation-play-state:paused; }
+    @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    .live-event { font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px; }
+    .live-event .dot { width:6px;height:6px;background:var(--accent);border-radius:50%;flex-shrink:0; }
+    .live-event .hl { color:var(--accent); }
+
+    /* ── Section Layout ── */
+    .section { padding:80px 40px;max-width:1400px;margin:0 auto; }
+    .section-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:12px; }
+    .section-label::before { content:'';width:30px;height:1px;background:var(--accent); }
+    .section-title { font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.02em;margin-bottom:8px; }
+    .section-title em { font-style:italic;color:var(--accent); }
+    .section-sub { font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:40px;letter-spacing:.03em; }
+
+    /* ── Tabs ── */
+    .tab-bar { display:flex;gap:4px;background:var(--glass);border:1px solid var(--glass-border);border-radius:100px;padding:4px;margin-bottom:32px;width:fit-content; }
+    .tab-btn { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 20px;border:none;background:none;color:var(--muted);border-radius:100px;cursor:none;transition:all .3s; }
+    .tab-btn.active { background:var(--fg);color:var(--bg);font-weight:600; }
+    .tab-btn:hover:not(.active) { color:var(--fg); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* ── Game Cards Grid ── */
+    .games-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px; }
+
+    /* Game Card */
+    .game-card { background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;transition:all .4s cubic-bezier(.4,0,.2,1);cursor:none;position:relative; }
+    .game-card:hover { transform:translateY(-6px);border-color:rgba(255,255,255,0.14);box-shadow:0 20px 60px rgba(0,0,0,0.4); }
+    .game-card.your-game { border-color:rgba(0,255,136,0.2); }
+    .game-card.your-game::before { content:'YOUR ENTRY';position:absolute;top:12px;right:12px;z-index:2;font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.15em;padding:4px 10px;background:var(--accent);color:var(--bg);border-radius:100px;font-weight:700; }
+    .game-card.ending-soon::after { content:'ENDING SOON';position:absolute;top:12px;left:12px;z-index:2;font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.15em;padding:4px 10px;background:rgba(255,100,44,0.9);color:#fff;border-radius:100px;font-weight:700; }
+    .game-card-img { position:relative;aspect-ratio:1;overflow:hidden;background:var(--bg2); }
+    .game-card-img img { width:100%;height:100%;object-fit:cover;transition:transform .4s; }
+    .game-card:hover .game-card-img img { transform:scale(1.05); }
+    .game-card-img .no-img { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:64px;opacity:.3; }
+    .timer-badge { position:absolute;bottom:10px;left:10px;right:10px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px; }
+    .timer-badge .timer-icon { color:var(--accent);font-size:12px; }
+    .timer-val { font-family:'Geist Mono',monospace;font-size:12px;font-weight:500;color:var(--fg); }
+    .timer-val.urgent { color:#ff6b2b; }
+    .game-card-body { padding:20px; }
+    .game-card-name { font-family:'Instrument Serif',serif;font-size:20px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .game-card-desc { font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .game-card-stats { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px; }
+    .game-stat { background:rgba(255,255,255,0.03);border-radius:10px;padding:10px; }
+    .game-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px; }
+    .game-stat-val { font-family:'Geist Mono',monospace;font-size:14px;font-weight:500;color:var(--fg); }
+    .game-stat-val.accent { color:var(--accent); }
+    .odds-bar { width:100%;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:6px;overflow:hidden; }
+    .odds-fill { height:100%;background:var(--accent);border-radius:2px;transition:width .5s; }
+    .game-card-footer { display:flex;gap:8px; }
+    .btn-primary { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:13px 20px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:600;transition:all .3s;display:flex;align-items:center;gap:8px;flex:1;justify-content:center; }
+    .btn-primary:hover { transform:translateY(-2px);box-shadow:0 10px 30px var(--accent-glow); }
+    .btn-primary:disabled { opacity:.5;transform:none;box-shadow:none; }
+    .btn-ghost { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:13px 16px;background:var(--glass);color:var(--muted);border:1px solid var(--glass-border);border-radius:100px;cursor:none;transition:all .3s;display:flex;align-items:center;gap:6px; }
+    .btn-ghost:hover { color:var(--fg);border-color:rgba(255,255,255,0.2); }
+
+    /* Expired card overlay */
+    .game-card.expired .game-card-img::after { content:'';position:absolute;inset:0;background:rgba(0,0,0,0.5); }
+    .winner-badge { position:absolute;bottom:10px;left:10px;right:10px;background:rgba(0,0,0,0.9);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:10px;cursor:none;transition:all .3s;text-align:center;z-index:2; }
+    .winner-badge:hover { background:rgba(0,255,136,0.15); }
+    .winner-badge span { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent); }
+    .winner-badge p { font-family:'Geist Mono',monospace;font-size:11px;color:var(--fg);margin-top:2px; }
+
+    /* Empty state */
+    .empty-state { text-align:center;padding:80px 40px; }
+    .empty-state .skull { font-size:64px;opacity:.2;margin-bottom:24px; }
+    .empty-state p { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted); }
+
+    /* ── Create CTA ── */
+    .create-cta { background:linear-gradient(135deg,rgba(0,255,136,0.06),rgba(0,255,136,0.02));border:1px solid rgba(0,255,136,0.15);border-radius:24px;padding:48px;text-align:center;margin:40px 0; }
+    .create-cta h3 { font-family:'Creepster',cursive;font-size:36px;color:var(--fg);margin-bottom:12px;text-shadow:0 0 30px rgba(0,255,136,0.3); }
+    .create-cta p { font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.7; }
+    .create-big-btn { font-family:'Geist Mono',monospace;font-size:13px;letter-spacing:.12em;text-transform:uppercase;padding:20px 48px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:700;transition:all .4s;display:inline-flex;align-items:center;gap:12px; }
+    .create-big-btn:hover { box-shadow:0 20px 60px var(--accent-glow);transform:scale(1.04); }
+
+    /* ── Hall of Winners ── */
+    .hall-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px; }
+    .hall-card { background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;text-align:center;transition:all .4s; }
+    .hall-card:hover { transform:translateY(-4px);border-color:rgba(255,215,0,0.2); }
+    .hall-card img { width:80px;height:80px;object-fit:cover;border-radius:12px;margin:0 auto 12px;display:block;border:2px solid rgba(255,215,0,0.3); }
+    .hall-card .winner-addr { font-family:'Geist Mono',monospace;font-size:11px;color:var(--accent); }
+    .hall-card .won-item { font-family:'Instrument Serif',serif;font-size:14px;margin:4px 0; }
+    .hall-card .won-date { font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted); }
+    .trophy { font-size:20px;margin-bottom:8px; }
+
+    /* ── MODALS ── */
+    .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:all .3s; }
+    .modal-overlay.active { opacity:1;visibility:visible; }
+    .modal { background:#0e0e0e;border:1px solid var(--glass-border);border-radius:24px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;transform:scale(.96);transition:transform .3s; }
+    .modal-overlay.active .modal { transform:scale(1); }
+    .modal::-webkit-scrollbar { width:4px; }
+    .modal::-webkit-scrollbar-thumb { background:var(--accent);border-radius:4px; }
+    .modal-header { padding:28px 32px 0;display:flex;justify-content:space-between;align-items:center; }
+    .modal-title { font-family:'Creepster',cursive;font-size:28px;color:var(--fg); }
+    .modal-close { background:none;border:none;color:var(--muted);font-size:24px;cursor:none;transition:color .3s;padding:8px; }
+    .modal-close:hover { color:var(--fg); }
+    .modal-body { padding:24px 32px 32px; }
+
+    /* Game detail modal */
+    .detail-img { width:100%;aspect-ratio:1;max-height:300px;object-fit:contain;border-radius:16px;background:var(--bg2);margin-bottom:24px; }
+    .detail-stats { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px; }
+    .detail-stat { background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;text-align:center; }
+    .detail-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px; }
+    .detail-stat-val { font-family:'Instrument Serif',serif;font-size:24px; }
+    .detail-stat-val.accent { color:var(--accent); }
+    .participants-list { max-height:160px;overflow-y:auto;margin-bottom:20px; }
+    .participants-list::-webkit-scrollbar { width:3px; }
+    .participants-list::-webkit-scrollbar-thumb { background:var(--accent); }
+    .participant-row { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:'Geist Mono',monospace;font-size:11px; }
+    .participant-row .addr { color:var(--muted); }
+    .participant-row .tkts { color:var(--accent); }
+    .participant-row.you { background:rgba(0,255,136,0.04);margin:0 -8px;padding:8px;border-radius:6px; }
+    .ticket-buy-row { display:flex;gap:12px;align-items:center; }
+    .qty-input { background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:12px;padding:14px 20px;font-family:'Geist Mono',monospace;font-size:16px;color:var(--fg);width:100px;text-align:center;outline:none;transition:all .3s; }
+    .qty-input:focus { border-color:var(--accent);background:rgba(0,255,136,0.04); }
+    .cost-display { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);flex:1; }
+    .cost-display strong { color:var(--fg); }
+
+    /* ── NFT Picker (REDESIGNED) ── */
+    .nft-picker-container {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .nft-picker-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .nft-picker-header span {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .nft-picker-count {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      color: var(--accent);
+      padding: 3px 10px;
+      background: rgba(0,255,136,0.08);
+      border-radius: 100px;
+    }
+    .nft-picker-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: none;
+      transition: all .25s;
+      background: var(--bg2);
+      aspect-ratio: 1;
+    }
+    .nft-picker-item:hover {
+      border-color: rgba(0,255,136,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .nft-picker-item.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,255,136,0.2), 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .nft-picker-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .nft-picker-item .nft-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity .25s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+    }
+    .nft-picker-item:hover .nft-overlay,
+    .nft-picker-item.selected .nft-overlay {
+      opacity: 1;
+    }
+    .nft-overlay-name {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    .nft-overlay-id {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9px;
+      color: var(--accent);
+      margin-top: 1px;
+    }
+    .nft-select-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--bg);
+      opacity: 0;
+      transform: scale(0.6);
+      transition: all .2s;
+      font-weight: 700;
+    }
+    .nft-picker-item.selected .nft-select-check {
+      opacity: 1;
+      transform: scale(1);
+    }
+    /* Selected NFT preview strip */
+    .nft-selected-preview {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      background: rgba(0,255,136,0.06);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 12px;
+    }
+    .nft-selected-preview.show { display: flex; }
+    .nft-selected-preview img {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid rgba(0,255,136,0.3);
+      flex-shrink: 0;
+    }
+    .nft-selected-info { flex: 1; min-width: 0; }
+    .nft-selected-name {
+      font-family: 'Instrument Serif', serif;
+      font-size: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nft-selected-addr {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .nft-selected-clear {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: none;
+      font-size: 18px;
+      padding: 4px;
+      transition: color .2s;
+      flex-shrink: 0;
+    }
+    .nft-selected-clear:hover { color: var(--danger); }
+    /* Loading skeleton for NFT picker */
+    .nft-skeleton {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s infinite;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .nft-picker-loading-inner {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 10px;
+    }
+    .collection-filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--glass-border);
+      scrollbar-width: none;
+    }
+    .collection-filter-bar::-webkit-scrollbar { display: none; }
+    .collection-chip {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .05em;
+      padding: 5px 13px;
+      border-radius: 100px;
+      border: 1px solid var(--glass-border);
+      background: var(--glass);
+      color: var(--muted);
+      cursor: none;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .collection-chip.active {
+      background: rgba(0,255,136,0.12);
+      border-color: rgba(0,255,136,0.4);
+      color: var(--accent);
+    }
+    .collection-chip:hover:not(.active) { color: var(--fg); border-color: rgba(255,255,255,0.2); }
+    .nft-picker-scroll {
+      max-height: 340px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      box-sizing: border-box;
+    }
+    .nft-picker-scroll::-webkit-scrollbar { width: 4px; }
+    .nft-picker-scroll::-webkit-scrollbar-track { background: transparent; }
+    .nft-picker-scroll::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.3); border-radius: 4px; }
+
+    /* Create Game Modal */
+    .form-group { margin-bottom:20px; }
+    .form-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block; }
+    .form-input { width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:14px 18px;font-family:'Geist Mono',monospace;font-size:13px;color:var(--fg);outline:none;transition:all .3s; }
+    .form-input:focus { border-color:var(--accent);background:rgba(0,255,136,0.04); }
+    .form-input::placeholder { color:var(--muted); }
+    .duration-btns { display:flex;gap:8px;flex-wrap:wrap; }
+    .dur-btn { font-family:'Geist Mono',monospace;font-size:11px;padding:8px 16px;background:var(--glass);border:1px solid var(--glass-border);border-radius:100px;color:var(--muted);cursor:none;transition:all .3s; }
+    .dur-btn.active,.dur-btn:hover { background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3);color:var(--accent); }
+
+    /* Winner Reveal Modal */
+    .winner-reveal { text-align:center;padding:20px 0; }
+    .skull-anim { font-size:80px;animation:skullBounce 0.6s ease-out;display:inline-block;filter:drop-shadow(0 0 30px var(--accent)); }
+    @keyframes skullBounce { 0%{transform:scale(0) rotate(-30deg)} 70%{transform:scale(1.15) rotate(5deg)} 100%{transform:scale(1) rotate(0)} }
+    .winner-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px; }
+    .winner-address { font-family:'Instrument Serif',serif;font-size:28px;color:var(--accent);margin-bottom:8px; }
+    .winner-prize { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);margin-bottom:32px; }
+    .confetti-row { display:flex;justify-content:center;gap:12px;font-size:24px;margin-bottom:24px;animation:confettiFall .8s ease forwards; }
+    @keyframes confettiFall { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Notification ── */
+    .notif { position:fixed;top:90px;right:24px;padding:14px 22px;border-radius:12px;font-family:'Geist Mono',monospace;font-size:12px;z-index:2000;animation:slideIn .3s ease;max-width:300px; }
+    .notif.success { background:rgba(0,255,136,0.15);border:1px solid rgba(0,255,136,0.3);color:var(--accent); }
+    .notif.error { background:rgba(255,68,68,0.15);border:1px solid rgba(255,68,68,0.3);color:var(--danger); }
+    .notif.info { background:rgba(100,100,255,0.15);border:1px solid rgba(100,100,255,0.3);color:#8888ff; }
+    @keyframes slideIn { from{transform:translateX(120px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* ── Withdraw banner ── */
+    .withdraw-banner { background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:16px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:32px; }
+    .withdraw-banner p { font-family:'Geist Mono',monospace;font-size:12px;color:var(--fg); }
+    .withdraw-banner span { color:var(--accent);font-size:16px;font-weight:600; }
+
+    /* ── Loading spinner ── */
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation:spin .8s linear infinite;display:inline-block; }
+
+    /* ── Reveal ── */
+    .reveal { opacity:0;transform:translateY(20px);transition:opacity .6s,transform .6s; }
+    .reveal.shown { opacity:1;transform:translateY(0); }
+
+    /* ── DYOR Banner ── */
+    .dyor-banner { background:rgba(255,170,0,0.07); border:1px solid rgba(255,170,0,0.25); border-radius:16px; padding:20px 28px; margin-bottom:32px; display:flex; gap:20px; align-items:flex-start; }
+    .dyor-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+    .dyor-title { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
+    .dyor-body { font-family:'Geist Mono',monospace; font-size:11px; color:rgba(255,170,0,0.75); line-height:1.8; }
+    .dyor-body a { color:var(--accent); text-decoration:none; }
+    .dyor-body a:hover { text-decoration:underline; }
+
+    /* ── Ticket Counter ── */
+    .ticket-counter { display:flex; align-items:center; gap:0; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:12px; overflow:hidden; }
+    .counter-btn { width:44px; height:52px; background:none; border:none; color:var(--muted); font-size:20px; cursor:none; transition:all .2s; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'Geist Mono',monospace; }
+    .counter-btn:hover { color:var(--accent); background:rgba(0,255,136,0.06); }
+    .counter-btn:disabled { opacity:.3; cursor:not-allowed; }
+    .counter-val { width:64px; text-align:center; font-family:'Geist Mono',monospace; font-size:18px; font-weight:500; color:var(--fg); padding:0 4px; background:none; border:none; border-left:1px solid var(--glass-border); border-right:1px solid var(--glass-border); height:52px; line-height:52px; }
+
+    /* ── Footer ── */
+    footer { padding:50px 40px;border-top:1px solid var(--border); }
+    .footer-content { max-width:1400px;margin:0 auto;display:flex;justify-content:space-between;align-items:center; }
+    .footer-logo { font-family:'Creepster',cursive;font-size:18px;color:var(--accent);text-decoration:none; }
+    .footer-links { display:flex;gap:28px; }
+    .footer-link { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .3s; }
+    .footer-link:hover { color:var(--fg); }
+    .footer-copy { font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted); }
+
+    /* ── Responsive ── */
+    @media(max-width:768px){
+      nav { padding:14px 16px; }
+      .nav-links { display:none; }
+      .nav-social { display:none; }
+      .mobile-nav-btn { display:block; }
+      .hero { padding:100px 16px 60px; }
+      .hero-stats { gap:20px; }
+      .hero-stat-num { font-size:24px; }
+      .section { padding:60px 16px; }
+      .games-grid { grid-template-columns:1fr; }
+      .detail-stats { grid-template-columns:1fr 1fr; }
+      .detail-stats .detail-stat:last-child { grid-column:1/-1; }
+      .modal-header,.modal-body { padding:20px; }
+      .modal { max-height:95vh; }
+      .create-cta { padding:32px 20px; }
+      .create-big-btn { width:100%;justify-content:center; }
+      footer { padding:40px 16px; }
+      .footer-content { flex-direction:column;gap:20px;text-align:center; }
+      .footer-links { flex-wrap:wrap;justify-content:center; }
+      .cursor,.cursor-dot { display:none; }
+      body { cursor:auto; }
+      a,button,input,select { cursor:pointer; }
+      .tab-bar { overflow-x:auto; }
+      .nft-picker-scroll { grid-template-columns: repeat(2,1fr); }
+      .nft-picker-loading-inner { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="cursor"></div>
+  <div class="cursor-dot"></div>
+  <div class="noise"></div>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- Skull particles -->
+  <div class="skull-float" style="--x:5%;--dur:18s;--delay:0s">💀</div>
+  <div class="skull-float" style="--x:15%;--dur:22s;--delay:3s">☠</div>
+  <div class="skull-float" style="--x:30%;--dur:16s;--delay:6s">💀</div>
+  <div class="skull-float" style="--x:50%;--dur:24s;--delay:1s">☠</div>
+  <div class="skull-float" style="--x:65%;--dur:19s;--delay:8s">💀</div>
+  <div class="skull-float" style="--x:80%;--dur:21s;--delay:4s">☠</div>
+  <div class="skull-float" style="--x:92%;--dur:17s;--delay:11s">💀</div>
+
+  <!-- NAV -->
+  <nav>
+    <a href="/" class="nav-logo">BASED UNDEADS</a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Home</a>
+      <a href="#active" class="nav-link">Active Games</a>
+      <a href="#hall" class="nav-link">Hall of Winners</a>
+    </div>
+    <div class="nav-right">
+      <div class="nav-social">
+        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
+        <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
+      </div>
+      <button class="connect-btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+    <button class="mobile-nav-btn" id="mobileNavBtn"><i class="fas fa-bars"></i></button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-badge"><span class="pulse-dot"></span> Fully On-Chain · Base Network</div>
+    <h1 class="hero-title">THE <span class="green">$1</span> GAME</h1>
+    <p class="hero-subtitle">Any NFT. One dollar a ticket. One winner. Forever on-chain.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num" id="statActive">—</div><div class="hero-stat-lbl">Active Games</div></div>
+      <div class="hero-stat"><div class="hero-stat-num accent" id="statVolume">—</div><div class="hero-stat-lbl">ETH Distributed</div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="statCompleted">—</div><div class="hero-stat-lbl">Games Completed</div></div>
+    </div>
+  </section>
+
+  <!-- LIVE FEED -->
+  <div class="live-bar">
+    <div class="live-bar-inner" id="liveBar">
+      <div class="live-event"><span class="dot"></span> Game just created — <span class="hl">Based Undead #421</span></div>
+      <div class="live-event"><span class="dot"></span> <span class="hl">0x8fa3…</span> bought 5 tickets</div>
+      <div class="live-event"><span class="dot"></span> Winner drawn for <span class="hl">Based Undead #69</span></div>
+      <div class="live-event"><span class="dot"></span> <span class="hl">0x1bc2…</span> just won 0.024 ETH prize pool</div>
+      <div class="live-event"><span class="dot"></span> New game listed — <span class="hl">Est. Value $250</span></div>
+      <div class="live-event"><span class="dot"></span> Game just created — <span class="hl">Based Undead #421</span></div>
+      <div class="live-event"><span class="dot"></span> <span class="hl">0x8fa3…</span> bought 5 tickets</div>
+      <div class="live-event"><span class="dot"></span> Winner drawn for <span class="hl">Based Undead #69</span></div>
+      <div class="live-event"><span class="dot"></span> <span class="hl">0x1bc2…</span> just won 0.024 ETH prize pool</div>
+      <div class="live-event"><span class="dot"></span> New game listed — <span class="hl">Est. Value $250</span></div>
+    </div>
+  </div>
+
+  <!-- WITHDRAW BANNER -->
+  <div class="section" id="withdrawBanner" style="display:none;padding-bottom:0">
+    <div class="withdraw-banner">
+      <div><p>You have earnings to collect</p><p style="font-size:11px;color:var(--muted);margin-top:2px">From your completed games</p></div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <span id="pendingAmount">0 ETH</span>
+        <button class="btn-primary" style="flex:unset;padding:12px 24px" onclick="withdrawEarnings()">
+          <i class="fas fa-wallet"></i> Withdraw
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SECTION -->
+  <div class="section" id="active">
+
+    <!-- YOUR GAMES (shown when connected) -->
+    <div id="yourGamesSection" style="display:none;margin-bottom:60px">
+      <div class="section-label" style="margin-bottom:8px">Your Activity</div>
+      <div class="section-title" style="margin-bottom:4px">Your <em>Games</em></div>
+      <p class="section-sub" style="margin-bottom:20px">Games you created or entered</p>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchYourTab('entered')">Entered</button>
+        <button class="tab-btn" onclick="switchYourTab('created')">Created</button>
+      </div>
+      <div id="yourEnteredGames" class="tab-content active"><div class="games-grid" id="enteredGrid"></div></div>
+      <div id="yourCreatedGames" class="tab-content"><div class="games-grid" id="createdGrid"></div></div>
+    </div>
+
+    <!-- DYOR WARNING -->
+    <div class="dyor-banner">
+      <div class="dyor-icon">⚠</div>
+      <div>
+        <div class="dyor-title">Risk Warning — Do Your Own Research</div>
+        <div class="dyor-body">
+          NFT values are <strong style="color:var(--gold)">self-reported by creators and unverified</strong> by this platform. Ticket purchases are <strong style="color:var(--gold)">irreversible</strong> once confirmed on-chain. You may lose the ETH you spend. Only participate in games you have independently researched — verify the NFT contract address, collection history, and floor price before buying.
+          <br>By purchasing tickets you agree to our <a href="/terms.html">Terms &amp; Conditions</a>. All transactions on Base are permanent.
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL GAMES -->
+    <div class="section-label" style="margin-bottom:8px">Live Now</div>
+    <div class="section-title" style="margin-bottom:4px">Active <em>Games</em></div>
+    <p class="section-sub">Fully on-chain. Every ticket, every dollar, publicly verifiable.</p>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchMainTab('all')">All Active</button>
+      <button class="tab-btn" onclick="switchMainTab('ending')">Ending Soon</button>
+    </div>
+    <div id="allActiveGames" class="tab-content active"><div class="games-grid" id="activeGrid"><div class="empty-state"><div class="skull">💀</div><p id="loadingText">Loading games from the chain...</p></div></div></div>
+    <div id="endingGames" class="tab-content"><div class="games-grid" id="endingGrid"></div></div>
+
+    <!-- CREATE CTA -->
+    <div class="create-cta reveal">
+      <h3>☠ Raise the Stakes</h3>
+      <p>List any NFT. Set a duration. Players buy $1 tickets. You keep 90% of the pot. Winner gets your NFT. Zero admin. Fully automated.</p>
+      <button class="create-big-btn" onclick="openCreateModal()">
+        <i class="fas fa-plus"></i> Create a $1 Game
+      </button>
+    </div>
+
+    <!-- EXPIRED GAMES -->
+    <div style="margin-top:60px" id="expiredSection">
+      <div class="section-label" style="margin-bottom:8px">The Fallen</div>
+      <div class="section-title" style="margin-bottom:4px"><em>Expired</em> Games</div>
+      <p class="section-sub">Concluded games. Click "Winner Announced" to see who won.</p>
+      <div class="games-grid" id="expiredGrid"><div class="empty-state"><div class="skull">☠</div><p>No concluded games yet</p></div></div>
+    </div>
+  </div>
+
+  <!-- HALL OF WINNERS -->
+  <div class="section" id="hall" style="border-top:1px solid var(--border)">
+    <div class="section-label" style="margin-bottom:8px">The Eternal Record</div>
+    <div class="section-title" style="margin-bottom:4px">Hall of <em>Winners</em></div>
+    <p class="section-sub">Every soul that claimed victory — written on-chain, forever.</p>
+    <div class="hall-grid" id="hallGrid">
+      <div class="empty-state" style="grid-column:1/-1"><div class="skull">🏆</div><p>First winner will appear here</p></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-content">
+      <a href="/" class="footer-logo">BASED UNDEADS</a>
+      <div class="footer-links">
+        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
+        <a href="https://x.com/BasedUndeads" target="_blank" class="footer-link">Twitter</a>
+        <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
+        <a href="/terms.html" class="footer-link">Terms &amp; Conditions</a>
+      </div>
+      <span class="footer-copy">© 2026 Based Undeads. Games run on Base. &nbsp;·&nbsp; <a href="/terms.html" style="color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Terms</a></span>
+    </div>
+  </footer>
+
+  <!-- ─────────── GAME DETAIL MODAL ─────────── -->
+  <div class="modal-overlay" id="gameModal" onclick="closeOnBg(event,'gameModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">—</span>
+        <button class="modal-close" onclick="closeModal('gameModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <img id="modalImg" class="detail-img" src="" alt="" style="display:none">
+        <div id="modalNoImg" style="display:flex;align-items:center;justify-content:center;height:200px;font-size:80px;opacity:.2;margin-bottom:24px">💀</div>
+
+        <div class="detail-stats">
+          <div class="detail-stat"><div class="detail-stat-lbl">Ticket Price</div><div class="detail-stat-val accent" id="modalTicketPrice">$1</div></div>
+          <div class="detail-stat"><div class="detail-stat-lbl">Tickets Sold</div><div class="detail-stat-val" id="modalTicketCount">0</div></div>
+          <div class="detail-stat"><div class="detail-stat-lbl">Prize Pool</div><div class="detail-stat-val accent" id="modalPool">0 ETH</div></div>
+          <div class="detail-stat"><div class="detail-stat-lbl">Asset Value</div><div class="detail-stat-val" id="modalAssetVal">—</div></div>
+          <div class="detail-stat"><div class="detail-stat-lbl">Your Tickets</div><div class="detail-stat-val accent" id="modalYourTickets">0</div></div>
+          <div class="detail-stat"><div class="detail-stat-lbl">Your Odds</div><div class="detail-stat-val" id="modalOdds">—</div></div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Time Remaining</div>
+          <div id="modalTimer" style="font-family:'Geist Mono',monospace;font-size:20px;color:var(--fg)">—</div>
+        </div>
+
+        <div style="margin-bottom:20px">
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Participants (<span id="modalParticipantCount">0</span>)</div>
+          <div class="participants-list" id="participantList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No participants yet</div></div>
+        </div>
+
+        <!-- Buy tickets -->
+        <div id="buySection">
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Buy Tickets</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div class="ticket-counter">
+              <button class="counter-btn" id="qtyMinus" onclick="changeQty(-1)">−</button>
+              <div class="counter-val" id="qtyDisplay">1</div>
+              <button class="counter-btn" id="qtyPlus"  onclick="changeQty(1)">+</button>
+            </div>
+            <div class="cost-display" style="flex:1;min-width:120px">
+              <strong id="costEth">—</strong>
+              <br><span style="font-size:10px;color:var(--muted)">≈ $<span id="costUsd">—</span> USD</span>
+            </div>
+            <button class="btn-primary" style="flex:unset;padding:14px 28px" id="buyBtn" onclick="doBuyTickets()">
+              <i class="fas fa-ticket-alt"></i> Buy
+            </button>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+            <button class="dur-btn" onclick="setQty(1)"   style="font-size:10px;padding:6px 12px">1</button>
+            <button class="dur-btn" onclick="setQty(5)"   style="font-size:10px;padding:6px 12px">5</button>
+            <button class="dur-btn" onclick="setQty(10)"  style="font-size:10px;padding:6px 12px">10</button>
+            <button class="dur-btn" onclick="setQty(25)"  style="font-size:10px;padding:6px 12px">25</button>
+            <button class="dur-btn" onclick="setQty(50)"  style="font-size:10px;padding:6px 12px">50</button>
+            <button class="dur-btn" onclick="setQty(100)" style="font-size:10px;padding:6px 12px">100</button>
+          </div>
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px">$1 per ticket · max 100 per transaction · <a href="/terms.html" style="color:var(--accent);text-decoration:none">terms apply</a></div>
+        </div>
+
+        <!-- Draw button -->
+        <div id="drawSection" style="display:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+            This game has ended. Anyone can trigger the draw — winner is selected automatically on-chain.
+          </div>
+          <button class="btn-primary" style="width:100%" onclick="doDrawWinner()">
+            <i class="fas fa-dice"></i> Draw Winner Now
+          </button>
+        </div>
+
+        <!-- Cancel button (creator only, 0 tickets) -->
+        <div id="cancelSection" style="display:none;margin-top:12px">
+          <button class="btn-ghost" style="width:100%;justify-content:center" onclick="doCancelGame()">
+            <i class="fas fa-undo"></i> Reclaim NFT (0 tickets only)
+          </button>
+        </div>
+
+        <!-- Share -->
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn-ghost" style="flex:1;justify-content:center" onclick="shareGame()">
+            <i class="fab fa-x-twitter"></i> Share Game
+          </button>
+          <button class="btn-ghost" style="padding:13px 16px" onclick="copyGameLink()">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── CREATE GAME MODAL ─────────── -->
+  <div class="modal-overlay" id="createModal" onclick="closeOnBg(event,'createModal')">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">☠ New Game</span>
+        <button class="modal-close" onclick="closeModal('createModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- NFT Picker -->
+        <div class="form-group">
+          <label class="form-label">Select Your NFT</label>
+
+          <!-- Loading state -->
+          <div id="nftPickerLoading">
+            <div class="nft-picker-container">
+              <div class="nft-picker-header">
+                <span>Loading wallet NFTs...</span>
+                <span style="color:var(--muted)"><i class="fas fa-spinner spin"></i></span>
+              </div>
+              <div class="nft-picker-loading-inner" id="nftSkeletons">
+                <!-- skeletons injected by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Loaded grid -->
+          <div id="nftPickerLoaded" style="display:none">
+            <div class="nft-picker-container">
+              <div class="nft-picker-header">
+                <span>Your NFTs on Base</span>
+                <span class="nft-picker-count" id="nftPickerCount">0 NFTs</span>
+              </div>
+              <div class="collection-filter-bar" id="collectionFilterBar"></div>
+              <div class="nft-picker-scroll" id="nftPickerGrid"></div>
+            </div>
+          </div>
+
+          <!-- Empty / error state -->
+          <div id="nftPickerEmpty" style="display:none;text-align:center;padding:28px;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;color:var(--muted);font-family:'Geist Mono',monospace;font-size:12px;line-height:1.8">
+            No NFTs found in your wallet on Base.<br>Make sure you're connected to Base Mainnet.<br>You can still enter the contract + token ID manually below.
+          </div>
+
+          <!-- Selected NFT preview -->
+          <div class="nft-selected-preview" id="nftSelectedPreview">
+            <img id="nftPreviewImg" src="" alt="">
+            <div class="nft-selected-info">
+              <div class="nft-selected-name" id="nftPreviewName">—</div>
+              <div class="nft-selected-addr" id="nftPreviewAddr">—</div>
+            </div>
+            <button class="nft-selected-clear" onclick="clearNFTSelection()" title="Clear selection">
+              <i class="fas fa-times-circle"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Manual entry -->
+        <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;text-align:center;letter-spacing:.05em">— or enter manually —</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">NFT Contract</label>
+            <input type="text" id="manualContract" class="form-input" placeholder="0x..." oninput="updateCreateSummary()">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Token ID</label>
+            <input type="number" id="manualTokenId" class="form-input" placeholder="e.g. 421" oninput="updateCreateSummary()">
+          </div>
+        </div>
+
+        <!-- Asset Value -->
+        <div class="form-group">
+          <label class="form-label">Estimated Asset Value (USD)</label>
+          <input type="number" id="assetValue" class="form-input" placeholder="e.g. 500" min="1" oninput="updateCreateSummary()">
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px">Shown to players as prize value. Be honest — it builds trust.</div>
+        </div>
+
+        <!-- Duration -->
+        <div class="form-group">
+          <label class="form-label">Game Duration</label>
+          <div class="duration-btns" id="durationBtns">
+            <button class="dur-btn" data-dur="3600">1 Hour</button>
+            <button class="dur-btn" data-dur="21600">6 Hours</button>
+            <button class="dur-btn active" data-dur="86400">24 Hours</button>
+            <button class="dur-btn" data-dur="259200">3 Days</button>
+            <button class="dur-btn" data-dur="604800">7 Days</button>
+          </div>
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px">Starts immediately. Ends automatically.</div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label class="form-label">Short Description (optional)</label>
+          <input type="text" id="gameDesc" class="form-input" placeholder="e.g. Rare 1/1 custom undead..." maxlength="120">
+        </div>
+
+        <!-- Summary -->
+        <div id="createSummary" style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;margin-bottom:20px;display:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px">Game Summary</div>
+          <div id="summaryText" style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8"></div>
+        </div>
+
+        <div id="createStepNote" style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px;text-align:center">
+          Step 1: Approve NFT transfer · Step 2: Create game
+        </div>
+
+        <button class="btn-primary" style="width:100%;font-size:13px;padding:18px" id="createConfirmBtn" onclick="doCreateGame()">
+          <i class="fas fa-bolt"></i> List NFT &amp; Start Game
+        </button>
+        <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:10px">
+          You keep 90% of ticket sales · Platform fee 10% · Fully on-chain
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── WINNER REVEAL MODAL ─────────── -->
+  <div class="modal-overlay" id="winnerModal" onclick="closeOnBg(event,'winnerModal')">
+    <div class="modal">
+      <div class="modal-header" style="justify-content:flex-end;padding-bottom:0">
+        <button class="modal-close" onclick="closeModal('winnerModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="winner-reveal">
+          <div class="skull-anim">💀</div>
+          <div class="confetti-row">🏆 ☠ 🎊 ☠ 🏆</div>
+          <div class="winner-label">The Winner Is</div>
+          <div class="winner-address" id="winnerAddress">—</div>
+          <div class="winner-prize" id="winnerPrize">won —</div>
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap">
+            <button class="btn-primary" style="flex:unset" onclick="shareWinner()">
+              <i class="fab fa-x-twitter"></i> Share
+            </button>
+            <button class="btn-ghost" onclick="closeModal('winnerModal')">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── WALLET REQUIRED MODAL ─────────── -->
+  <div class="modal-overlay" id="walletModal" onclick="closeOnBg(event,'walletModal')">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-body" style="text-align:center;padding:40px">
+        <div style="font-size:60px;margin-bottom:20px">☠</div>
+        <div class="modal-title" style="font-family:'Creepster',cursive;font-size:28px;margin-bottom:12px">Connect Your Wallet</div>
+        <p style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:32px;line-height:1.7">To buy tickets, create games, or claim winnings — connect your wallet on Base network.</p>
+        <button class="create-big-btn" style="font-size:12px;padding:16px 32px;width:100%;justify-content:center" onclick="connectWallet();closeModal('walletModal')">
+          <i class="fas fa-wallet"></i> Connect Wallet
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ================================================================
+// BASED UNDEADS — THE $1 GAME  (v4 frontend)
+// ================================================================
+
+const CONTRACT_ADDRESS = '0x0936F24bFE631a600526E057303A3e0eF711A1Be'; // ← REPLACE
+const BASE_CHAIN_ID    = 8453;
+const PLATFORM_WALLET  = '0xf2046406D6ccd578206E54207dA9143954F75989';
+
+// ─── ABI ─────────────────────────────────────────────────────────
+const GAME_ABI = [
+  // v4 createGame now includes commitHash param
+  "function createGame(address nftContract, uint256 tokenId, uint256 durationSecs, uint256 assetValueUSD, string calldata description) external",
+  "function buyTickets(uint256 id, uint256 qty) external payable",
+  "function drawWinner(uint256 id) external",
+  "function revealAndDraw(uint256 id, bytes32 secret) external",
+  "function fallbackDraw(uint256 id) external",
+  "function creatorReclaimNFT(uint256 id) external",
+  "function claimNFT(uint256 id) external",
+  "function sweepOrphanedETH() external",
+  "function setCollectionAllowed(address collection, bool allowed) external",
+  "function setAllowlistEnabled(bool enabled) external",
+  "function allowlistEnabled() external view returns (bool)",
+  "function allowlistedCollections(address) external view returns (bool)",
+  "function totalPending() external view returns (uint256)",
+  "function getTicketRanges(uint256 id) external view returns (tuple(address buyer, uint32 rangeStart, uint32 rangeEnd)[])",
+  "function getTicketEntryCount(uint256 id) external view returns (uint256)",
+  "function getGamesPaginated(uint256 start, uint256 count) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
+  "function withdrawPending() external",
+  "function withdrawEarnings() external",
+  "function gameCount() external view returns (uint256)",
+  "function getGame(uint256 id) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim))",
+  "function getAllGames() external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
+  "function getTicketPriceWei() external view returns (uint256)",
+  "function walletTickets(uint256 id, address wallet) external view returns (uint256)",
+  "function getParticipants(uint256 id) external view returns (address[])",
+  "function totalGamesCompleted() external view returns (uint256)",
+  "function totalETHVolume() external view returns (uint256)",
+  "function pendingCreatorPayout(address) external view returns (uint256)",
+  "function pendingWithdraw(address) external view returns (uint256)",
+  "event GameCreated(uint256 indexed id, address indexed creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, string description)",
+  "event TicketsBought(uint256 indexed id, address indexed buyer, uint256 qty, uint256 totalTickets)",
+  "event WinnerDrawn(uint256 indexed id, address indexed winner, uint256 winnerTicketIndex, uint256 totalETH)"
+];
+
+const ERC721_ABI = [
+  "function approve(address to, uint256 tokenId) external",
+  "function setApprovalForAll(address operator, bool approved) external",
+  "function getApproved(uint256 tokenId) external view returns (address)",
+  "function isApprovedForAll(address owner, address operator) external view returns (bool)"
+];
+
+// ─── State ────────────────────────────────────────────────────────
+let provider, signer, contract;
+let userAddress    = null;
+let allGames       = [];
+let currentGameId  = null;
+let ticketPriceWei = ethers.BigNumber.from(0);
+let selectedDuration = 86400;
+let selectedNFT    = null; // { contract, tokenId, image, name }
+let openSeaApiKey  = null;
+let winnerData     = null;
+
+// ─── Cursor ───────────────────────────────────────────────────────
+const cursor    = document.querySelector('.cursor');
+const cursorDot = document.querySelector('.cursor-dot');
+let mx=0,my=0,cx=0,cy=0;
+(function loop(){cx+=(mx-cx)*.12;cy+=(my-cy)*.12;cursor.style.transform=`translate(${cx-10}px,${cy-10}px)`;requestAnimationFrame(loop)})();
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursorDot.style.transform=`translate(${mx-2}px,${my-2}px)`},{passive:true});
+document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,input'))cursor.classList.add('hover')},{passive:true});
+document.addEventListener('mouseout', e=>{if(e.target.closest('a,button,input'))cursor.classList.remove('hover')},{passive:true});
+
+// ─── Scroll Progress ──────────────────────────────────────────────
+window.addEventListener('scroll',()=>{
+  const max=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+  document.getElementById('scrollProgress').style.width=(window.pageYOffset/max*100)+'%';
+});
+
+// ─── Reveal ───────────────────────────────────────────────────────
+const revObs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('shown')}),{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+
+// ─── Notification ─────────────────────────────────────────────────
+function notify(msg,type='success'){
+  const old=document.querySelector('.notif');if(old)old.remove();
+  const n=document.createElement('div');n.className=`notif ${type}`;n.textContent=msg;
+  document.body.appendChild(n);setTimeout(()=>n.remove(),4000);
+}
+
+// ─── Modal helpers ────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+function closeOnBg(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+// ─── Wallet Connection ────────────────────────────────────────────
+async function connectWallet(){
+  if(!window.ethereum){notify('Please install MetaMask','error');return;}
+  try {
+    await window.ethereum.request({method:'eth_requestAccounts'});
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    const net = await provider.getNetwork();
+    if(net.chainId !== BASE_CHAIN_ID){
+      try {
+        await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16)}]});
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+      } catch(sw){
+        if(sw.code===4902){
+          await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16),chainName:'Base',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://mainnet.base.org'],blockExplorerUrls:['https://basescan.org']}]});
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+        } else { notify('Please switch to Base network','error');return; }
+      }
+    }
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    if(CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE'){
+      contract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, signer);
+    }
+    const btn = document.getElementById('connectBtn');
+    btn.textContent = userAddress.slice(0,6)+'...'+userAddress.slice(-4);
+    btn.classList.add('connected');
+    notify('Wallet connected · Base Mainnet','success');
+    await checkPendingPayout();
+    document.getElementById('yourGamesSection').style.display='block';
+    renderYourGames();
+    window.ethereum.on('accountsChanged',()=>location.reload());
+    window.ethereum.on('chainChanged',()=>location.reload());
+  } catch(e){
+    if(e.code!==4001) notify('Connection failed: '+e.message,'error');
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+async function init(){
+  try {
+    const r = await fetch('/.netlify/functions/api-keys');
+    if(r.ok){ const d=await r.json(); openSeaApiKey=Array.isArray(d.apiKeys?.opensea)?d.apiKeys.opensea[0]:d.apiKeys?.opensea; }
+  } catch(e){}
+
+  if(window.ethereum){
+    const accounts = await window.ethereum.request({method:'eth_accounts'}).catch(()=>[]);
+    if(accounts.length>0) await connectWallet();
+  }
+
+  if(CONTRACT_ADDRESS==='YOUR_CONTRACT_ADDRESS_HERE'){
+    document.getElementById('loadingText').textContent='⚠ Contract not yet deployed — showing demo.';
+    renderDemoGames();
+    return;
+  }
+
+  await loadAllGames();
+  setInterval(loadAllGames,30000);
+}
+
+// ─── Load All Games ───────────────────────────────────────────────
+async function loadAllGames(){
+  if(!contract) return;
+  try {
+    const raw = await contract.getAllGames();
+    allGames = raw.map((g,i)=>({
+      id            : i,
+      creator       : g.creator,
+      nftContract   : g.nftContract,
+      tokenId       : g.tokenId.toString(),
+      endTime       : g.endTime.toNumber(),
+      assetValueUSD : g.assetValueUSD.toNumber(),
+      totalETH      : ethers.utils.formatEther(g.totalETH),
+      ticketCount   : g.ticketCount.toNumber(),
+      winner        : g.winner,
+      active        : g.active,
+      drawn         : g.drawn,
+      description   : g.description,
+      nftPendingClaim: g.nftPendingClaim,
+      _myTickets    : 0
+    }));
+
+    await enrichWithImages(allGames);
+
+    const completed = await contract.totalGamesCompleted();
+    const volume    = await contract.totalETHVolume();
+    const active    = allGames.filter(g=>g.active&&!g.drawn&&Date.now()/1000<g.endTime).length;
+    document.getElementById('statActive').textContent    = active;
+    document.getElementById('statCompleted').textContent = completed.toString();
+    document.getElementById('statVolume').textContent    = parseFloat(ethers.utils.formatEther(volume)).toFixed(3)+' ETH';
+
+    ticketPriceWei = await contract.getTicketPriceWei();
+
+    renderActiveGames();
+    renderExpiredGames();
+    renderHallOfWinners();
+    if(userAddress) renderYourGames();
+  } catch(e){ console.error('loadAllGames:',e); }
+}
+
+// ─── NFT image enrichment ─────────────────────────────────────────
+async function enrichWithImages(games){
+  if(!openSeaApiKey) return;
+  const toFetch = games.filter(g=>!g.imageUrl).slice(0,20);
+  await Promise.all(toFetch.map(async(g)=>{
+    try {
+      const r = await fetch(`https://api.opensea.io/api/v2/chain/base/contract/${g.nftContract}/nfts/${g.tokenId}`,{headers:{'accept':'application/json','x-api-key':openSeaApiKey}});
+      if(r.ok){const d=await r.json();g.imageUrl=d.nft?.image_url||d.nft?.display_image_url||null;g.nftName=d.nft?.name||`Token #${g.tokenId}`;}
+    } catch(e){}
+  }));
+}
+
+// ─── Render Active / Expired ──────────────────────────────────────
+function renderActiveGames(){
+  const now    = Date.now()/1000;
+  const active = allGames.filter(g=>g.active&&!g.drawn&&now<g.endTime);
+  const ending = active.filter(g=>(g.endTime-now)<3600);
+  renderGrid('activeGrid', active.length?active:null, false);
+  renderGrid('endingGrid', ending.length?ending:null, false);
+}
+
+function renderExpiredGames(){
+  const now     = Date.now()/1000;
+  const expired = allGames.filter(g=>!g.active||g.drawn||now>=g.endTime);
+  expired.sort((a,b)=>{
+    if(a.drawn&&!b.drawn)return -1;
+    if(!a.drawn&&b.drawn)return 1;
+    return b.endTime-a.endTime;
+  });
+  renderGrid('expiredGrid', expired.length?expired:null, true);
+}
+
+function renderYourGames(){
+  if(!userAddress) return;
+  const entered = allGames.filter(g=>g.active&&!g.drawn&&(g._myTickets||0)>0);
+  const created = allGames.filter(g=>(g.creator||'').toLowerCase()===userAddress.toLowerCase());
+  renderGrid('enteredGrid', entered.length?entered:null, false);
+  renderGrid('createdGrid', created.length?created:null, false);
+  // Async ticket fetch
+  allGames.filter(g=>g.active&&!g.drawn).forEach(async(g)=>{
+    if(!contract||!userAddress)return;
+    try {
+      const t=await contract.walletTickets(g.id,userAddress);
+      g._myTickets=t.toNumber();
+      if(g._myTickets>0){
+        const card=document.getElementById(`card-${g.id}`);
+        if(card)card.classList.add('your-game');
+        renderGrid('enteredGrid',allGames.filter(x=>x.active&&!x.drawn&&x._myTickets>0),false);
+      }
+    } catch(e){}
+  });
+}
+
+function renderGrid(containerId,games,isExpired){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  if(!games||games.length===0){
+    container.innerHTML=`<div class="empty-state"><div class="skull">${isExpired?'☠':'💀'}</div><p>${isExpired?'No concluded games yet':'No active games right now'}</p></div>`;
+    return;
+  }
+  container.innerHTML=games.map(g=>gameCardHTML(g,isExpired)).join('');
+  games.forEach(g=>{if(!isExpired&&g.active)startTimer(g);});
+}
+
+function gameCardHTML(g,isExpired){
+  const now      = Date.now()/1000;
+  const timeLeft = g.endTime-now;
+  const poolETH  = parseFloat(g.totalETH||0).toFixed(4);
+  const valUSD   = ((g.assetValueUSD||0)/100).toFixed(0);
+  const isEnding = !isExpired&&timeLeft<3600;
+  const myTickets= g._myTickets||0;
+  const oddsVal  = g.ticketCount>0&&myTickets>0?((myTickets/g.ticketCount)*100).toFixed(1):0;
+  const creator  = g.creator||'';
+  const isYours  = userAddress&&creator.toLowerCase()===userAddress.toLowerCase();
+
+  return `
+  <div class="game-card${isExpired?' expired':''}${myTickets>0?' your-game':''}${isEnding?' ending-soon':''}"
+       id="card-${g.id}" onclick="openGameDetail(${g.id})">
+    <div class="game-card-img">
+      ${g.imageUrl
+        ?`<img src="${g.imageUrl}" alt="${g.nftName||'NFT'}" loading="lazy" onerror="this.style.display='none'">`
+        :`<div class="no-img">💀</div>`}
+      ${!isExpired?`
+        <div class="timer-badge">
+          <i class="fas fa-clock timer-icon"></i>
+          <span class="timer-val${isEnding?' urgent':''}" id="timer-${g.id}">${formatTime(timeLeft)}</span>
+        </div>`:''}
+      ${isExpired&&g.drawn?`
+        <div class="winner-badge" onclick="event.stopPropagation();showWinnerRevealById(${g.id})">
+          <span>Winner Announced</span>
+          <p>${g.winner&&g.winner!==ethers.constants.AddressZero?g.winner.slice(0,6)+'...'+g.winner.slice(-4):'—'}</p>
+        </div>`:''}
+      ${isExpired&&!g.drawn&&g.ticketCount>0?`
+        <div class="winner-badge" onclick="event.stopPropagation();openGameDetail(${g.id})">
+          <span style="color:#ffaa00">Draw Pending</span>
+          <p>Click to trigger draw</p>
+        </div>`:''}
+    </div>
+    <div class="game-card-body">
+      <div class="game-card-name">${g.nftName||'Based Undead #'+g.tokenId}</div>
+      <div class="game-card-desc">${g.description||'NFT · Token #'+g.tokenId}</div>
+      <div class="game-card-stats">
+        <div class="game-stat"><div class="game-stat-lbl">Tickets</div><div class="game-stat-val accent">${g.ticketCount}</div></div>
+        <div class="game-stat"><div class="game-stat-lbl">Prize Pool</div><div class="game-stat-val">${poolETH} ETH</div></div>
+        <div class="game-stat"><div class="game-stat-lbl">Est. Value</div><div class="game-stat-val">$${valUSD}</div></div>
+        <div class="game-stat">
+          <div class="game-stat-lbl">${myTickets>0?'Your Odds':'Ticket'}</div>
+          <div class="game-stat-val${myTickets>0?' accent':''}">
+            ${myTickets>0?oddsVal+'%':'$1'}
+          </div>
+          ${myTickets>0?`<div class="odds-bar"><div class="odds-fill" style="width:${Math.min(oddsVal,100)}%"></div></div>`:''}
+        </div>
+      </div>
+      ${!isExpired?`
+        <div class="game-card-footer">
+          <button class="btn-primary" onclick="event.stopPropagation();openGameDetail(${g.id})">
+            <i class="fas fa-ticket-alt"></i> Buy Tickets
+          </button>
+          <button class="btn-ghost" onclick="event.stopPropagation();shareGame(${g.id})">
+            <i class="fab fa-x-twitter"></i>
+          </button>
+        </div>`:''}
+    </div>
+  </div>`;
+}
+
+// ─── Hall of Winners ──────────────────────────────────────────────
+function renderHallOfWinners(){
+  const won=allGames.filter(g=>g.drawn&&g.winner&&g.winner!==ethers.constants.AddressZero);
+  won.sort((a,b)=>b.endTime-a.endTime);
+  const container=document.getElementById('hallGrid');
+  if(!won.length){container.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="skull">🏆</div><p>First winner will appear here</p></div>`;return;}
+  container.innerHTML=won.slice(0,12).map((g,i)=>{
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'🏆';
+    const d=new Date(g.endTime*1000);
+    return `<div class="hall-card reveal" onclick="showWinnerRevealById(${g.id})" style="cursor:pointer">
+      <div class="trophy">${medal}</div>
+      ${g.imageUrl?`<img src="${g.imageUrl}" alt="${g.nftName||'NFT'}" onerror="this.style.display='none'">`:`<div style="font-size:40px;margin-bottom:12px">💀</div>`}
+      <div class="winner-addr">${g.winner.slice(0,6)}...${g.winner.slice(-4)}</div>
+      <div class="won-item">${g.nftName||'Token #'+g.tokenId}</div>
+      <div class="won-date">${d.toLocaleDateString()}</div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+}
+
+// ─── Game Detail Modal ────────────────────────────────────────────
+async function openGameDetail(id){
+  currentGameId=id;
+  const g=allGames[id];
+  if(!g)return;
+  const now=Date.now()/1000;
+  const ended=now>=g.endTime||!g.active||g.drawn;
+
+  document.getElementById('modalTitle').textContent=g.nftName||'Token #'+g.tokenId;
+  const img=document.getElementById('modalImg'),noImg=document.getElementById('modalNoImg');
+  if(g.imageUrl){img.src=g.imageUrl;img.style.display='block';noImg.style.display='none';}
+  else{img.style.display='none';noImg.style.display='flex';}
+
+  document.getElementById('modalTicketPrice').textContent='$1 USD';
+  document.getElementById('modalTicketCount').textContent=g.ticketCount;
+  document.getElementById('modalPool').textContent=parseFloat(g.totalETH||0).toFixed(4)+' ETH';
+  document.getElementById('modalAssetVal').textContent='$'+((g.assetValueUSD||0)/100).toFixed(0);
+
+  const timerEl=document.getElementById('modalTimer');
+  if(!ended){
+    timerEl.textContent=formatTime(g.endTime-now);
+    const ti=setInterval(()=>{
+      const tl=g.endTime-Date.now()/1000;
+      if(tl<=0){timerEl.textContent='Ended';clearInterval(ti);}
+      else timerEl.textContent=formatTime(tl);
+    },1000);
+  } else timerEl.textContent='Game Ended';
+
+  let myTickets=0;
+  if(contract&&userAddress){try{myTickets=(await contract.walletTickets(id,userAddress)).toNumber();}catch(e){}}
+  document.getElementById('modalYourTickets').textContent=myTickets;
+  document.getElementById('modalOdds').textContent=g.ticketCount>0&&myTickets>0?((myTickets/g.ticketCount)*100).toFixed(2)+'%':'—';
+
+  await loadParticipants(id);
+
+  const buySection=document.getElementById('buySection');
+  const drawSection=document.getElementById('drawSection');
+  const cancelSection=document.getElementById('cancelSection');
+  buySection.style.display=drawSection.style.display=cancelSection.style.display='none';
+
+  if(g.drawn){}
+  else if(ended&&g.ticketCount>0){drawSection.style.display='block';}
+  else if(ended&&g.ticketCount===0&&userAddress&&(g.creator||'').toLowerCase()===userAddress.toLowerCase()){cancelSection.style.display='block';}
+  else if(!ended){
+    buySection.style.display='block';
+    if(userAddress&&(g.creator||'').toLowerCase()===userAddress.toLowerCase()&&g.ticketCount===0){cancelSection.style.display='block';}
+    updateCostDisplay();
+  }
+
+  openModal('gameModal');
+}
+
+async function loadParticipants(id){
+  const container=document.getElementById('participantList');
+  if(!contract){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Connect wallet to view</div>';return;}
+  try {
+    const p=await contract.getParticipants(id);
+    document.getElementById('modalParticipantCount').textContent=p.length;
+    if(!p.length){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">No participants yet — be first!</div>';return;}
+    const counts={};
+    p.forEach(addr=>{const a=addr.toLowerCase();counts[a]=(counts[a]||0)+1;});
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    container.innerHTML=sorted.map(([addr,cnt])=>{
+      const isYou=userAddress&&addr===userAddress.toLowerCase();
+      return `<div class="participant-row${isYou?' you':''}">
+        <span class="addr">${isYou?'<strong style="color:var(--accent)">You</strong>':addr.slice(0,6)+'...'+addr.slice(-4)}</span>
+        <span class="tkts">${cnt} ticket${cnt>1?'s':''} · ${((cnt/p.length)*100).toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+  } catch(e){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Error loading participants</div>';}
+}
+
+function updateCostDisplay(){
+  const qty=getTicketQty();
+  if(ticketPriceWei.gt(0)){
+    const total=ticketPriceWei.mul(qty);
+    document.getElementById('costEth').textContent=parseFloat(ethers.utils.formatEther(total)).toFixed(6)+' ETH';
+    document.getElementById('costUsd').textContent=(qty*1).toFixed(2);
+  } else {
+    document.getElementById('costEth').textContent='~'+qty+' × $1 in ETH';
+    document.getElementById('costUsd').textContent=qty.toFixed(2);
+  }
+}
+
+// ─── Buy Tickets ──────────────────────────────────────────────────
+async function doBuyTickets(){
+  if(!userAddress){openModal('walletModal');return;}
+  if(currentGameId===null)return;
+  const qty=getTicketQty();
+  if(qty<1||qty>100){notify('1-100 tickets per transaction','error');return;}
+  const btn=document.getElementById('buyBtn');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner spin"></i> Buying...';
+  try {
+    const price=await contract.getTicketPriceWei();
+    ticketPriceWei=price;
+    const totalCost=price.mul(qty);
+    const withBuffer=totalCost.mul(101).div(100);
+    const tx=await contract.buyTickets(currentGameId,qty,{value:withBuffer});
+    notify('Transaction submitted...','info');
+    await tx.wait();
+    notify(`${qty} ticket${qty>1?'s':''} purchased!`,'success');
+    await loadAllGames();
+    await openGameDetail(currentGameId);
+  } catch(e){
+    if(e.code===4001)notify('Transaction cancelled','info');
+    else notify('Failed: '+(e.reason||e.message||'Unknown error').substring(0,80),'error');
+  }
+  btn.disabled=false;btn.innerHTML='<i class="fas fa-ticket-alt"></i> Buy';
+}
+
+// ─── Draw Winner ──────────────────────────────────────────────────
+async function doDrawWinner(){
+  if(!userAddress){openModal('walletModal');return;}
+  const btn=document.querySelector('#drawSection button');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner spin"></i> Drawing winner...';
+  try {
+    const tx=await contract.drawWinner(currentGameId);
+    notify('Drawing winner on-chain...','info');
+    const receipt=await tx.wait();
+    const iface=new ethers.utils.Interface(GAME_ABI);
+    let winnerAddr=null;
+    for(const log of receipt.logs){try{const p=iface.parseLog(log);if(p.name==='WinnerDrawn'){winnerAddr=p.args.winner;break;}}catch(e){}}
+    closeModal('gameModal');
+    await loadAllGames();
+    if(winnerAddr){const g=allGames[currentGameId];showWinnerReveal(winnerAddr,g?.nftName||'Token #'+g?.tokenId,g?.imageUrl);}
+  } catch(e){
+    if(e.code===4001)notify('Transaction cancelled','info');
+    else notify('Draw failed: '+(e.reason||e.message||'').substring(0,80),'error');
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-dice"></i> Draw Winner Now';
+  }
+}
+
+// ─── Cancel Game ──────────────────────────────────────────────────
+async function doCancelGame(){
+  if(!userAddress||currentGameId===null)return;
+  if(!confirm('Reclaim your NFT? Only possible if zero tickets have been sold.'))return;
+  try {
+    const tx=await contract.creatorReclaimNFT(currentGameId);
+    notify('Reclaiming NFT...','info');await tx.wait();
+    notify('NFT returned to your wallet.','success');
+    closeModal('gameModal');await loadAllGames();
+  } catch(e){
+    if(e.code===4001)notify('Cancelled','info');
+    else notify('Failed: '+(e.reason||e.message||'').substring(0,80),'error');
+  }
+}
+
+// ─── Withdraw ─────────────────────────────────────────────────────
+async function withdrawEarnings(){
+  if(!contract||!userAddress)return;
+  try {
+    const tx=await contract.withdrawPending();
+    notify('Withdrawing...','info');await tx.wait();
+    notify('Earnings withdrawn!','success');
+    document.getElementById('withdrawBanner').style.display='none';
+  } catch(e){
+    if(e.code===4001)notify('Cancelled','info');
+    else notify('Withdrawal failed: '+e.message,'error');
+  }
+}
+
+async function checkPendingPayout(){
+  if(!contract||!userAddress)return;
+  try {
+    const pending=await contract.pendingWithdraw(userAddress);
+    if(pending.gt(0)){
+      document.getElementById('withdrawBanner').style.display='flex';
+      document.getElementById('pendingAmount').textContent=parseFloat(ethers.utils.formatEther(pending)).toFixed(6)+' ETH';
+    }
+  } catch(e){}
+}
+
+// ─── Open Create Modal ────────────────────────────────────────────
+async function openCreateModal(){
+  if(!userAddress){openModal('walletModal');return;}
+  openModal('createModal');
+  await loadUserNFTsForCreate();
+}
+
+// ─── NFT Picker (redesigned) ──────────────────────────────────────
+let _allWalletNFTs = [];
+let _activeCollectionSlug = '__all__';
+
+async function loadUserNFTsForCreate(){
+  const loading = document.getElementById('nftPickerLoading');
+  const loaded  = document.getElementById('nftPickerLoaded');
+  const empty   = document.getElementById('nftPickerEmpty');
+  const grid    = document.getElementById('nftPickerGrid');
+
+  const skels = document.getElementById('nftSkeletons');
+  skels.innerHTML = [...Array(6)].map(()=>'<div class="nft-skeleton"></div>').join('');
+  loading.style.display = 'block';
+  loaded.style.display  = 'none';
+  empty.style.display   = 'none';
+  _allWalletNFTs = [];
+  _activeCollectionSlug = '__all__';
+
+  if(!openSeaApiKey){
+    loading.style.display = 'none';
+    empty.style.display   = 'block';
+    empty.innerHTML = '<i class="fas fa-image" style="font-size:32px;margin-bottom:12px;display:block;opacity:.3"></i>No OpenSea API key — enter NFT details manually below.';
+    return;
+  }
+
+  try {
+    let cursor_os = null;
+    for(let page = 0; page < 5; page++){
+      const url = `https://api.opensea.io/api/v2/chain/base/account/${userAddress}/nfts?limit=50${cursor_os ? '&next='+cursor_os : ''}`;
+      const r = await fetch(url, { headers:{ 'accept':'application/json','x-api-key':openSeaApiKey } });
+      if(!r.ok) break;
+      const d = await r.json();
+      const nfts = (d.nfts||[]).filter(n => n.image_url || n.display_image_url);
+      _allWalletNFTs = [..._allWalletNFTs, ...nfts];
+      cursor_os = d.next;
+      if(!cursor_os) break;
+    }
+
+    loading.style.display = 'none';
+
+    if(!_allWalletNFTs.length){
+      empty.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('nftPickerCount').textContent =
+      _allWalletNFTs.length + ' NFT' + (_allWalletNFTs.length !== 1 ? 's' : '');
+    loaded.style.display = 'block';
+
+    // Build collection map: slug → { name, nfts[] }
+    const colMap = {};
+    _allWalletNFTs.forEach(n => {
+      const slug = n.collection || n.contract || 'unknown';
+      if(!colMap[slug]){
+        const label = slug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        colMap[slug] = { label, nfts:[] };
+      }
+      colMap[slug].nfts.push(n);
+    });
+
+    // Render collection chips
+    const bar = document.getElementById('collectionFilterBar');
+    const slugs = Object.keys(colMap);
+    bar.innerHTML = `<button class="collection-chip active" onclick="filterNFTsByCollection('__all__')">All (${_allWalletNFTs.length})</button>` +
+      slugs.map(s =>
+        `<button class="collection-chip" id="chip-${s.replace(/[^a-z0-9]/gi,'_')}"
+           onclick="filterNFTsByCollection('${s.replace(/'/g,"\\'")}')">
+           ${colMap[s].label} (${colMap[s].nfts.length})
+         </button>`
+      ).join('');
+
+    renderNFTPickerGrid(_allWalletNFTs);
+
+  } catch(e){
+    loading.style.display = 'none';
+    empty.style.display   = 'block';
+    console.error('NFT load error:', e);
+  }
+}
+
+function filterNFTsByCollection(slug){
+  _activeCollectionSlug = slug;
+
+  // Update chip active states
+  document.querySelectorAll('.collection-chip').forEach(el => el.classList.remove('active'));
+  if(slug === '__all__'){
+    const allChip = document.querySelector('.collection-chip');
+    if(allChip) allChip.classList.add('active');
+  } else {
+    const chip = document.getElementById('chip-'+slug.replace(/[^a-z0-9]/gi,'_'));
+    if(chip) chip.classList.add('active');
+  }
+
+  const nfts = slug === '__all__'
+    ? _allWalletNFTs
+    : _allWalletNFTs.filter(n => (n.collection || n.contract || 'unknown') === slug);
+
+  renderNFTPickerGrid(nfts);
+
+  // Scroll grid back to top when switching collections
+  const grid = document.getElementById('nftPickerGrid');
+  if(grid) grid.scrollTop = 0;
+}
+
+function renderNFTPickerGrid(nfts){
+  const grid = document.getElementById('nftPickerGrid');
+  if(!grid) return;
+
+  grid.innerHTML = nfts.map(n => {
+    const img  = n.image_url || n.display_image_url || '';
+    const name = (n.name || 'Token #' + n.identifier).replace(/"/g,'');
+    const safeId = `nftItem-${n.contract}-${n.identifier}`;
+    const isSelected = selectedNFT && selectedNFT.contract === n.contract && selectedNFT.tokenId === n.identifier;
+    return `
+    <div class="nft-picker-item${isSelected?' selected':''}" id="${safeId}"
+         onclick="selectNFT('${n.contract}','${n.identifier}','${img.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')">
+      <img src="${img}" alt="${name}" loading="lazy"
+           onerror="this.style.display='none';this.parentElement.querySelector('.nft-overlay').style.opacity='1'">
+      <div class="nft-overlay">
+        <div class="nft-overlay-name">${name}</div>
+        <div class="nft-overlay-id">#${n.identifier}</div>
+      </div>
+      <div class="nft-select-check">✓</div>
+    </div>`;
+  }).join('');
+}
+
+function selectNFT(contract,tokenId,image,name){
+  // Deselect all
+  document.querySelectorAll('.nft-picker-item').forEach(el=>el.classList.remove('selected'));
+  const el=document.getElementById(`nftItem-${contract}-${tokenId}`);
+  if(el){el.classList.add('selected');el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  selectedNFT={contract,tokenId,image,name};
+  document.getElementById('manualContract').value=contract;
+  document.getElementById('manualTokenId').value=tokenId;
+  // Update preview strip
+  const preview=document.getElementById('nftSelectedPreview');
+  const previewImg=document.getElementById('nftPreviewImg');
+  const previewName=document.getElementById('nftPreviewName');
+  const previewAddr=document.getElementById('nftPreviewAddr');
+  previewImg.src=image||'';
+  previewImg.style.display=image?'block':'none';
+  previewName.textContent=name||'Unknown NFT';
+  previewAddr.textContent=contract.slice(0,10)+'...'+contract.slice(-6)+' · #'+tokenId;
+  preview.classList.add('show');
+  updateCreateSummary();
+}
+
+function clearNFTSelection(){
+  document.querySelectorAll('.nft-picker-item').forEach(el=>el.classList.remove('selected'));
+  selectedNFT=null;
+  document.getElementById('manualContract').value='';
+  document.getElementById('manualTokenId').value='';
+  document.getElementById('nftSelectedPreview').classList.remove('show');
+  updateCreateSummary();
+}
+
+// Duration buttons
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('#durationBtns .dur-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('#durationBtns .dur-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedDuration=parseInt(btn.dataset.dur);
+      updateCreateSummary();
+    });
+  });
+});
+
+function updateCreateSummary(){
+  const summary=document.getElementById('createSummary');
+  const hasNFT=selectedNFT||(document.getElementById('manualContract').value.trim());
+  if(!hasNFT){summary.style.display='none';return;}
+  summary.style.display='block';
+  const valUSD=parseFloat(document.getElementById('assetValue').value||0);
+  const d=selectedDuration;
+  const durStr=d>=86400?Math.round(d/86400)+'d':Math.round(d/3600)+'h';
+  const isHighValue=(valUSD*100)>=20000;
+  document.getElementById('summaryText').innerHTML=
+    `NFT: ${selectedNFT?.name||'Custom NFT'}<br>`+
+    `Duration: ${durStr}<br>`+
+    `Ticket price: $1 USD<br>`+
+    `Est. asset value: $${valUSD}<br>`+
+    `You receive: 90% of ticket sales`+
+    (isHighValue?`<br><span style="color:var(--gold)">⚠ High-value game — commit-reveal required (auto-generated)</span>`:'');
+}
+
+// ─── Create Game ──────────────────────────────────────────────────
+async function doCreateGame(){
+  if(!userAddress){openModal('walletModal');return;}
+  const nftContract=(selectedNFT?.contract||document.getElementById('manualContract').value).trim();
+  const tokenId    =(selectedNFT?.tokenId ||document.getElementById('manualTokenId').value).trim();
+  const assetVal   =parseFloat(document.getElementById('assetValue').value||0);
+  const desc       =document.getElementById('gameDesc').value.trim();
+
+  if(!nftContract||!ethers.utils.isAddress(nftContract)){notify('Enter a valid NFT contract address','error');return;}
+  if(!tokenId||isNaN(parseInt(tokenId))){notify('Enter a valid token ID','error');return;}
+  if(assetVal<1){notify('Enter the estimated asset value in USD','error');return;}
+
+  const btn=document.getElementById('createConfirmBtn');
+  btn.disabled=true;
+
+  try {
+    const nftCon=new ethers.Contract(nftContract,ERC721_ABI,signer);
+    btn.innerHTML='<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
+    document.getElementById('createStepNote').textContent='Approving NFT for the game contract...';
+
+    const isApproved=await nftCon.isApprovedForAll(userAddress,CONTRACT_ADDRESS);
+    if(!isApproved){
+      const approved=await nftCon.getApproved(parseInt(tokenId));
+      if(approved.toLowerCase()!==CONTRACT_ADDRESS.toLowerCase()){
+        const appTx=await nftCon.approve(CONTRACT_ADDRESS,parseInt(tokenId));
+        await appTx.wait();
+      }
+    }
+
+    btn.innerHTML='<i class="fas fa-spinner spin"></i> Step 2/2: Creating game...';
+    document.getElementById('createStepNote').textContent='Sending NFT to game contract...';
+
+   const assetValueUSD=Math.round(assetVal*100);
+
+    const tx=await contract.createGame(nftContract,parseInt(tokenId),selectedDuration,assetValueUSD,desc);
+    notify('Game creation in progress...','info');
+    await tx.wait();
+    notify('🎮 Game is live!','success');
+    closeModal('createModal');
+    selectedNFT=null;
+    document.getElementById('nftSelectedPreview').classList.remove('show');
+    await loadAllGames();
+
+  } catch(e){
+    if(e.code===4001)notify('Transaction cancelled','info');
+    else notify('Failed: '+(e.reason||e.message||'').substring(0,100),'error');
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+    document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
+  }
+}
+
+// ─── Winner Reveal ────────────────────────────────────────────────
+function showWinnerReveal(address,nftName,imageUrl){
+  winnerData={address,nftName,imageUrl};
+  document.getElementById('winnerAddress').textContent=address.slice(0,6)+'...'+address.slice(-4);
+  document.getElementById('winnerPrize').textContent='won '+(nftName||'the NFT');
+  openModal('winnerModal');
+}
+function showWinnerRevealById(id){
+  const g=allGames[id];
+  if(!g?.winner)return;
+  showWinnerReveal(g.winner,g.nftName||'Token #'+g.tokenId,g.imageUrl);
+}
+
+// ─── Share ────────────────────────────────────────────────────────
+function shareGame(id){
+  const gId=id??currentGameId;if(gId===null)return;
+  const g=allGames[gId];
+  const url=`${location.origin}/game?id=${gId}`;
+  const text=encodeURIComponent(`🎮 $1 Game on Based Undeads\n${g.nftName||'Token #'+g.tokenId} up for grabs!\nEst. value: $${((g.assetValueUSD||0)/100).toFixed(0)}\n$1 per ticket. One winner takes all.\n${url}\n#BasedUndeads #NFT`);
+  window.open(`https://twitter.com/intent/tweet?text=${text}`,'_blank');
+}
+function shareWinner(){
+  if(!winnerData)return;
+  const text=encodeURIComponent(`☠ Winner Announced on The $1 Game!\n${winnerData.address.slice(0,6)}... just won ${winnerData.nftName||'an NFT'}!\n\nPlay at basedundeads.xyz/game\n#BasedUndeads #NFT #OnChain`);
+  window.open(`https://twitter.com/intent/tweet?text=${text}`,'_blank');
+}
+function copyGameLink(){
+  if(currentGameId===null)return;
+  navigator.clipboard.writeText(`${location.origin}/game?id=${currentGameId}`).then(()=>notify('Link copied!'));
+}
+
+// ─── Tabs ──────────────────────────────────────────────────────────
+function switchMainTab(tab){
+  document.querySelectorAll('#active > .tab-bar .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(tab==='all'?0:1)));
+  document.getElementById('allActiveGames').classList.toggle('active',tab==='all');
+  document.getElementById('endingGames').classList.toggle('active',tab==='ending');
+}
+function switchYourTab(tab){
+  document.querySelectorAll('#yourGamesSection .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(tab==='entered'?0:1)));
+  document.getElementById('yourEnteredGames').classList.toggle('active',tab==='entered');
+  document.getElementById('yourCreatedGames').classList.toggle('active',tab==='created');
+}
+
+// ─── Time Formatting ──────────────────────────────────────────────
+function formatTime(secs){
+  if(secs<=0)return'Ended';
+  const d=Math.floor(secs/86400),h=Math.floor((secs%86400)/3600),m=Math.floor((secs%3600)/60),s=Math.floor(secs%60);
+  if(d>0)return`${d}d ${h}h`;
+  if(h>0)return`${h}h ${m}m`;
+  return`${m}m ${s}s`;
+}
+function startTimer(g){
+  const el=document.getElementById(`timer-${g.id}`);if(!el)return;
+  const ti=setInterval(()=>{
+    const tl=g.endTime-Date.now()/1000;
+    if(!el.isConnected){clearInterval(ti);return;}
+    if(tl<=0){el.textContent='Ended';el.classList.add('urgent');clearInterval(ti);return;}
+    el.textContent=formatTime(tl);
+    if(tl<3600)el.classList.add('urgent');
+  },1000);
+}
+
+// ─── Demo mode ────────────────────────────────────────────────────
+// FIX: All fields now fully populated to prevent .toLowerCase() errors
+function renderDemoGames(){
+  const demoGames=[
+    {
+      id:0,creator:'0x0000000000000000000000000000000000000000',
+      nftName:'Based Undead #421',nftContract:'0x0000000000000000000000000000000000000001',
+      tokenId:'421',description:'Rare 1/1 custom warrior',ticketCount:47,
+      totalETH:'0.0141',assetValueUSD:25000,
+      endTime:Math.floor(Date.now()/1000)+3600*8,
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+    },
+    {
+      id:1,creator:'0x0000000000000000000000000000000000000000',
+      nftName:'Based Undead #69',nftContract:'0x0000000000000000000000000000000000000001',
+      tokenId:'69',description:'OG genesis undead',ticketCount:183,
+      totalETH:'0.0549',assetValueUSD:100000,
+      endTime:Math.floor(Date.now()/1000)+3600*2,
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+    },
+    {
+      id:2,creator:'0x0000000000000000000000000000000000000000',
+      nftName:'Based Undead #1337',nftContract:'0x0000000000000000000000000000000000000001',
+      tokenId:'1337',description:'Legendary skull knight',ticketCount:22,
+      totalETH:'0.0066',assetValueUSD:5000,
+      endTime:Math.floor(Date.now()/1000)+86400*3,
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+    },
+  ];
+  allGames=demoGames;
+  document.getElementById('statActive').textContent='3';
+  document.getElementById('statCompleted').textContent='0';
+  document.getElementById('statVolume').textContent='0 ETH';
+  renderGrid('activeGrid',demoGames,false);
+}
+
+// ─── Ticket Qty Counter ───────────────────────────────────────────
+let _ticketQty=1;
+function getTicketQty(){return _ticketQty;}
+function setQty(n){
+  _ticketQty=Math.max(1,Math.min(100,n));
+  document.getElementById('qtyDisplay').textContent=_ticketQty;
+  document.getElementById('qtyMinus').disabled=_ticketQty<=1;
+  document.getElementById('qtyPlus').disabled=_ticketQty>=100;
+  updateCostDisplay();
+}
+function changeQty(delta){setQty(_ticketQty+delta);}
+
+// ─── URL param + mobile nav ───────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  const params=new URLSearchParams(location.search);
+  const gameId=params.get('id');
+  if(gameId!==null)setTimeout(()=>openGameDetail(parseInt(gameId)),1500);
+
+  document.getElementById('mobileNavBtn').addEventListener('click',()=>{
+    const nl=document.querySelector('.nav-links');
+    const isOpen=nl.style.display==='flex';
+    nl.style.cssText=isOpen?'':
+      'display:flex;position:fixed;top:70px;left:0;right:0;flex-direction:column;background:rgba(3,3,3,.98);backdrop-filter:blur(20px);padding:24px;gap:16px;border-bottom:1px solid var(--border);z-index:99';
+  });
+
+  init();
+});
+</script>
+</body>
+</html>
