@@ -1818,13 +1818,12 @@ function shareGame(id){
   const gId=id??currentGameId;if(gId===null)return;
   const g=allGames[gId];
   const url=`${location.origin}/game?id=${gId}`;
-  const text = encodeURIComponent(`
-🎮 Only one will survive: ${g.nftName||'Token #'+g.tokenId} is LIVE!
+  const text = encodeURIComponent(`Only one will survive: ${g.nftName||'Token #'+g.tokenId} is LIVE! 🎮
 
 $1 to enter. One winner snatches it all.  
 Do you have what it takes to rise above the rest?  
 
-🔥 Est. value: $${((g.assetValueUSD||0)/100).toFixed(0)}  
+Est. value: $${((g.assetValueUSD||0)/100).toFixed(0)} 🔥 
 Enter now: ${url}  
 
 #BasedUndeads #UndeadRaffle #RiseOrFall #NFTHunt
