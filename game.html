@@ -1615,122 +1615,59 @@ async function doCreateGame(){
     const nftCon = new ethers.Contract(nftContract, ERC721_ABI, signer);
     const tokenIdBN = ethers.BigNumber.from(tokenId);
 
-    // Check if contract already owns the NFT (e.g. already pushed)
-    let contractAlreadyOwns = false;
+    // Step 1: Approve the contract to pull the NFT.
+    // The contract calls transferFrom(msg.sender, address(this), tokenId) inside createGame.
+    // We just need approval — do NOT push the NFT manually.
+    btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
+    document.getElementById('createStepNote').textContent = 'Approving NFT transfer (sign in wallet)...';
+
     try {
-      const currentOwner = await nftCon.ownerOf(tokenIdBN);
-      contractAlreadyOwns = currentOwner.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
-    } catch(e) {}
-
-    if (!contractAlreadyOwns) {
-      // Push NFT directly from user wallet — works on ALL collections including
-      // OperatorFilter collections (Squiggles, SeaDrop, etc.) because the
-      // OWNER calling safeTransferFrom on their own token is never blocked.
-      btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT...';
-      document.getElementById('createStepNote').textContent = 'Sending NFT to game contract (sign in wallet)...';
-      // Try safeTransferFrom first, fall back to transferFrom, then approve+pull
-      let nftSent = false;
-
-      // Attempt 1: safeTransferFrom (owner push — works on most collections)
-      try {
-        btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT...';
-        document.getElementById('createStepNote').textContent = 'Sending NFT to game contract...';
-        const pushTx = await nftCon.safeTransferFrom(userAddress, CONTRACT_ADDRESS, tokenIdBN);
-        await pushTx.wait();
-        nftSent = true;
-      } catch(e1) {
-        if(e1.code === 4001) {
-          notify('Transaction cancelled','info');
-          btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-          document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
-          return;
-        }
-        console.warn('safeTransferFrom failed, trying transferFrom:', e1.message);
-      }
-
-      // Attempt 2: plain transferFrom (owner push)
-      if (!nftSent) {
+      // Try setApprovalForAll first — most reliable across all collections
+      const alreadyAll = await nftCon.isApprovedForAll(userAddress, CONTRACT_ADDRESS).catch(() => false);
+      if (!alreadyAll) {
+        // Check individual token approval before trying setApprovalForAll
+        let alreadyDirect = false;
         try {
-          btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT (method 2)...';
-          const pushTx2 = await nftCon.transferFrom(userAddress, CONTRACT_ADDRESS, tokenIdBN);
-          await pushTx2.wait();
-          nftSent = true;
-        } catch(e2) {
-          if(e2.code === 4001) {
-            notify('Transaction cancelled','info');
-            btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-            document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
-            return;
-          }
-          console.warn('transferFrom failed, trying approve+pull:', e2.message);
-        }
-      }
+          const approvedAddr = await nftCon.getApproved(tokenIdBN);
+          alreadyDirect = approvedAddr.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
+        } catch(e) {}
 
-      // Attempt 3: approve then let contract pull (classic flow)
-      if (!nftSent) {
-        try {
-          btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
-          document.getElementById('createStepNote').textContent = 'Approving NFT transfer...';
-          let appTx;
+        if (!alreadyDirect) {
+          // Try individual approve first, fall back to setApprovalForAll
           try {
-            const alreadyApproved = await nftCon.getApproved(tokenIdBN);
-            if (alreadyApproved.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
-              appTx = await nftCon.approve(CONTRACT_ADDRESS, tokenIdBN);
-              await appTx.wait();
-            }
-          } catch(approveErr) {
-            appTx = await nftCon.setApprovalForAll(CONTRACT_ADDRESS, true);
+            const appTx = await nftCon.approve(CONTRACT_ADDRESS, tokenIdBN);
             await appTx.wait();
+          } catch(approveErr) {
+            if (approveErr.code === 4001) {
+              notify('Transaction cancelled', 'info');
+              btn.disabled = false;
+              btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
+              document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
+              return;
+            }
+            // Individual approve failed — try setApprovalForAll
+            const allTx = await nftCon.setApprovalForAll(CONTRACT_ADDRESS, true);
+            await allTx.wait();
           }
-          nftSent = false; // contract will pull it in createGame
-        } catch(e3) {
-          if(e3.code === 4001) {
-            notify('Transaction cancelled','info');
-            btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-            document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
-            return;
-          }
-          // All 3 methods failed — collection has hard transfer restrictions
-          notify('This NFT cannot be transferred — the collection has transfer locks or is soulbound.','error');
-          btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-          document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
-          return;
         }
       }
-    } else {
-      console.log('Contract already owns the NFT, skipping transfer step');
-    }
-
-    btn.innerHTML='<i class="fas fa-spinner spin"></i> Step 2/2: Creating game...';
-    document.getElementById('createStepNote').textContent='Sending NFT to game contract...';
-
-    // Pre-flight ownership + approval check
-    try {
-      const ERC721_READ_ABI = [
-        "function ownerOf(uint256 tokenId) external view returns (address)",
-        "function getApproved(uint256 tokenId) external view returns (address)",
-        "function isApprovedForAll(address owner, address operator) external view returns (bool)"
-      ];
-      const nftRead = new ethers.Contract(nftContract, ERC721_READ_ABI, provider);
-      const owner = await nftRead.ownerOf(tokenIdBN);
-      const approvedAddr = await nftRead.getApproved(tokenIdBN).catch(()=>'0x0');
-      const approvedAll = await nftRead.isApprovedForAll(userAddress, CONTRACT_ADDRESS).catch(()=>false);
-      console.log('Token owner:', owner);
-      console.log('Your address:', userAddress);
-      console.log('You own it:', owner.toLowerCase() === userAddress.toLowerCase());
-      console.log('getApproved:', approvedAddr);
-      console.log('isApprovedForAll:', approvedAll);
-      if(owner.toLowerCase() !== userAddress.toLowerCase()){
-        notify('You no longer own this token — it may have already been transferred.', 'error');
-        btn.disabled=false;
-        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
+    } catch(approvalErr) {
+      if (approvalErr.code === 4001) {
+        notify('Transaction cancelled', 'info');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
+        document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
         return;
       }
-    } catch(checkErr){
-      console.warn('Pre-flight check error:', checkErr);
+      notify('Approval failed: ' + (approvalErr.reason || approvalErr.message || 'unknown').substring(0, 100), 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
+      document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
+      return;
     }
-      // No allowlist — all collections are open
+
+    btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 2/2: Creating game...';
+    document.getElementById('createStepNote').textContent = 'Creating game on-chain...';
 
    const assetValueUSD=Math.round(assetVal*100);
     console.log('--- Final params being sent to contract ---');
