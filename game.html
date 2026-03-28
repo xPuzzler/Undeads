@@ -1818,7 +1818,7 @@ function shareGame(id){
   const gId=id??currentGameId;if(gId===null)return;
   const g=allGames[gId];
   const url=`${location.origin}/game?id=${gId}`;
-  const text=encodeURIComponent(`🎮 $1 Game on Based Undeads\n${g.nftName||'Token #'+g.tokenId} up for grabs!\nEst. value: $${((g.assetValueUSD||0)/100).toFixed(0)}\n$1 per ticket. One winner takes all.\n${url}\n#BasedUndeads #NFT`);
+  const text=encodeURIComponent(`$1 Game on Based Undeads 🎮\n${g.nftName||'Token #'+g.tokenId} up for grabs!\nEst. value: $${((g.assetValueUSD||0)/100).toFixed(0)}\n$1 per ticket. One winner takes all.\n${url}\n#BasedUndeads #1DollarGame`);
   window.open(`https://twitter.com/intent/tweet?text=${text}`,'_blank');
 }
 function shareWinner(){
