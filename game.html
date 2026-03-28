@@ -231,6 +231,9 @@
       transition: all .25s;
       background: var(--bg2);
       aspect-ratio: 1;
+      width: 100%;
+      display: block;
+      contain: layout;
     }
     .nft-picker-item:hover {
       border-color: rgba(0,255,136,0.4);
@@ -393,7 +396,7 @@
     }
     .collection-chip:hover:not(.active) { color: var(--fg); border-color: rgba(255,255,255,0.2); }
     .nft-picker-scroll {
-      max-height: 340px;
+      max-height: 380px;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 12px;
@@ -401,6 +404,8 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       box-sizing: border-box;
+      align-items: start;
+      align-content: start;
     }
     .nft-picker-scroll::-webkit-scrollbar { width: 4px; }
     .nft-picker-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -556,7 +561,7 @@
   <!-- WITHDRAW BANNER -->
   <div class="section" id="withdrawBanner" style="display:none;padding-bottom:0">
     <div class="withdraw-banner">
-      <div><p>You have earnings to collect</p><p style="font-size:11px;color:var(--muted);margin-top:2px">From your completed games</p></div>
+      <div><p>A payout to your address failed</p><p style="font-size:11px;color:var(--muted);margin-top:2px">Contact the platform — funds are held safely on-chain</p></div>
       <div style="display:flex;align-items:center;gap:20px">
         <span id="pendingAmount">0 ETH</span>
         <button class="btn-primary" style="flex:unset;padding:12px 24px" onclick="withdrawEarnings()">
@@ -894,41 +899,32 @@
 // BASED UNDEADS — THE $1 GAME  (v4 frontend)
 // ================================================================
 
-const CONTRACT_ADDRESS = '0x0936F24bFE631a600526E057303A3e0eF711A1Be'; // ← REPLACE
+const CONTRACT_ADDRESS = '0x598273C6Cb6bfd5c64F9a3E59180dFE42110DC9d'; // ← REPLACE
 const BASE_CHAIN_ID    = 8453;
 const PLATFORM_WALLET  = '0xf2046406D6ccd578206E54207dA9143954F75989';
 
 // ─── ABI ─────────────────────────────────────────────────────────
 const GAME_ABI = [
-  // v4 createGame now includes commitHash param
   "function createGame(address nftContract, uint256 tokenId, uint256 durationSecs, uint256 assetValueUSD, string calldata description) external",
   "function buyTickets(uint256 id, uint256 qty) external payable",
   "function drawWinner(uint256 id) external",
-  "function revealAndDraw(uint256 id, bytes32 secret) external",
-  "function fallbackDraw(uint256 id) external",
   "function creatorReclaimNFT(uint256 id) external",
   "function claimNFT(uint256 id) external",
   "function sweepOrphanedETH() external",
-  "function setCollectionAllowed(address collection, bool allowed) external",
-  "function setAllowlistEnabled(bool enabled) external",
-  "function allowlistEnabled() external view returns (bool)",
-  "function allowlistedCollections(address) external view returns (bool)",
-  "function totalPending() external view returns (uint256)",
+  "function getTicketPriceWei() external view returns (uint256)",
+  "function getAllGames() external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
+  "function getGame(uint256 id) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim))",
+  "function getGamesPaginated(uint256 start, uint256 count) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
+  "function getParticipants(uint256 id) external view returns (address[])",
   "function getTicketRanges(uint256 id) external view returns (tuple(address buyer, uint32 rangeStart, uint32 rangeEnd)[])",
   "function getTicketEntryCount(uint256 id) external view returns (uint256)",
-  "function getGamesPaginated(uint256 start, uint256 count) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
-  "function withdrawPending() external",
-  "function withdrawEarnings() external",
-  "function gameCount() external view returns (uint256)",
-  "function getGame(uint256 id) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim))",
-  "function getAllGames() external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
-  "function getTicketPriceWei() external view returns (uint256)",
   "function walletTickets(uint256 id, address wallet) external view returns (uint256)",
-  "function getParticipants(uint256 id) external view returns (address[])",
+  "function gameCount() external view returns (uint256)",
   "function totalGamesCompleted() external view returns (uint256)",
   "function totalETHVolume() external view returns (uint256)",
-  "function pendingCreatorPayout(address) external view returns (uint256)",
-  "function pendingWithdraw(address) external view returns (uint256)",
+  "function hasEntered(uint256 id, address wallet) external view returns (bool)",
+  "function getMyTickets(uint256 id, address wallet) external view returns (uint256)",
+  "function failedCreatorPayouts(address) external view returns (uint256 amount, uint256 firstRecordedAt)",
   "event GameCreated(uint256 indexed id, address indexed creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, string description)",
   "event TicketsBought(uint256 indexed id, address indexed buyer, uint256 qty, uint256 totalTickets)",
   "event WinnerDrawn(uint256 indexed id, address indexed winner, uint256 winnerTicketIndex, uint256 totalETH)"
@@ -938,7 +934,9 @@ const ERC721_ABI = [
   "function approve(address to, uint256 tokenId) external",
   "function setApprovalForAll(address operator, bool approved) external",
   "function getApproved(uint256 tokenId) external view returns (address)",
-  "function isApprovedForAll(address owner, address operator) external view returns (bool)"
+  "function isApprovedForAll(address owner, address operator) external view returns (bool)",
+  "function safeTransferFrom(address from, address to, uint256 tokenId) external",
+  "function ownerOf(uint256 tokenId) external view returns (address)"
 ];
 
 // ─── State ────────────────────────────────────────────────────────
@@ -1378,25 +1376,20 @@ async function doCancelGame(){
 
 // ─── Withdraw ─────────────────────────────────────────────────────
 async function withdrawEarnings(){
-  if(!contract||!userAddress)return;
-  try {
-    const tx=await contract.withdrawPending();
-    notify('Withdrawing...','info');await tx.wait();
-    notify('Earnings withdrawn!','success');
-    document.getElementById('withdrawBanner').style.display='none';
-  } catch(e){
-    if(e.code===4001)notify('Cancelled','info');
-    else notify('Withdrawal failed: '+e.message,'error');
-  }
+  // Payouts are pushed directly on-chain as tickets are sold.
+  // Failed payouts can only be recovered by the contract owner via withdrawFailedPayout().
+  // This banner only appears if a send to your address failed (e.g. contract wallet).
+  notify('Payouts are sent automatically on-chain. If a payout failed, contact the platform owner to recover it.','info');
 }
 
 async function checkPendingPayout(){
   if(!contract||!userAddress)return;
   try {
-    const pending=await contract.pendingWithdraw(userAddress);
-    if(pending.gt(0)){
+    const fp=await contract.failedCreatorPayouts(userAddress);
+    // fp.amount is the failed ETH that the owner can recover for this address
+    if(fp.amount && fp.amount.gt(0)){
       document.getElementById('withdrawBanner').style.display='flex';
-      document.getElementById('pendingAmount').textContent=parseFloat(ethers.utils.formatEther(pending)).toFixed(6)+' ETH';
+      document.getElementById('pendingAmount').textContent=parseFloat(ethers.utils.formatEther(fp.amount)).toFixed(6)+' ETH';
     }
   } catch(e){}
 }
@@ -1435,12 +1428,12 @@ async function loadUserNFTsForCreate(){
 
   try {
     let cursor_os = null;
-    for(let page = 0; page < 5; page++){
-      const url = `https://api.opensea.io/api/v2/chain/base/account/${userAddress}/nfts?limit=50${cursor_os ? '&next='+cursor_os : ''}`;
+    for(let page = 0; page < 20; page++){
+      const url = `https://api.opensea.io/api/v2/chain/base/account/${userAddress}/nfts?limit=200${cursor_os ? '&next='+cursor_os : ''}`;
       const r = await fetch(url, { headers:{ 'accept':'application/json','x-api-key':openSeaApiKey } });
       if(!r.ok) break;
       const d = await r.json();
-      const nfts = (d.nfts||[]).filter(n => n.image_url || n.display_image_url);
+      const nfts = d.nfts||[];
       _allWalletNFTs = [..._allWalletNFTs, ...nfts];
       cursor_os = d.next;
       if(!cursor_os) break;
@@ -1524,8 +1517,9 @@ function renderNFTPickerGrid(nfts){
     return `
     <div class="nft-picker-item${isSelected?' selected':''}" id="${safeId}"
          onclick="selectNFT('${n.contract}','${n.identifier}','${img.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')">
-      <img src="${img}" alt="${name}" loading="lazy"
-           onerror="this.style.display='none';this.parentElement.querySelector('.nft-overlay').style.opacity='1'">
+      ${img
+        ? `<img src="${img}" alt="${name}" loading="lazy" onerror="this.style.display='none'">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.3;background:var(--bg2)">💀</div>`}
       <div class="nft-overlay">
         <div class="nft-overlay-name">${name}</div>
         <div class="nft-overlay-id">#${n.identifier}</div>
@@ -1605,31 +1599,229 @@ async function doCreateGame(){
 
   if(!nftContract||!ethers.utils.isAddress(nftContract)){notify('Enter a valid NFT contract address','error');return;}
   if(!tokenId||isNaN(parseInt(tokenId))){notify('Enter a valid token ID','error');return;}
-  if(assetVal<1){notify('Enter the estimated asset value in USD','error');return;}
+  if(assetVal<1){notify('Minimum asset value is $1 USD','error');return;}
+  if(Math.round(assetVal*100)<100){notify('Minimum asset value is $1 USD','error');return;}
 
   const btn=document.getElementById('createConfirmBtn');
   btn.disabled=true;
+  // DEBUG — open F12 console to see this
+  console.log('=== CREATE GAME DEBUG ===');
+  console.log('selectedNFT object:', selectedNFT);
+  console.log('manualContract field:', document.getElementById('manualContract').value);
+  console.log('manualTokenId field:', document.getElementById('manualTokenId').value);
+  console.log('assetValue field raw:', document.getElementById('assetValue').value);
 
   try {
-    const nftCon=new ethers.Contract(nftContract,ERC721_ABI,signer);
-    btn.innerHTML='<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
-    document.getElementById('createStepNote').textContent='Approving NFT for the game contract...';
+    const nftCon = new ethers.Contract(nftContract, ERC721_ABI, signer);
+    const tokenIdBN = ethers.BigNumber.from(tokenId);
 
-    const isApproved=await nftCon.isApprovedForAll(userAddress,CONTRACT_ADDRESS);
-    if(!isApproved){
-      const approved=await nftCon.getApproved(parseInt(tokenId));
-      if(approved.toLowerCase()!==CONTRACT_ADDRESS.toLowerCase()){
-        const appTx=await nftCon.approve(CONTRACT_ADDRESS,parseInt(tokenId));
-        await appTx.wait();
+    // Check if contract already owns the NFT (e.g. already pushed)
+    let contractAlreadyOwns = false;
+    try {
+      const currentOwner = await nftCon.ownerOf(tokenIdBN);
+      contractAlreadyOwns = currentOwner.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
+    } catch(e) {}
+
+    if (!contractAlreadyOwns) {
+      // Push NFT directly from user wallet — works on ALL collections including
+      // OperatorFilter collections (Squiggles, SeaDrop, etc.) because the
+      // OWNER calling safeTransferFrom on their own token is never blocked.
+      btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT...';
+      document.getElementById('createStepNote').textContent = 'Sending NFT to game contract (sign in wallet)...';
+      // Try safeTransferFrom first, fall back to transferFrom, then approve+pull
+      let nftSent = false;
+
+      // Attempt 1: safeTransferFrom (owner push — works on most collections)
+      try {
+        btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT...';
+        document.getElementById('createStepNote').textContent = 'Sending NFT to game contract...';
+        const pushTx = await nftCon.safeTransferFrom(userAddress, CONTRACT_ADDRESS, tokenIdBN);
+        await pushTx.wait();
+        nftSent = true;
+      } catch(e1) {
+        if(e1.code === 4001) {
+          notify('Transaction cancelled','info');
+          btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+          document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
+          return;
+        }
+        console.warn('safeTransferFrom failed, trying transferFrom:', e1.message);
       }
+
+      // Attempt 2: plain transferFrom (owner push)
+      if (!nftSent) {
+        try {
+          btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Sending NFT (method 2)...';
+          const pushTx2 = await nftCon.transferFrom(userAddress, CONTRACT_ADDRESS, tokenIdBN);
+          await pushTx2.wait();
+          nftSent = true;
+        } catch(e2) {
+          if(e2.code === 4001) {
+            notify('Transaction cancelled','info');
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+            document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
+            return;
+          }
+          console.warn('transferFrom failed, trying approve+pull:', e2.message);
+        }
+      }
+
+      // Attempt 3: approve then let contract pull (classic flow)
+      if (!nftSent) {
+        try {
+          btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
+          document.getElementById('createStepNote').textContent = 'Approving NFT transfer...';
+          let appTx;
+          try {
+            const alreadyApproved = await nftCon.getApproved(tokenIdBN);
+            if (alreadyApproved.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
+              appTx = await nftCon.approve(CONTRACT_ADDRESS, tokenIdBN);
+              await appTx.wait();
+            }
+          } catch(approveErr) {
+            appTx = await nftCon.setApprovalForAll(CONTRACT_ADDRESS, true);
+            await appTx.wait();
+          }
+          nftSent = false; // contract will pull it in createGame
+        } catch(e3) {
+          if(e3.code === 4001) {
+            notify('Transaction cancelled','info');
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+            document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
+            return;
+          }
+          // All 3 methods failed — collection has hard transfer restrictions
+          notify('This NFT cannot be transferred — the collection has transfer locks or is soulbound.','error');
+          btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+          document.getElementById('createStepNote').textContent='Step 1: Send NFT · Step 2: Create game';
+          return;
+        }
+      }
+    } else {
+      console.log('Contract already owns the NFT, skipping transfer step');
     }
 
     btn.innerHTML='<i class="fas fa-spinner spin"></i> Step 2/2: Creating game...';
     document.getElementById('createStepNote').textContent='Sending NFT to game contract...';
 
-   const assetValueUSD=Math.round(assetVal*100);
+    // Pre-flight ownership + approval check
+    try {
+      const ERC721_READ_ABI = [
+        "function ownerOf(uint256 tokenId) external view returns (address)",
+        "function getApproved(uint256 tokenId) external view returns (address)",
+        "function isApprovedForAll(address owner, address operator) external view returns (bool)"
+      ];
+      const nftRead = new ethers.Contract(nftContract, ERC721_READ_ABI, provider);
+      const owner = await nftRead.ownerOf(tokenIdBN);
+      const approvedAddr = await nftRead.getApproved(tokenIdBN).catch(()=>'0x0');
+      const approvedAll = await nftRead.isApprovedForAll(userAddress, CONTRACT_ADDRESS).catch(()=>false);
+      console.log('Token owner:', owner);
+      console.log('Your address:', userAddress);
+      console.log('You own it:', owner.toLowerCase() === userAddress.toLowerCase());
+      console.log('getApproved:', approvedAddr);
+      console.log('isApprovedForAll:', approvedAll);
+      if(owner.toLowerCase() !== userAddress.toLowerCase()){
+        notify('You no longer own this token — it may have already been transferred.', 'error');
+        btn.disabled=false;
+        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
+        return;
+      }
+    } catch(checkErr){
+      console.warn('Pre-flight check error:', checkErr);
+    }
+      // No allowlist — all collections are open
 
-    const tx=await contract.createGame(nftContract,parseInt(tokenId),selectedDuration,assetValueUSD,desc);
+   const assetValueUSD=Math.round(assetVal*100);
+    console.log('--- Final params being sent to contract ---');
+    console.log('nftContract:', nftContract);
+    console.log('tokenId string:', tokenId);
+    console.log('tokenId as BigNumber:', ethers.BigNumber.from(tokenId).toString());
+    console.log('selectedDuration:', selectedDuration);
+    console.log('assetValueUSD (cents):', assetValueUSD);
+    console.log('desc:', desc);
+    console.log('desc length:', desc.length);
+
+    let tx;
+    try {
+      let gasEstimate;
+      try {
+        gasEstimate = await contract.estimateGas.createGame(
+          nftContract, ethers.BigNumber.from(tokenId), selectedDuration, assetValueUSD, desc
+        );
+        gasEstimate = gasEstimate.mul(140).div(100); // 40% buffer
+        console.log('Gas estimate (with buffer):', gasEstimate.toString());
+      } catch(estErr) {
+        console.error('Gas estimate failed:', estErr);
+        const rawEst = estErr?.error?.data || estErr?.data?.data || estErr?.data || '';
+        let estMsg = estErr?.reason || estErr?.error?.message || estErr?.message || 'Contract will revert';
+        if (typeof rawEst === 'string' && rawEst.startsWith('0x08c379a0')) {
+          try { const d = ethers.utils.defaultAbiCoder.decode(['string'],'0x'+rawEst.slice(10)); estMsg=d[0]; } catch(e){}
+        }
+        if (typeof rawEst === 'string' && rawEst.includes('e1f1d02e')) estMsg = 'Collection not allowed by contract';
+        notify('Transaction will fail: ' + estMsg.substring(0,160), 'error');
+        btn.disabled=false;
+        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
+        return;
+      }
+      tx = await contract.createGame(nftContract,ethers.BigNumber.from(tokenId),selectedDuration,assetValueUSD,desc,{gasLimit:gasEstimate});
+    } catch(txErr) {
+      console.error('=== RAW TX ERROR ===', txErr);
+      console.error('code:', txErr?.code);
+      console.error('reason:', txErr?.reason);
+      console.error('message:', txErr?.message);
+      console.error('data:', txErr?.data);
+      console.error('error.data:', txErr?.error?.data);
+
+      // Try to decode the revert reason
+      const raw = txErr?.data?.data || txErr?.error?.data || txErr?.data || '';
+      console.error('raw revert data:', raw);
+
+      // Known contract revert strings (require messages)
+      // Known custom error selectors
+      if (typeof raw === 'string' && raw.startsWith('0xe1f1d02e')) {
+        notify('This NFT collection is not allowlisted. The contract owner needs to either allowlist this collection on Basescan, or disable the allowlist entirely.', 'error');
+        btn.disabled=false;
+        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
+        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
+        throw txErr;
+      }
+
+      // Known contract revert strings (require messages)
+      const revertStrings = {
+        'Invalid NFT contract': 'Invalid NFT contract address',
+        'Min 1 hour': 'Duration too short (min 1 hour)',
+        'Max 7 days': 'Duration too long (max 7 days)',
+        'Asset must be >= $1': 'Asset value must be at least $1',
+        'Description too long': 'Description over 120 characters',
+        'Not ERC721': 'This contract is not an ERC721 NFT',
+        'No ERC165 support': 'NFT contract does not support ERC165 — cannot verify it is an NFT',
+        'Collection not allowlisted': 'This NFT collection is not allowlisted',
+        'Not token owner': 'You do not own this token',
+        'NFT not approved': 'NFT approval was not detected by the contract',
+      };
+
+      let msg = txErr?.reason || '';
+      if (!msg && typeof raw === 'string' && raw.length > 10) {
+        // Try decoding as revert string (starts with 0x08c379a0)
+        if (raw.startsWith('0x08c379a0')) {
+          try {
+            const decoded = ethers.utils.defaultAbiCoder.decode(['string'], '0x' + raw.slice(10));
+            msg = decoded[0];
+          } catch(e) {}
+        }
+      }
+      if (!msg) msg = txErr?.message || 'Execution reverted';
+
+      // Check against known strings
+      for (const [key, val] of Object.entries(revertStrings)) {
+        if (msg.includes(key)) { msg = val; break; }
+      }
+
+      notify('Failed: ' + msg.substring(0, 160), 'error');
+      throw txErr; // rethrow so outer catch resets the button
+    }
     notify('Game creation in progress...','info');
     await tx.wait();
     notify('🎮 Game is live!','success');
@@ -1639,8 +1831,32 @@ async function doCreateGame(){
     await loadAllGames();
 
   } catch(e){
+    console.error('createGame error (full object):', e);
     if(e.code===4001)notify('Transaction cancelled','info');
-    else notify('Failed: '+(e.reason||e.message||'').substring(0,100),'error');
+    else {
+      let msg = 'Unknown error';
+      // Try ethers decoded reason first
+      if(e.reason) {
+        msg = e.reason;
+      } else {
+        // Try to decode custom error selector from raw data
+        const rawData = e.data?.data || e.error?.data || e.data;
+        if(typeof rawData === 'string' && rawData.length >= 10){
+          const selector = rawData.slice(0,10);
+          const knownErrors = {
+            '0xe1f1d02e': 'Collection not allowlisted — owner must call setAllowlistEnabled(false) or allowlist this collection',
+            '0x8d6ea8be': 'Game is not active',
+            '0x2a5d262e': 'Game already drawn',
+            '0x82b42900': 'Not the creator',
+            '0x1a5695f5': 'Insufficient payment',
+          };
+          msg = knownErrors[selector] || `Contract error (${selector}) — check Basescan for details`;
+        } else {
+          msg = e.data?.message || e.message || 'Execution reverted';
+        }
+      }
+      notify('Failed: '+msg.substring(0,160),'error');
+    }
     btn.disabled=false;
     btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
     document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
