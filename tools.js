@@ -495,7 +495,7 @@ async function previewGrid() {
     preview.innerHTML = '';
     const img = document.createElement('img');
     img.src = canvas.toDataURL();
-    img.style.cssText = 'width:100%;height:auto;border-radius:8px;';
+    img.style.cssText = 'width:100%;height:auto;display:block;border-radius:8px;';
     preview.appendChild(img);
     container.scrollIntoView({ behavior:'smooth', block:'start' });
     toast('Preview ready!', 'success');
