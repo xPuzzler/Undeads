@@ -105,6 +105,36 @@ function isSpam(name) {
 
 let walletNFTs      = [];
 let selectedForGrid = [];
+let userCollections = new Map();
+
+function processNFTsByCollection(nfts) {
+  userCollections.clear();
+  nfts.forEach(nft => {
+    if (!nft.contract) return;
+    const key  = nft.contract.toLowerCase();
+    const name = nft.collection || 'Unknown Collection';
+    if (isSpam(name)) return;
+    if (!userCollections.has(key)) userCollections.set(key, { name, contract: nft.contract, nfts: [] });
+    if (nft.image) userCollections.get(key).nfts.push(nft);
+  });
+  for (const [k, col] of userCollections.entries()) { if (!col.nfts.length) userCollections.delete(k); }
+}
+
+function displayCollectionSelector() {
+  const section = document.getElementById('collectionSection');
+  const select  = document.getElementById('collectionSelect');
+  if (!section || !select) return;
+  select.innerHTML = '<option value="">All Collections</option>';
+  [...userCollections.values()]
+    .sort((a, b) => b.nfts.length - a.nfts.length)
+    .forEach(col => {
+      const opt = document.createElement('option');
+      opt.value = col.contract;
+      opt.textContent = col.name + ' (' + col.nfts.length + ' NFTs)';
+      select.appendChild(opt);
+    });
+  section.classList.remove('hidden');
+}
 
 async function onFetchNFTs() {
   const raw   = document.getElementById('walletAddress').value.trim();
@@ -133,6 +163,8 @@ async function onFetchNFTs() {
     } else {
       walletNFTs = await fetchOpenSeaWallet(addr, chain);
     }
+    processNFTsByCollection(walletNFTs);
+    displayCollectionSelector();
     renderWalletGrid(walletNFTs);
     document.getElementById('nftCount').textContent = walletNFTs.length + ' NFTs';
     toast(walletNFTs.length
@@ -985,6 +1017,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* Wallet loader */
   document.getElementById('fetchNFTs')?.addEventListener('click', onFetchNFTs);
+  document.getElementById('collectionSelect')?.addEventListener('change', function() {
+    const val      = this.value;
+    const filtered = val
+      ? (userCollections.get(val.toLowerCase())?.nfts || [])
+      : walletNFTs;
+    renderWalletGrid(filtered);
+    document.getElementById('nftCount').textContent = filtered.length + ' NFTs';
+  });
   document.getElementById('walletAddress')?.addEventListener('keydown', e => {
     if (e.key==='Enter') onFetchNFTs();
   });
