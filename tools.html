@@ -454,12 +454,16 @@
 
   .preview-box {
     width: 100%;
-    overflow: auto; border-radius: 12px;
-    display: flex; justify-content: center;
+    border-radius: 12px;
+    overflow: auto;
     background: rgba(10,5,5,0.4);
   }
-  .preview-box canvas,
-  .preview-box img { max-width: 100%; height: auto; object-fit: contain; }
+  .preview-box img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+  }
 
   /* ── Wallpaper maker ── */
   .tools-layout {
