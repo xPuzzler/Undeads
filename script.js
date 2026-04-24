@@ -466,7 +466,7 @@ async function loadFeaturedUndeads() {
     let all = [];
     let next = null;
     for (let page = 0; page < 50; page++) {
-      const params = new URLSearchParams({ limit: '4635' });
+      const params = new URLSearchParams({ limit: '200' });
       if (next) params.append('next', next);
       const url = `${CONFIG.OPENSEA_API_HOST}/api/v2/chain/${CONFIG.CHAIN_SLUG}/contract/${CONFIG.CONTRACT}/nfts?${params}`;
       const r = await fetch(url, {
@@ -488,8 +488,8 @@ async function loadFeaturedUndeads() {
 
     scroller.innerHTML = '';
     const shuffled = [...all].sort(() => 0.5 - Math.random());
-    const row1 = createScrollRow(shuffled.slice(0, 2500), 'left');
-    const row2 = createScrollRow(shuffled.slice(2500, 5000), 'right');
+    const row1 = createScrollRow(shuffled.slice(0, 3333), 'left');
+    const row2 = createScrollRow(shuffled.slice(3333, 6666), 'right');
     scroller.appendChild(row1);
     scroller.appendChild(row2);
 
@@ -625,7 +625,7 @@ function populateStakingVisual(all) {
   }).join('');
 }
 
-// Previous Projects — rotate Squiggle viewer token on Replay/Random
+// Previous Projects — rotate Squiggle viewer token on load + Replay/Random
 function initProjectsViewer () {
   const frame     = document.getElementById('squiggleFrame');
   const replay    = document.getElementById('squiggleReplay');
@@ -636,14 +636,20 @@ function initProjectsViewer () {
   const puzzleNew = document.getElementById('puzzleNew');
   if (!frame) return;
 
-  let tid = 1;
+  const SQUIGGLE_MAX = 500;   // highest Squiggle On Base token ID — bump if collection grows
+  const randomId = () => Math.floor(Math.random() * SQUIGGLE_MAX) + 1;
+
+  let tid = randomId();       // ← random on every page load
   const setToken = n => {
     tid = n;
     frame.src = `https://squiggler.netlify.app/?tid=${n}`;
     if (display) display.textContent = '#' + String(n).padStart(4, '0');
   };
+  // Paint the first random token immediately
+  setToken(tid);
+
   replay   && replay.addEventListener('click',   () => setToken(tid));
-  rand     && rand.addEventListener('click',     () => setToken(Math.floor(Math.random() * 500) + 1));
+  rand     && rand.addEventListener('click',     () => setToken(randomId()));
   fs       && fs.addEventListener('click',       () => frame.requestFullscreen?.());
   puzzleNew && puzzleNew.addEventListener('click', () => {
     if (puzzle) puzzle.src = puzzle.src;
