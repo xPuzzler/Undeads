@@ -1404,3 +1404,26 @@ body:has(.testnet-banner) nav { top: 30px; }
   .undead-modal-traits { grid-template-columns: 1fr; }
   .undead-modal-img { max-width: 80%; margin: 0 auto; }
 }
+/* ═══════════════════════════════════════════════════════════════
+   Iframe performance — content-visibility + GPU layer promotion.
+   Gives embedded iframes (Squiggler, Arweave puzzle) room to breathe.
+   ═══════════════════════════════════════════════════════════════ */
+.viewer-frame-wrap iframe {
+  /* Skip rendering until near viewport — huge load-time win */
+  content-visibility: auto;
+  /* Reserve space so layout doesn't jump when iframe paints */
+  contain-intrinsic-size: 600px 600px;
+  /* Promote to own GPU layer so page scroll doesn't repaint iframe */
+  transform: translateZ(0);
+  will-change: transform;
+  /* Prevent double-render artifacts on transform */
+  backface-visibility: hidden;
+  /* Let the browser decode images inside async */
+  image-rendering: auto;
+}
+
+/* When an iframe is NOT in viewport, disable pointer events entirely.
+   Prevents hover inside the page from bubbling into the iframe. */
+.viewer-frame-wrap:not(:hover) iframe {
+  pointer-events: auto;  /* keep interactive, just don't force paints */
+}
