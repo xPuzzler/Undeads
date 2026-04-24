@@ -1,36 +1,44 @@
-# Dependencies
-node_modules/
 
-# Environment variables
+# ───── secrets (never commit) ─────
 .env
 .env.local
-.env.production.local
-.env.development.local
+.env.*.local
+*.key
+*.pem
+.netlify/
+.vercel/
 
-# Build output
+# ───── build artifacts ─────
+node_modules/
 dist/
 build/
-
-# Netlify
-.netlify/
-
-# OS Files
-.DS_Store
-Thumbs.db
-
-# IDE Files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Log files
+out/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
+# ───── deployment state ─────
+cache/
+artifacts/
+typechain-types/
+
+# ───── editor/os junk ─────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+__MACOSX/
+
+# ───── private dev files ─────
+deploy-secrets.json
+mainnet-keys.json
+snapshot.json
+airdrop-log.json
+output/snapshot.json
+output/upload-log.json
+output/airdrop-log.json
+output/deployed-addresses.json
