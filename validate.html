@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BasedUndead — Validator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<!-- Same font stack as the rest of the site -->
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+<script src="config.js"></script>
+<script src="skulls.js" defer></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   VALIDATE PAGE — only page-specific components.
+   Nav, footer, cursor, buttons, base colours all come from
+   styles.css so this page looks identical to the rest of the site.
+═══════════════════════════════════════════════════════════════ */
+
+/* Alias bridge so legacy var names still resolve */
+:root {
+  --gold:   var(--accent);
+  --gold2:  var(--accent-2);
+  --bone:   var(--fg);
+  --card:   var(--glass);
+  --border: var(--glass-border);
+  --bg3:    rgba(20, 8, 8, 0.70);
+  --green:  #3a7a3a;
+  --radius: 14px;
+}
+
+/* ── PAGE HEADER ────────────────────────────────────────────── */
+.validate-header {
+  padding: 110px 24px 64px;
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid var(--glass-border);
+}
+.validate-header::after {
+  content: '';
+  display: block;
+  width: 120px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 1.5rem auto 0;
+}
+
+.validate-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--blood);
+  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.validate-eyebrow .pulse {
+  width: 6px; height: 6px;
+  background: var(--blood);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--blood);
+  animation: pulse 2s infinite;
+}
+
+.validate-title {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(40px, 8vw, 90px);
+  line-height: .95;
+  letter-spacing: .04em;
+  color: var(--fg);
+  text-shadow: 0 0 40px rgba(200,164,80,0.25), 0 0 80px rgba(139,26,26,0.15);
+  margin-bottom: 14px;
+}
+
+.validate-subtitle {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(16px, 2.5vw, 22px);
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+
+.validate-network-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: 1px solid rgba(200,164,80,0.35);
+  border-radius: 100px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  background: rgba(20,8,8,0.5);
+}
+
+/* ── TABS — matches .sales-tabs from styles.css ─────────────── */
+.validate-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  padding: 6px;
+  width: fit-content;
+  margin: 0 auto 48px;
+}
+.validate-tab {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 12px 28px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all .3s;
+  white-space: nowrap;
+}
+.validate-tab.active {
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: 600;
+}
+.validate-tab:hover:not(.active) { color: var(--fg); }
+
+.tab-bar-wrap {
+  display: flex;
+  justify-content: center;
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+  background: rgba(10, 5, 5, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 14px 24px 0;
+}
+.tab-bar-wrap .validate-tabs {
+  margin-bottom: 0;
+  border-radius: 100px 100px 0 0;
+  border-bottom: none;
+  transform: translateY(1px);
+}
+
+/* ── PANELS ─────────────────────────────────────────────────── */
+.validate-panel { display: none; }
+.validate-panel.active { display: block; }
+
+/* ── MAIN ───────────────────────────────────────────────────── */
+main { max-width: 1400px; margin: 0 auto; padding: 48px 40px 100px; }
+@media (max-width: 768px) { main { padding: 32px 20px 80px; } }
+
+/* ── SEARCH BAR ─────────────────────────────────────────────── */
+.search-wrap {
+  display: flex;
+  gap: 0;
+  max-width: 480px;
+  margin: 0 auto 48px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.search-wrap:focus-within { border-color: rgba(200,164,80,0.5); }
+.search-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  padding: 14px 20px;
+  outline: none;
+}
+.search-wrap input::placeholder { color: var(--muted); }
+.search-fetch-btn {
+  background: var(--accent);
+  border: none;
+  color: var(--bg);
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0 24px;
+  border-radius: 0 100px 100px 0;
+  transition: background .2s;
+  white-space: nowrap;
+}
+.search-fetch-btn:hover { background: var(--accent-2); }
+.search-fetch-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── SECTION LABEL (validate-page version) ──────────────────── */
+.v-section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 48px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.v-section-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.v-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--glass-border), transparent);
+}
+
+/* ── TOKEN GRID ─────────────────────────────────────────────── */
+.token-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+}
+@media (max-width: 480px) { .token-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+
+/* ── TOKEN CARD — glass-card aesthetic ──────────────────────── */
+.token-card {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all .4s;
+  will-change: transform;
+  position: relative;
+}
+.token-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 1px rgba(200,164,80,0.2), 0 20px 50px rgba(139,26,26,0.2);
+}
+.token-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blood), transparent);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.token-card:hover::before { opacity: 1; }
+.token-card .img-wrap {
+  background: #060303;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+.token-card img {
+  width: 100%; height: 100%;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: sepia(.1) brightness(.92) contrast(1.05);
+  transition: filter .4s;
+}
+.token-card:hover img { filter: sepia(0) brightness(1.05) contrast(1.1); }
+.token-card .card-body { padding: 12px 14px 14px; }
+.token-card .card-id {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--accent);
+}
+.token-card .card-name {
+  font-family: 'Instrument Serif', serif;
+  font-size: 15px;
+  color: var(--fg);
+  margin-top: 2px;
+}
+
+/* ── TOKEN DETAIL (search result) ───────────────────────────── */
+.token-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 36px;
+  max-width: 820px;
+  margin: 0 auto;
+}
+@media (max-width: 600px) { .token-detail { grid-template-columns: 1fr; gap: 24px; padding: 24px; } }
+
+.token-detail .detail-img {
+  background: #060303;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+.token-detail img { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; }
+.detail-meta h2 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(24px, 4vw, 36px);
+  color: var(--fg);
+  text-shadow: 0 0 20px rgba(200,164,80,0.2);
+  margin-bottom: 6px;
+}
+.detail-owner {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--muted);
+  word-break: break-all;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.detail-owner span { color: var(--fg); }
+
+.traits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.trait-pill {
+  background: rgba(139,26,26,0.1);
+  border: 1px solid rgba(200,164,80,0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: all .3s;
+}
+.trait-pill:hover {
+  border-color: var(--accent);
+  background: rgba(200,164,80,0.08);
+  transform: translateY(-1px);
+}
+.trait-pill .t-type {
+  display: block;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.trait-pill .t-val {
+  font-family: 'Instrument Serif', serif;
+  font-size: 15px;
+  color: var(--fg);
+}
+
+/* ── SKELETON ───────────────────────────────────────────────── */
+.skel-card { aspect-ratio: 1; border-radius: 20px 20px 0 0; }
+.skeleton, .skel-card {
+  background: linear-gradient(90deg, var(--bg3) 25%, rgba(30,12,12,0.5) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── STATUS MESSAGE ─────────────────────────────────────────── */
+.status-msg {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 18px;
+}
+.status-msg .err {
+  color: #ff8888;
+  font-style: normal;
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+}
+
+/* ── PAGINATION ─────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+.pg-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  color: var(--fg);
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 8px 16px;
+  transition: all .2s;
+}
+.pg-btn:hover, .pg-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(200,164,80,0.08);
+}
+.pg-info { color: var(--muted); font-family: 'Geist Mono', monospace; font-size: 11px; }
+
+/* ── COLLECTION NAV ─────────────────────────────────────────── */
+.coll-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.coll-nav input {
+  flex: 1;
+  min-width: 180px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  color: var(--fg);
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  padding: 10px 20px;
+  outline: none;
+  transition: border-color .2s;
+}
+.coll-nav input:focus { border-color: rgba(200,164,80,0.5); }
+.coll-nav input::placeholder { color: var(--muted); }
+
+.shuffle-wrap { text-align: center; margin-top: 32px; }
+</style>
+</head>
+<body>
+
+<div class="cursor"></div>
+<div class="cursor-dot"></div>
+<div class="noise"></div>
+<div class="scroll-progress"></div>
+<div class="skull-floaters" aria-hidden="true"></div>
+
+<!-- ============== NAV — styled entirely by styles.css ============== -->
+<nav>
+  <a href="index.html" class="nav-logo">BASED UNDEADS</a>
+  <div class="nav-links">
+    <a href="index.html#featured" class="nav-link">Collection</a>
+    <a href="staking.html"        class="nav-link">Stake</a>
+    <a href="game.html"           class="nav-link">$1 Game</a>
+    <a href="tools.html"          class="nav-link">Tools</a>
+    <a href="validate.html"       class="nav-link" style="color:var(--accent);opacity:1;">Validator</a>
+    <a href="index.html#about"    class="nav-link">About</a>
+  </div>
+  <div class="nav-social">
+    <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+    <a href="https://x.com/BasedUndeads"     target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+    <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
+      <svg width="22" height="22" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#vc0)"><g clip-path="url(#vc1)">
+        <path d="M181.566 1.00604e-05C80.91 -0.82799 -0.82799 80.91 1.00604e-05 181.566C0.84601 279.306 80.694 359.172 178.416 359.982C279.072 360.846 360.846 279.072 359.982 178.416C359.172 80.712 279.306 0.84601 181.566 1.00604e-05ZM127.746 89.586C139.266 104.22 146.16 122.742 146.16 142.83C146.16 160.236 140.994 176.436 132.12 189.954H69.714L127.728 89.568L127.746 89.586ZM318.006 199.242V212.202C318.006 213.048 317.556 213.768 316.782 214.092C312.552 215.892 298.602 222.372 292.788 230.436C277.812 251.28 266.382 284.04 240.822 284.04H134.172C96.408 284.04 64.818 254.07 64.836 214.146C64.836 213.156 65.682 212.346 66.672 212.346H117.216C118.962 212.346 120.33 213.75 120.33 215.46V225.216C120.33 230.4 124.524 234.612 129.726 234.612H168.066V212.292H141.876C156.942 193.212 165.906 169.128 165.906 142.902C165.906 113.652 154.692 86.976 136.332 67.032C147.438 68.328 158.058 70.542 168.066 73.476V67.266C168.066 60.822 173.286 55.602 179.73 55.602C186.174 55.602 191.394 60.822 191.394 67.266V82.242C227.178 98.946 250.614 126.666 250.614 158.022C250.614 176.418 242.568 193.536 228.69 207.936C226.026 210.69 222.336 212.256 218.466 212.256H191.412V234.54H225.378C232.704 234.54 245.844 220.644 252.072 212.274C252.342 211.86 253.062 211.644C253.782 211.428 315.432 197.28 315.432 197.28C316.728 196.92 318.006 197.91 318.006 199.224V199.242Z" fill="white"/>
+        </g></g>
+        <defs>
+          <clipPath id="vc0"><rect width="360" height="360" fill="white"/></clipPath>
+          <clipPath id="vc1"><rect width="360" height="360" fill="white"/></clipPath>
+        </defs>
+      </svg>
+    </a>
+  </div>
+  <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
+</nav>
+
+<!-- ============== PAGE HEADER ============== -->
+<header class="validate-header">
+  <p class="validate-eyebrow" id="headerEyebrow">
+    <span class="pulse"></span>
+    5000 Souls · Fully Onchain · Base
+  </p>
+  <h1 class="validate-title">THE VALIDATOR</h1>
+  <p class="validate-subtitle">Collection Inspector · Token Search</p>
+  <span class="validate-network-badge">
+    <span id="networkLabel">LOADING…</span>
+  </span>
+</header>
+<script>
+  if (window.NETWORK) {
+    document.getElementById('networkLabel').textContent = window.NETWORK.label.toUpperCase();
+    document.getElementById('headerEyebrow').innerHTML =
+      '<span class="pulse"></span>' + window.NETWORK.label + ' · 5000 Souls · Fully Onchain';
+  }
+</script>
+
+<!-- ============== STICKY TABS ============== -->
+<div class="tab-bar-wrap">
+  <div class="validate-tabs">
+    <button class="validate-tab active" data-tab="search">🔍 Token Search</button>
+    <button class="validate-tab" data-tab="collection">💀 Collection</button>
+  </div>
+</div>
+
+<main>
+
+<!-- ═══════════════════════
+     PANEL 1 — TOKEN SEARCH
+════════════════════════ -->
+<div class="validate-panel active" id="panel-search">
+
+  <div class="search-wrap">
+    <input id="searchInput" type="number" min="1" max="4635" placeholder="Enter Token ID (1 – 4635)" />
+    <button class="search-fetch-btn" onclick="searchToken()">Fetch</button>
+  </div>
+
+  <div id="searchResult"></div>
+
+  <p class="v-section-label" id="randomLabel">Random from the Horde</p>
+  <div id="randomGrid" class="token-grid"></div>
+
+  <div class="shuffle-wrap">
+    <button class="btn-secondary" onclick="loadRandom()">
+      <i class="fas fa-random"></i> Shuffle the Horde
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════
+     PANEL 2 — COLLECTION
+════════════════════════ -->
+<div class="validate-panel" id="panel-collection">
+
+  <div class="coll-nav">
+    <input id="collSearchInput" type="number" min="1" max="4635"
+           placeholder="Jump to token ID…"
+           onkeydown="if(event.key==='Enter')jumpToPage()"/>
+    <button class="btn-secondary" onclick="jumpToPage()">
+      <i class="fas fa-arrow-right"></i> Go
+    </button>
+    <button class="btn-secondary" onclick="loadCollectionPage(collPage - 1)">‹ Prev</button>
+    <button class="btn-secondary" onclick="loadCollectionPage(collPage + 1)">Next ›</button>
+    <span id="collPageInfo" class="pg-info"></span>
+  </div>
+
+  <p class="v-section-label">
+    Tokens
+    <span id="collRange" style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.05em;"></span>
+  </p>
+
+  <div id="collectionGrid" class="token-grid"></div>
+  <div class="pagination" id="collPagination"></div>
+
+</div>
+
+</main>
+
+<!-- ============== FOOTER — styled by styles.css ============== -->
+<footer>
+  <div class="footer-content">
+    <a href="index.html" class="footer-logo">BASED UNDEADS</a>
+    <div class="footer-links">
+      <a href="staking.html"  class="footer-link">Stake</a>
+      <a href="game.html"     class="footer-link">$1 Game</a>
+      <a href="tools.html"    class="footer-link">Tools</a>
+      <a href="validate.html" class="footer-link">Validator</a>
+      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
+      <a href="https://x.com/BasedUndeads"     target="_blank" class="footer-link">Twitter</a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
+    </div>
+    <span class="footer-copy">© 2026 Based Undeads. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+/* CONFIG */
+let randomLoading = false;
+
+const RENDERERS = {
+  base_sepolia: "0x0cF7D86de79Fc48cC99af08Ae31280e88fA9285f",
+  base:         "",
+};
+
+function currentRenderer() {
+  if (window.IS_TESTNET) return RENDERERS.base_sepolia;
+  if (RENDERERS.base)    return RENDERERS.base;
+  return window.FEATURED_FALLBACK ? window.FEATURED_FALLBACK.rendererAddress : '';
+}
+
+const _useFallback = window.NETWORK && !window.NETWORK.rendererAddress && window.FEATURED_FALLBACK;
+const BASE_RPC = _useFallback ? window.FEATURED_FALLBACK.rpcUrl      : (window.NETWORK && window.NETWORK.rpcUrl);
+const NFT_ADDR = _useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS : (window.NETWORK && window.NETWORK.NFT_ADDRESS);
+const MAX_ID   = 4635;
+
+let tokenCache = {};
+let _rpcId = 1;
+
+async function rpcCall(method, params) {
+  const res = await fetch(BASE_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: _rpcId++, method, params }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+function u256(n) { return BigInt(n).toString(16).padStart(64, "0"); }
+
+function abiDecodeString(hex) {
+  hex = hex.replace(/^0x/, "");
+  const offset = parseInt(hex.slice(0, 64), 16) * 2;
+  const len    = parseInt(hex.slice(offset, offset + 64), 16);
+  const bytes  = hex.slice(offset + 64, offset + 64 + len * 2);
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 2)
+    out += String.fromCharCode(parseInt(bytes.slice(i, i + 2), 16));
+  return out;
+}
+
+async function fetchTokenURI(id) {
+  const addr = currentRenderer();
+  if (!addr) throw new Error('Renderer address not set');
+  const raw = await rpcCall("eth_call", [{ to: addr, data: "0xc87b56dd" + u256(id) }, "latest"]);
+  return abiDecodeString(raw);
+}
+
+async function fetchOwner(id) {
+  try {
+    const raw = await rpcCall("eth_call", [{ to: NFT_ADDR, data: "0x6352211e" + u256(id) }, "latest"]);
+    return "0x" + raw.slice(-40);
+  } catch { return null; }
+}
+
+async function fetchToken(id) {
+  if (tokenCache[id]) return tokenCache[id];
+  try {
+    const [uri, owner] = await Promise.all([fetchTokenURI(id), fetchOwner(id)]);
+    const json = JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, "")));
+    const data = { id, name: json.name, image: json.image, attributes: json.attributes || [], owner: owner || "—" };
+    tokenCache[id] = data;
+    return data;
+  } catch(e) {
+    console.error(`Token #${id} failed:`, e.message);
+    return { id, _error: e.message };
+  }
+}
+
+/* RENDER HELPERS */
+function makeSkeletonCard() {
+  return `<div class="token-card" style="pointer-events:none;">
+    <div class="skel-card"></div>
+    <div class="card-body" style="padding:12px 14px 14px;">
+      <div class="skeleton" style="height:10px;width:40%;margin-bottom:6px;border-radius:100px;"></div>
+      <div class="skeleton" style="height:15px;width:68%;border-radius:100px;"></div>
+    </div>
+  </div>`;
+}
+
+function makeTokenCard(data) {
+  if (data._error) {
+    return `<div class="token-card" style="opacity:.35;pointer-events:none;" title="${data._error}">
+      <div class="img-wrap" style="background:#060303;aspect-ratio:1;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:2rem;opacity:.4;">💀</span>
+      </div>
+      <div class="card-body">
+        <div class="card-id">#${String(data.id).padStart(4,'0')}</div>
+        <div class="card-name" style="color:var(--muted);font-size:13px;">Not minted</div>
+      </div>
+    </div>`;
+  }
+  return `<div class="token-card" onclick="openValidatorModal(${data.id})" title="${data.name}">
+    <div class="img-wrap">
+      <img src="${data.image}" alt="${data.name}" loading="lazy"/>
+    </div>
+    <div class="card-body">
+      <div class="card-id">#${String(data.id).padStart(4,'0')}</div>
+      <div class="card-name">${data.name}</div>
+    </div>
+  </div>`;
+}
+
+function makeTokenDetail(data) {
+  const traits = data.attributes.map(a =>
+    `<div class="trait-pill">
+      <span class="t-type">${a.trait_type}</span>
+      <span class="t-val">${a.value}</span>
+    </div>`).join('');
+  const ownerShort = data.owner && data.owner !== '—'
+    ? `${data.owner.slice(0,6)}…${data.owner.slice(-4)}` : '—';
+  return `<div class="token-detail">
+    <div class="detail-img"><img src="${data.image}" alt="${data.name}"/></div>
+    <div class="detail-meta">
+      <h2>${data.name}</h2>
+      <div class="detail-owner">Owner: <span title="${data.owner}">${ownerShort}</span></div>
+      ${data.attributes.length
+        ? `<div class="traits-grid">${traits}</div>`
+        : '<p style="color:var(--muted);font-style:italic;font-size:15px;font-family:\'Instrument Serif\',serif;">No traits on record.</p>'}
+    </div>
+  </div>`;
+}
+
+/* SEARCH */
+async function searchToken() {
+  const val = parseInt(document.getElementById('searchInput').value);
+  const el  = document.getElementById('searchResult');
+  if (!val || val < 1 || val > MAX_ID) {
+    el.innerHTML = `<div class="status-msg"><span class="err">Enter a valid ID between 1 and ${MAX_ID}</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="status-msg">Summoning #${val} from the horde…</div>`;
+  const data = await fetchToken(val);
+  el.innerHTML = (data && !data._error)
+    ? makeTokenDetail(data)
+    : `<div class="status-msg"><span class="err">Token #${val} could not be loaded.</span></div>`;
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchToken();
+});
+
+/* RANDOM GRID */
+async function loadRandom(count = 12) {
+  if (randomLoading) return;
+  randomLoading = true;
+  const grid = document.getElementById('randomGrid');
+  grid.innerHTML = Array(count).fill(makeSkeletonCard()).join('');
+  const ids = [];
+  while (ids.length < count) {
+    const id = Math.floor(Math.random() * MAX_ID) + 1;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  for (let i = 0; i < ids.length; i++) {
+    const data = await fetchToken(ids[i]);
+    if (data && grid.children[i]) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = makeTokenCard(data);
+      grid.replaceChild(tmp.firstElementChild, grid.children[i]);
+    }
+    if (i < ids.length - 1) await sleep(80);
+  }
+  randomLoading = false;
+}
+
+/* COLLECTION PANEL */
+let collPage = 1;
+const COLL_PAGE_SIZE   = 24;
+const COLL_TOTAL_PAGES = Math.ceil(MAX_ID / COLL_PAGE_SIZE);
+
+async function loadCollectionPage(page) {
+  page = Math.max(1, Math.min(COLL_TOTAL_PAGES, page));
+  collPage = page;
+  const start = (page - 1) * COLL_PAGE_SIZE + 1;
+  const end   = Math.min(page * COLL_PAGE_SIZE, MAX_ID);
+  const ids   = [];
+  for (let i = start; i <= end; i++) ids.push(i);
+
+  document.getElementById('collRange').textContent    = `#${start} – #${end}`;
+  document.getElementById('collPageInfo').textContent = `Page ${page} / ${COLL_TOTAL_PAGES}`;
+
+  const grid = document.getElementById('collectionGrid');
+  grid.innerHTML = Array(ids.length).fill(makeSkeletonCard()).join('');
+  renderCollPagination();
+
+  for (let i = 0; i < ids.length; i++) {
+    const data = await fetchToken(ids[i]);
+    if (data && grid.children[i]) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = makeTokenCard(data);
+      grid.replaceChild(tmp.firstElementChild, grid.children[i]);
+    }
+    if (i < ids.length - 1) await sleep(60);
+  }
+}
+
+function jumpToPage() {
+  const v = parseInt(document.getElementById('collSearchInput').value);
+  if (v >= 1 && v <= MAX_ID) loadCollectionPage(Math.ceil(v / COLL_PAGE_SIZE));
+}
+
+function renderCollPagination() {
+  const pg = document.getElementById('collPagination');
+  const p = collPage, tp = COLL_TOTAL_PAGES;
+  const pages = new Set([1, 2, p-1, p, p+1, tp-1, tp].filter(x => x >= 1 && x <= tp));
+  const sorted = [...pages].sort((a,b) => a - b);
+  let html = '', prev = null;
+  for (const n of sorted) {
+    if (prev !== null && n - prev > 1) html += `<span class="pg-info">…</span>`;
+    html += `<button class="pg-btn ${n===p?'active':''}" onclick="loadCollectionPage(${n})">${n}</button>`;
+    prev = n;
+  }
+  pg.innerHTML = html;
+}
+
+/* TABS */
+document.querySelectorAll('.validate-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.validate-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.validate-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById(`panel-${tab}`).classList.add('active');
+    if (tab === 'collection' && !document.getElementById('collectionGrid').children.length) {
+      loadCollectionPage(1);
+    }
+  });
+});
+
+/* MODAL */
+function openValidatorModal(id) {
+  const data = tokenCache[id];
+  if (!data || data._error) return;
+
+  const openseaContract = (window.NETWORK && window.NETWORK.NFT_ADDRESS &&
+    window.NETWORK.NFT_ADDRESS !== '0x0000000000000000000000000000000000000000')
+    ? window.NETWORK.NFT_ADDRESS : null;
+  const openseaUrl = openseaContract
+    ? `https://opensea.io/assets/base/${openseaContract}/${id}`
+    : 'https://opensea.io/collection/basedundeads/overview';
+
+  const traitsHtml = (list) => (list && list.length)
+    ? `<div class="undead-modal-traits">${list.map(a =>
+        `<div class="undead-trait-pill">
+           <span class="utp-type">${a.trait_type}</span>
+           <span class="utp-val">${a.value}</span>
+         </div>`).join('')}</div>`
+    : '<p class="undead-modal-notraits">No traits available.</p>';
+
+  const ownerShort = data.owner && data.owner !== '—'
+    ? `${data.owner.slice(0,6)}…${data.owner.slice(-4)}` : '—';
+
+  const modal = document.createElement('div');
+  modal.className = 'undead-modal-overlay';
+  modal.innerHTML = `
+    <div class="undead-modal">
+      <button class="undead-modal-close" aria-label="Close">&times;</button>
+      <div class="undead-modal-grid">
+        <div class="undead-modal-img">
+          <img src="${data.image}" alt="${data.name}"
+               onerror="this.src='https://placehold.co/500x500/0a0505/c8a450/png?text=%23${id}'"/>
+        </div>
+        <div>
+          <p class="undead-modal-eyebrow">Token #${String(id).padStart(4,'0')}</p>
+          <h2 class="undead-modal-name">${data.name}</h2>
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--glass-border);">
+            Owner: <span style="color:var(--fg);" title="${data.owner}">${ownerShort}</span>
+          </div>
+          ${traitsHtml(data.attributes)}
+          <a href="${openseaUrl}" target="_blank" rel="noopener" class="undead-modal-cta">
+            <i class="fas fa-external-link-alt"></i> View on OpenSea
+          </a>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('open'));
+
+  const close = () => { modal.classList.remove('open'); setTimeout(() => modal.remove(), 220); };
+  modal.querySelector('.undead-modal-close').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+}
+
+/* UTILS */
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* MOBILE NAV */
+(function() {
+  const btn   = document.getElementById('mobileMenuBtn');
+  const links = document.querySelector('nav .nav-links');
+  if (!btn || !links) return;
+  btn.addEventListener('click', () => {
+    links.classList.toggle('mobile-open');
+    btn.innerHTML = links.classList.contains('mobile-open')
+      ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+  });
+})();
+
+/* CURSOR */
+(function() {
+  const cursor = document.querySelector('.cursor');
+  const dot    = document.querySelector('.cursor-dot');
+  if (!cursor || !dot) return;
+  let mx=0, my=0, cx=0, cy=0;
+  (function loop() {
+    cx += (mx - cx) * .12; cy += (my - cy) * .12;
+    cursor.style.transform = `translate(${cx-10}px,${cy-10}px)`;
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx-2}px,${my-2}px)`;
+  }, { passive: true });
+})();
+
+/* SCROLL PROGRESS */
+window.addEventListener('scroll', () => {
+  const bar = document.querySelector('.scroll-progress');
+  if (!bar) return;
+  const h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  bar.style.width = ((window.pageYOffset / h) * 100) + '%';
+}, { passive: true });
+
+/* INIT */
+loadRandom();
+</script>
+</body>
+</html>

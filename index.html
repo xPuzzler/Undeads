@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Based Undeads — The Horde. Onchain Forever.</title>
+  <meta name="description" content="5,000 undead souls permanently etched onchain on Base. Stake your Undeads, earn royalties from every secondary sale.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+
+  <meta property="og:title" content="Based Undeads — The Horde. Onchain Forever.">
+  <meta property="og:description" content="5,000 undead souls. Fully onchain on Base. Stake & earn.">
+  <meta property="og:type" content="website">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="config.js"></script>
+  <script src="skulls.js" defer></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="cursor"></div>
+  <div class="cursor-dot"></div>
+  <div class="noise"></div>
+  <div class="scroll-progress"></div>
+  <div class="skull-floaters" aria-hidden="true"></div>
+
+  <!-- ============================== NAV ============================== -->
+  <nav>
+    <a href="index.html" class="nav-logo">BASED UNDEADS</a>
+    <div class="nav-links">
+      <a href="index.html#featured"   class="nav-link">Collection</a>
+      <a href="staking.html"       class="nav-link">Stake</a>
+      <a href="game.html"        class="nav-link">$1 Game</a>
+      <a href="tools.html"       class="nav-link">Tools</a>
+      <a href="validate.html"    class="nav-link">Validator</a>
+      <a href="index.html#about"      class="nav-link">About</a>
+    </div>
+    <div class="nav-social">
+      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+      <a href="https://x.com/BasedUndeads"  target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
+        <svg width="25" height="25" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_3_69)">
+<g clip-path="url(#clip1_3_69)">
+<path d="M181.566 1.00604e-05C80.91 -0.82799 -0.82799 80.91 1.00604e-05 181.566C0.84601 279.306 80.694 359.172 178.416 359.982C279.072 360.846 360.846 279.072 359.982 178.416C359.172 80.712 279.306 0.84601 181.566 1.00604e-05ZM127.746 89.586C139.266 104.22 146.16 122.742 146.16 142.83C146.16 160.236 140.994 176.436 132.12 189.954H69.714L127.728 89.568L127.746 89.586ZM318.006 199.242V212.202C318.006 213.048 317.556 213.768 316.782 214.092C312.552 215.892 298.602 222.372 292.788 230.436C277.812 251.28 266.382 284.04 240.822 284.04H134.172C96.408 284.04 64.818 254.07 64.836 214.146C64.836 213.156 65.682 212.346 66.672 212.346H117.216C118.962 212.346 120.33 213.75 120.33 215.46V225.216C120.33 230.4 124.524 234.612 129.726 234.612H168.066V212.292H141.876C156.942 193.212 165.906 169.128 165.906 142.902C165.906 113.652 154.692 86.976 136.332 67.032C147.438 68.328 158.058 70.542 168.066 73.476V67.266C168.066 60.822 173.286 55.602 179.73 55.602C186.174 55.602 191.394 60.822 191.394 67.266V82.242C227.178 98.946 250.614 126.666 250.614 158.022C250.614 176.418 242.568 193.536 228.69 207.936C226.026 210.69 222.336 212.256 218.466 212.256H191.412V234.54H225.378C232.704 234.54 245.844 220.644 252.072 212.274C252.072 212.274 252.342 211.86 253.062 211.644C253.782 211.428 315.432 197.28 315.432 197.28C316.728 196.92 318.006 197.91 318.006 199.224V199.242Z" fill="white"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_3_69">
+<rect width="360" height="360" fill="white"/>
+</clipPath>
+<clipPath id="clip1_3_69">
+<rect width="360" height="360" fill="white"/>
+</clipPath>
+</defs>
+</svg>
+
+      </a>
+    </div>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
+  </nav>
+
+  <!-- ============================== HERO ============================== -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-badge">
+      <span class="pulse"></span>
+      5000 Souls · Fully Onchain · Base
+    </div>
+    <h1 class="hero-title">BASED UNDEADS</h1>
+    <p class="hero-subtitle">The Horde. Onchain Forever.</p>
+    <p class="hero-description">
+      5,000 undead souls permanently etched onchain on Base. Art, metadata, everything—
+      stored forever with zero dependency on IPFS or servers. Stake your Undeads.
+      Earn your share of every royalty.
+    </p>
+    <div class="hero-cta">
+      <a href="staking.html" class="btn-primary">
+        <i class="fas fa-bolt"></i> Stake &amp; Earn
+      </a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="btn-secondary">
+        <i class="fas fa-eye"></i> Explore on OpenSea
+      </a>
+    </div>
+    <div class="scroll-indicator">
+      <span>Scroll to explore</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SALES ACTIVITY (replaces minting milestone) ==================== -->
+  <section class="section" id="sales">
+    <div class="sales-container">
+      <div class="section-header">
+        <p class="section-label">Live Market</p>
+        <h2 class="section-title">Secondary <em>Sales</em> Activity</h2>
+        <p class="section-sub">Every sale flows royalties to stakers. Watch the horde change hands.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="sales-tabs">
+        <button class="sales-tab active" data-range="1">Last 24 Hours</button>
+        <button class="sales-tab" data-range="7">Last 7 Days</button>
+        <button class="sales-tab" data-range="30">Last 30 Days</button>
+      </div>
+
+      <!-- 1-day view: scrollable NFT cards -->
+      <div class="sales-panel active" id="salesPanel-1">
+        <div class="sales-stats">
+          <div class="sales-stat">
+            <div class="sales-stat-val" id="stat-1d-count">—</div>
+            <div class="sales-stat-lbl">Sales in 24h</div>
+          </div>
+          <div class="sales-stat">
+            <div class="sales-stat-val accent" id="stat-1d-volume">—</div>
+            <div class="sales-stat-lbl">Volume (ETH)</div>
+          </div>
+          <div class="sales-stat">
+            <div class="sales-stat-val" id="stat-1d-avg">—</div>
+            <div class="sales-stat-lbl">Avg. Price</div>
+          </div>
+          <div class="sales-stat">
+            <div class="sales-stat-val" id="stat-1d-floor">—</div>
+            <div class="sales-stat-lbl">Floor (OpenSea)</div>
+          </div>
+        </div>
+        <div class="sales-scroller-wrapper">
+          <h3 class="sales-subtitle">Recent Sales</h3>
+          <div class="sales-scroller" id="salesScroller1d">
+            <div class="sales-loading">
+              <i class="fas fa-spinner fa-spin"></i> Loading sales...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-day view: big number -->
+      <div class="sales-panel" id="salesPanel-7">
+        <div class="sales-big-stats">
+          <div class="sales-big-stat">
+            <div class="sales-big-val accent" id="stat-7d-count">—</div>
+            <div class="sales-big-lbl">Sales in 7 Days</div>
+          </div>
+          <div class="sales-big-stat">
+            <div class="sales-big-val" id="stat-7d-volume">—</div>
+            <div class="sales-big-lbl">Total ETH Volume</div>
+          </div>
+          <div class="sales-big-stat">
+            <div class="sales-big-val" id="stat-7d-unique">—</div>
+            <div class="sales-big-lbl">Unique Buyers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 30-day view: big number -->
+      <div class="sales-panel" id="salesPanel-30">
+        <div class="sales-big-stats">
+          <div class="sales-big-stat">
+            <div class="sales-big-val accent" id="stat-30d-count">—</div>
+            <div class="sales-big-lbl">Sales in 30 Days</div>
+          </div>
+          <div class="sales-big-stat">
+            <div class="sales-big-val" id="stat-30d-volume">—</div>
+            <div class="sales-big-lbl">Total ETH Volume</div>
+          </div>
+          <div class="sales-big-stat">
+            <div class="sales-big-val" id="stat-30d-unique">—</div>
+            <div class="sales-big-lbl">Unique Buyers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floor NFTs -->
+      <div class="floor-wrapper">
+        <div class="floor-header">
+          <h3 class="sales-subtitle">Floor Listings — Buy on OpenSea</h3>
+          <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="floor-viewall">
+            View All <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+        <div class="floor-grid" id="floorGrid">
+          <div class="sales-loading"><i class="fas fa-spinner fa-spin"></i> Loading floor...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FEATURED ============================ -->
+  <section class="nft-scroller-section" id="featured">
+    <div class="nft-scroller-header">
+      <p class="section-label">The Collection</p>
+      <h2 class="section-title">The <em>Horde</em> Rises</h2>
+    </div>
+    <div class="scrolling-container">
+      <div id="nftScroller">
+        <div class="sales-loading"><i class="fas fa-spinner fa-spin"></i> Loading Featured Undeads...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== STATS SECTION =========================== -->
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">5,000</div>
+        <div class="stat-label">Total Supply</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number accent">7.5%</div>
+        <div class="stat-label">Royalty Split</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">Onchain Art</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">∞</div>
+        <div class="stat-label">Stakers Earn</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= STAKING TEASER ========================= -->
+  <section class="section" style="padding-top: 40px;">
+    <div class="staking-teaser">
+      <div class="staking-teaser-content">
+        <p class="section-label">Passive Income</p>
+        <h2 class="section-title">Stake. <em>Earn.</em> Forever.</h2>
+        <p class="staking-teaser-text">
+          Every secondary sale pays 7.5% royalty. 50% flows straight to stakers, split by share.
+          Lock your NFTs (24h minimum), claim rewards anytime. Zero admin. Fully onchain.
+        </p>
+        <div class="staking-teaser-steps">
+          <div class="teaser-step">
+            <span class="teaser-num">1</span>
+            <div>
+              <h4>Stake Your Undeads</h4>
+              <p>Lock NFTs with a 24h minimum. More stake = more share.</p>
+            </div>
+          </div>
+          <div class="teaser-step">
+            <span class="teaser-num">2</span>
+            <div>
+              <h4>Royalties Flow In</h4>
+              <p>Every secondary sale pays 7.5%. 50% to stakers, split by share.</p>
+            </div>
+          </div>
+          <div class="teaser-step">
+            <span class="teaser-num">3</span>
+            <div>
+              <h4>Claim Any Time</h4>
+              <p>Rewards accrue onchain. Claim whenever you want.</p>
+            </div>
+          </div>
+        </div>
+        <a href="staking.html" class="btn-primary">
+          <i class="fas fa-bolt"></i> Open Staking Dashboard
+        </a>
+      </div>
+      <div class="staking-teaser-visual" id="stakingTeaserVisual">
+        <!-- Populated with sample NFT images -->
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== $1 GAME TEASER =========================== -->
+  <section class="section" style="padding-top: 40px;">
+    <div class="dollar-game-teaser">
+      <div>
+        <p class="section-label">New Feature</p>
+        <h2 class="dollar-game-title">THE <span style="color:var(--accent)">$1</span> GAME</h2>
+        <p class="dollar-game-desc">
+          List any NFT. Anyone buys $1 tickets. Smart contract picks a winner. You keep 90% of the pot.
+        </p>
+        <p class="dollar-game-desc">Zero admin. Fully on-chain. Automated payouts. No trust required.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px;">
+          <a href="game.html" class="btn-primary"><i class="fas fa-ticket-alt"></i> Play Now</a>
+          <a href="game.html" class="btn-secondary"><i class="fas fa-plus"></i> List Your NFT</a>
+        </div>
+      </div>
+      <div class="dollar-game-grid">
+        <div class="dollar-game-cell"><div class="dg-num accent">$1</div><div class="dg-lbl">Per Ticket</div></div>
+        <div class="dollar-game-cell"><div class="dg-num">90%</div><div class="dg-lbl">To Creator</div></div>
+        <div class="dollar-game-cell"><div class="dg-num">∞</div><div class="dg-lbl">Any NFT</div></div>
+        <div class="dollar-game-cell"><div class="dg-num accent">Auto</div><div class="dg-lbl">Winner Draw</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== ABOUT =========================== -->
+  <section class="section" id="about">
+    <div class="about-container">
+      <div class="about-content">
+        <p class="section-label">The Story</p>
+        <h2 class="section-title">About <em>Based Undeads</em></h2>
+        <p>
+          The Horde has evolved. All <strong style="color:var(--accent)">5,000 BasedUndeads</strong> now live
+          fully onchain — art, metadata, everything stored permanently on Base with zero dependency on IPFS, servers,
+          or any third party.
+        </p>
+        <p>
+          From skeletal warriors to phantom wanderers, each Undead tells a story written in pixels and pain.
+          Stake your NFTs, earn your share of every royalty from secondary sales. The more you stake, the more you earn.
+        </p>
+        <p style="font-style:italic;border-left:2px solid var(--accent);padding-left:20px;margin-top:28px;">
+          This collection marks my first venture into pixel art — a leap from code into canvas, from developer to
+          digital necromancer. Every sprite, every skull, every shadow learned stroke by stroke.
+        </p>
+      </div>
+      <div class="about-visual">
+        <div class="about-image-grid" id="aboutImageGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== TEAM =========================== -->
+  <section class="section" id="team" style="text-align:center;">
+    <p class="section-label" style="justify-content:center;">The Creator</p>
+    <h2 class="section-title">Meet the <em>Founder</em></h2>
+    <a href="https://x.com/_sxms" target="_blank" class="team-member" style="margin-top:32px;display:inline-block;">
+      <div class="team-avatar">
+        <img src="https://pbs.twimg.com/profile_images/2013051300615712769/kA7TYlWK_400x400.jpg" alt="SAM" loading="lazy">
+      </div>
+      <h3 class="team-name">SAM</h3>
+      <p class="team-role">Artist · Developer</p>
+    </a>
+  </section>
+
+  <!-- =========================== PREVIOUS PROJECTS =========================== -->
+  <section class="projects-section section">
+    <p class="section-label" style="justify-content:center">Legacy</p>
+    <h2 class="section-title" style="text-align:center">Previous <em>Work</em></h2>
+    <p class="section-sub" style="text-align:center;margin:0 auto 48px">Art of the past. Interactive, still alive.</p>
+    <div class="projects-grid">
+      <div class="project-viewer">
+        <h3>Based Squiggles</h3>
+        <p class="subtitle">Generative Art · Base</p>
+        <div class="viewer-frame-wrap">
+          <iframe id="squiggleFrame" src="https://squiggler.netlify.app/?tid=1" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <div class="viewer-controls four">
+          <button class="btn-sm secondary" id="squiggleReplay"><i class="fas fa-redo"></i> Replay</button>
+          <button class="btn-sm secondary" id="squiggleRandom"><i class="fas fa-random"></i> Random</button>
+          <button class="btn-sm secondary" id="squiggleFullscreen"><i class="fas fa-expand"></i> Full</button>
+          <a href="https://opensea.io/collection/squiggle-on-base/overview" target="_blank" rel="noopener" class="btn-sm primary"><i class="fas fa-external-link-alt"></i> View</a>
+        </div>
+        <div class="viewer-info">Viewing: <strong id="squiggleTokenDisplay">#0001</strong></div>
+      </div>
+      <div class="project-viewer">
+        <h3>Crypto Puzzles</h3>
+        <p class="subtitle">Interactive Brain Teasers</p>
+        <div class="viewer-frame-wrap">
+          <iframe id="puzzleFrame" src="https://arweave.net/5LYXo-xz95VPuJjMBXTBlNwWmf0XIk8uDmjUMro3yK0/" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <div class="viewer-controls one">
+          <button class="btn-sm primary" id="puzzleNew"><i class="fas fa-sync"></i> New Puzzle</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== FOOTER =========================== -->
+  <footer>
+    <div class="footer-content">
+      <a href="index.html" class="footer-logo">BASED UNDEADS</a>
+      <div class="footer-links">
+        <a href="staking.html"      class="footer-link">Stake</a>
+        <a href="game.html"         class="footer-link">$1 Game</a>
+        <a href="tools.html"        class="footer-link">Tools</a>
+        <a href="validate.html"    class="footer-link">Validator</a>
+        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
+        <a href="https://x.com/BasedUndeads"  target="_blank" class="footer-link">Twitter</a>
+        <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
+      </div>
+      <span class="footer-copy">© 2026 Based Undeads. All rights reserved.</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
