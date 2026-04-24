@@ -406,7 +406,7 @@ async function refreshWalletNFTs() {
       // ── Path C: ownerOf scan bounded by totalSupply ───────────────────
       console.warn('Contract is not ERC721Enumerable — using ownerOf scan.');
       const supply = Number(
-        await nftReadContract.totalSupply().catch(() => BigInt(5000))
+        await nftReadContract.totalSupply().catch(() => BigInt(6666))
       );
 
       for (let id = 1; id <= supply && walletNFTs.length < bal; id += BATCH) {
@@ -434,7 +434,7 @@ async function refreshWalletNFTs() {
       }
     }
 
-    // Final count update (Path C may have found fewer than bal if supply < 5000)
+    // Final count update (Path C may have found fewer than bal if supply < 6666)
     document.getElementById('cnt-wallet').textContent = walletNFTs.length;
 
     if (walletNFTs.length === 0) {
