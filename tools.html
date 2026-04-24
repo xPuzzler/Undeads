@@ -526,6 +526,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 12px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 6px;
   }
   #nftCount { font-size: .86rem; letter-spacing: .14em; }
 
@@ -795,32 +798,7 @@
     </div>
   </section>
 
-  <!-- ══════════ WALLET NFTs ══════════ -->
-  <section class="grimoire-page">
-    <div class="container section-inner">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <div>
-          <span class="eyebrow">Your Wallet</span>
-          <h2 style="font-family:'Instrument Serif',serif;font-size:1.6rem;margin-top:6px;letter-spacing:.04em;">
-            Loaded <span class="gold-gradient">NFTs</span>
-          </h2>
-        </div>
-        <span class="font-mono muted" id="nftCount" style="font-size:.86rem;letter-spacing:.14em;">0 NFTs</span>
-      </div>
-      <div class="card" style="padding:18px;">
-        <div id="nftGrid">
-          <div style="grid-column:1/-1;text-align:center;padding:64px 20px;color:var(--muted);">
-            <i class="fas fa-wallet" style="font-size:42px;margin-bottom:14px;display:block;opacity:.3;"></i>
-            <p style="font-family:'Geist Mono',monospace;font-size:.86rem;letter-spacing:.1em;">
-              Enter a wallet address above to load NFTs
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════ NFT GRID MAKER ══════════ -->
+    <!-- ══════════ NFT GRID MAKER ══════════ -->
   <section class="grimoire-page" id="grid-maker">
     <div class="container section-inner">
       <div class="section-head">
@@ -902,6 +880,33 @@
       </div>
     </div>
   </section>
+
+  <!-- ══════════ WALLET NFTs ══════════ -->
+  <section class="grimoire-page">
+    <div class="container section-inner">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <span class="eyebrow">Your Wallet</span>
+          <h2 style="font-family:'Instrument Serif',serif;font-size:1.6rem;margin-top:6px;letter-spacing:.04em;">
+            Loaded <span class="gold-gradient">NFTs</span>
+          </h2>
+        </div>
+        <span class="font-mono muted" id="nftCount" style="font-size:.86rem;letter-spacing:.14em;">0 NFTs</span>
+      </div>
+      <div class="card" style="padding:18px;">
+        <div id="nftGrid">
+          <div style="grid-column:1/-1;text-align:center;padding:64px 20px;color:var(--muted);">
+            <i class="fas fa-wallet" style="font-size:42px;margin-bottom:14px;display:block;opacity:.3;"></i>
+            <p style="font-family:'Geist Mono',monospace;font-size:.86rem;letter-spacing:.1em;">
+              Enter a wallet address above to load NFTs
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
 
   <!-- ══════════ WALLPAPER MAKER ══════════ -->
   <section class="grimoire-page" id="wallpaper">
