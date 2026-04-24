@@ -26,7 +26,7 @@ const CONFIG = {
 // ===========================================================
 async function initializeAPIKeys() {
   try {
-    const r = await fetch('/api/api-keys');
+    const r = await fetch('/.netlify/functions/api-keys');
     if (!r.ok) throw new Error('key fetch failed');
     const d = await r.json();
     if (d.apiKeys) {
@@ -503,7 +503,9 @@ async function loadFeaturedUndeads() {
 function createScrollRow(nfts, dir) {
   const row = document.createElement('div');
   row.className = 'nft-scroll-row nft-scroll-' + dir;
-  [...nfts, ...nfts].forEach(nft => row.appendChild(nftCard(nft)));
+  const capped = nfts.slice(0, 40);
+  row.style.animationDuration = Math.max(40, capped.length * 3) + 's';
+  [...capped, ...capped].forEach(nft => row.appendChild(nftCard(nft)));
   return row;
 }
 
@@ -536,7 +538,7 @@ function openUndeadModal (nft) {
   const contract = (NET.NFT_ADDRESS && NET.NFT_ADDRESS !== '0x0000000000000000000000000000000000000000')
     ? NET.NFT_ADDRESS : null;
   const openseaUrl = contract
-    ? `https://opensea.io/assets/base/${contract}/${tokenId}`
+    ? `https://opensea.io/item/base/${contract}/${tokenId}`
     : 'https://opensea.io/collection/basedundeads/overview';
 
   const traitsHtml = (list) => (list && list.length)
