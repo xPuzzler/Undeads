@@ -453,13 +453,13 @@
   }
 
   .preview-box {
-    width: 100%; max-height: 500px;
-    overflow: hidden; border-radius: 12px;
+    width: 100%;
+    overflow: auto; border-radius: 12px;
     display: flex; justify-content: center;
     background: rgba(10,5,5,0.4);
   }
   .preview-box canvas,
-  .preview-box img { max-width: 100%; max-height: 500px; object-fit: contain; }
+  .preview-box img { max-width: 100%; height: auto; object-fit: contain; }
 
   /* ── Wallpaper maker ── */
   .tools-layout {
