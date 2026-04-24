@@ -103,9 +103,11 @@ function isSpam(name) {
    SECTION 1 — WALLET NFT LOADER
    ============================================================ */
 
-let walletNFTs      = [];
-let selectedForGrid = [];
-let userCollections = new Map();
+let walletNFTs           = [];
+let selectedForGrid      = [];
+let userCollections      = new Map();
+let currentDisplayedNFTs = [];
+let lastRandomGrid       = null;
 
 function processNFTsByCollection(nfts) {
   userCollections.clear();
@@ -165,6 +167,7 @@ async function onFetchNFTs() {
     }
     processNFTsByCollection(walletNFTs);
     displayCollectionSelector();
+    currentDisplayedNFTs = walletNFTs;
     renderWalletGrid(walletNFTs);
     document.getElementById('nftCount').textContent = walletNFTs.length + ' NFTs';
     toast(walletNFTs.length
@@ -387,7 +390,7 @@ function renderWalletGrid(nfts) {
       const gridActive = document.getElementById('gridModeToggle')?.classList.contains('active');
       const mode = document.querySelector('input[name="selectionMode"]:checked')?.value || 'manual';
       if (gridActive && mode === 'manual') {
-        toggleGridSelect(i, card);
+        toggleGridSelect(nft, card);
       } else {
         addCharacterToWallpaper(nft);
         document.getElementById('wallpaper')?.scrollIntoView({ behavior:'smooth' });
@@ -406,10 +409,10 @@ function renderWalletGrid(nfts) {
   });
 }
 
-function toggleGridSelect(index, card) {
-  const idx = selectedForGrid.findIndex(n => n === walletNFTs[index]);
+function toggleGridSelect(nft, card) {
+  const idx = selectedForGrid.findIndex(n => n === nft);
   if (idx >= 0) { selectedForGrid.splice(idx, 1); card.classList.remove('selected'); }
-  else           { selectedForGrid.push(walletNFTs[index]); card.classList.add('selected'); }
+  else           { selectedForGrid.push(nft); card.classList.add('selected'); }
   updateGridSelCount();
 }
 
@@ -440,17 +443,20 @@ function getGridDims() {
   return { rows:s, cols:s };
 }
 
-function getNFTsForGrid() {
+function getNFTsForGrid(useCache = false) {
   const mode = document.querySelector('input[name="selectionMode"]:checked')?.value || 'manual';
   const { rows, cols } = getGridDims();
   const needed = rows * cols;
 
   if (mode === 'random') {
-    const pool = walletNFTs.filter(n => n.image);
+    if (useCache && lastRandomGrid) return lastRandomGrid;
+    const pool = (currentDisplayedNFTs.length ? currentDisplayedNFTs : walletNFTs).filter(n => n.image);
     if (!pool.length) { toast('Load a wallet first to use random mode', 'error'); return null; }
-    return { nfts: [...pool].sort(() => Math.random()-.5).slice(0, needed), rows, cols };
+    lastRandomGrid = { nfts: [...pool].sort(() => Math.random()-.5).slice(0, needed), rows, cols };
+    return lastRandomGrid;
   }
 
+  lastRandomGrid = null;
   if (!selectedForGrid.length) { toast('Select NFTs from your wallet for the grid', 'error'); return null; }
   return { nfts: selectedForGrid.slice(0, needed), rows, cols };
 }
@@ -478,7 +484,7 @@ async function buildGridCanvas(nfts, rows, cols) {
 }
 
 async function previewGrid() {
-  const data = getNFTsForGrid();
+  const data = getNFTsForGrid(false);
   if (!data) return;
   toast('Building preview…');
   try {
@@ -497,7 +503,7 @@ async function previewGrid() {
 }
 
 async function downloadGridPNG() {
-  const data = getNFTsForGrid();
+  const data = getNFTsForGrid(true);
   if (!data) return;
   toast('Generating PNG…');
   try {
@@ -532,6 +538,7 @@ async function downloadAllZip() {
 
 function resetGrid() {
   selectedForGrid=[];
+  lastRandomGrid=null;
   document.querySelectorAll('.stake-nft-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('gridPreviewContainer')?.classList.add('hidden');
   updateGridSelCount();
@@ -1022,6 +1029,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filtered = val
       ? (userCollections.get(val.toLowerCase())?.nfts || [])
       : walletNFTs;
+    currentDisplayedNFTs = filtered;
+    selectedForGrid = [];
+    lastRandomGrid = null;
+    updateGridSelCount();
     renderWalletGrid(filtered);
     document.getElementById('nftCount').textContent = filtered.length + ' NFTs';
   });
