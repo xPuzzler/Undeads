@@ -1056,16 +1056,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* Wallpaper maker */
   initWallpaper();
 
-  /* Collection explorer */
-  document.getElementById('exLoad')?.addEventListener('click', exLoad);
-  document.getElementById('exSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')exLoad();});
-  document.getElementById('pgPrev')?.addEventListener('click',()=>{if(EX.page>0){EX.page--;renderExPage();}});
-  document.getElementById('pgNext')?.addEventListener('click',()=>{
-    const total=Math.ceil(EX.current.length/EX.pageSize);
-    if(EX.page<total-1){EX.page++;renderExPage();}
-  });
-  exLoad();
-
   /* Smooth anchor scroll */
   document.querySelectorAll('a[href^="#"]').forEach(a=>{
     a.addEventListener('click',e=>{
