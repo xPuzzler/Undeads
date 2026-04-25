@@ -48,8 +48,8 @@ if (!NETWORK.rendererAddress) {
   window.FEATURED_FALLBACK = {
     label:           'Base Sepolia (featured only)',
     rpcUrl:          'https://sepolia.base.org',
-    rendererAddress: '0x0cF7D86de79Fc48cC99af08Ae31280e88fA9285f',
-    NFT_ADDRESS:     '0xd3EE3842d3878346a65b44D18C76046c70d46987',
+    rendererAddress: '0xB80Dd20362A05Bf0F1a73B8510f981C6b62bF900',
+    NFT_ADDRESS:     '0xfAD131F93E859E14FB2d584A5255d7AbefDDdc09',
   };
 }
 // ═══════════════════════════════════════════════════════════════════
