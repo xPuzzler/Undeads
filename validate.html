@@ -509,7 +509,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 48px 40px 100px; }
 <div class="validate-panel active" id="panel-search">
 
   <div class="search-wrap">
-    <input id="searchInput" type="number" min="1" max="4635" placeholder="Enter Token ID (1 – 4635)" />
+    <input id="searchInput" type="number" min="1" max="6666" placeholder="Enter Token ID (1 – 6666)" />
     <button class="search-fetch-btn" onclick="searchToken()">Fetch</button>
   </div>
 
@@ -532,7 +532,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 48px 40px 100px; }
 <div class="validate-panel" id="panel-collection">
 
   <div class="coll-nav">
-    <input id="collSearchInput" type="number" min="1" max="4635"
+    <input id="collSearchInput" type="number" min="1" max="6666"
            placeholder="Jump to token ID…"
            onkeydown="if(event.key==='Enter')jumpToPage()"/>
     <button class="btn-secondary" onclick="jumpToPage()">
@@ -650,7 +650,7 @@ function currentRenderer() {
 const _useFallback = window.NETWORK && !window.NETWORK.rendererAddress && window.FEATURED_FALLBACK;
 const BASE_RPC = _useFallback ? window.FEATURED_FALLBACK.rpcUrl      : (window.NETWORK && window.NETWORK.rpcUrl);
 const NFT_ADDR = _useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS : (window.NETWORK && window.NETWORK.NFT_ADDRESS);
-const MAX_ID   = 4635;
+const MAX_ID   = 6666;
 
 let tokenCache = {};
 let _rpcId = 1;
