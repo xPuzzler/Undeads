@@ -1,5 +1,5 @@
 /* ======================================================
-   BASED UNDEADS — Shared Styles
+   BASED UNDEADS - Shared Styles
    Premium, refined, onchain-native aesthetic
    ====================================================== */
 
@@ -27,10 +27,10 @@
 
 /* ═══ Global gothic atmosphere ═══ */
 body::before {
-  /* vignette — dark corners, candlelight center */
+  /* vignette - dark corners, candlelight center */
   content: '';
   position: fixed; inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+  background: radial-gradient(ellipse at center, transparent 80%, rgba(0,0,0,0.50) 100%);
   pointer-events: none; z-index: 2;
 }
 body::after {
@@ -957,7 +957,7 @@ footer {
 /* ─── Hidden utility ─── */
 .hidden { display: none !important; }
 /* ═══════════════════════════════════════════════════════════════
-   GOTHIC EXTRAS — testnet banner, demo card, project viewer,
+   GOTHIC EXTRAS - testnet banner, demo card, project viewer,
    grid variety for the different sections
    ═══════════════════════════════════════════════════════════════ */
 
@@ -1041,7 +1041,7 @@ body:has(.testnet-banner) nav { top: 30px; }
 .btn-sm.secondary { background: transparent; color: var(--bone); }
 .btn-sm.secondary:hover { background: rgba(200,164,80,0.08); color: var(--accent-2); border-color: var(--accent); }
 
-/* ─── Gothic card frame — "stained glass" feel ─── */
+/* ─── Gothic card frame - "stained glass" feel ─── */
 .glass-card, .stat-card, .sales-stat, .floor-item, .sale-card,
 .stake-nft-card, .teaser-step, .how-card, .tool-card, .dollar-game-cell {
   background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
@@ -1157,7 +1157,7 @@ body:has(.testnet-banner) nav { top: 30px; }
 
 /* ─── Gothic grid variations (each section looks different) ─── */
 
-/* STAKING TEASER — hexagonal tarot-card spread */
+/* STAKING TEASER - hexagonal tarot-card spread */
 .staking-teaser-visual {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
@@ -1178,7 +1178,7 @@ body:has(.testnet-banner) nav { top: 30px; }
   z-index: 2;
 }
 
-/* ABOUT (Story) — offset masonry with dark frames */
+/* ABOUT (Story) - offset masonry with dark frames */
 .about-image-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
@@ -1207,7 +1207,7 @@ body:has(.testnet-banner) nav { top: 30px; }
 }
 .about-image:hover img { filter: grayscale(0) sepia(0) contrast(1); }
 
-/* FEATURED scroller — slight sepia, hover lights up */
+/* FEATURED scroller - slight sepia, hover lights up */
 .nft-card img {
   filter: sepia(.15) brightness(.92) contrast(1.05);
   transition: filter .4s, transform .4s;
@@ -1219,7 +1219,7 @@ body:has(.testnet-banner) nav { top: 30px; }
   box-shadow: 0 20px 50px rgba(200,164,80,0.3);
 }
 
-/* FLOOR grid — blood-drip accent on hover */
+/* FLOOR grid - blood-drip accent on hover */
 .floor-item { position: relative; }
 .floor-item::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0;
@@ -1405,11 +1405,11 @@ body:has(.testnet-banner) nav { top: 30px; }
   .undead-modal-img { max-width: 80%; margin: 0 auto; }
 }
 /* ═══════════════════════════════════════════════════════════════
-   Iframe performance — content-visibility + GPU layer promotion.
+   Iframe performance - content-visibility + GPU layer promotion.
    Gives embedded iframes (Squiggler, Arweave puzzle) room to breathe.
    ═══════════════════════════════════════════════════════════════ */
 .viewer-frame-wrap iframe {
-  /* Skip rendering until near viewport — huge load-time win */
+  /* Skip rendering until near viewport - huge load-time win */
   content-visibility: auto;
   /* Reserve space so layout doesn't jump when iframe paints */
   contain-intrinsic-size: 600px 600px;
