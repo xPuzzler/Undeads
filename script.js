@@ -358,15 +358,26 @@ function abiDecodeString(hex) {
 }
 
 // Like rpcCall but lets us pass a different RPC URL (used for Sepolia fallback).
+// Retries on HTTP 429 (rate limit) with exponential backoff up to 3 tries.
 async function rpcCallTo(url, method, params) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(json.error.message);
-  return json.result;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
+    });
+    if (res.status === 429) {
+      // Honor Retry-After if the server sent one, else exponential backoff
+      const ra = parseInt(res.headers.get('retry-after')) || 0;
+      const wait = ra > 0 ? ra * 1000 : 500 * Math.pow(2, attempt);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.result;
+  }
+  throw new Error('RPC rate-limited after 3 retries');
 }
 
 async function fetchTokenViaRPC(id) {
@@ -408,15 +419,21 @@ async function loadFeaturedUndeadsFromRenderer() {
   }
 
   // Fisher-Yates shuffle so display order is random every page load
-  const ids = Array.from({ length: totalSupply }, (_, i) => i + 1);
-  for (let i = ids.length - 1; i > 0; i--) {
+  const allIds = Array.from({ length: totalSupply }, (_, i) => i + 1);
+  for (let i = allIds.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [ids[i], ids[j]] = [ids[j], ids[i]];
+    [allIds[i], allIds[j]] = [allIds[j], allIds[i]];
   }
+  // Cap total tokens fetched. Scroller shows ~80 max, about/staking grids use 9 each.
+  // Loading 150 random tokens covers all displays with variety + room for retries.
+  // Bump this to 500+ once you're on Alchemy/private RPC; on public RPC it kills you.
+  const MAX_LOAD = 150;
+  const ids = allIds.slice(0, Math.min(MAX_LOAD, totalSupply));
 
   const collected = [];
   let firstPaintDone = false;
-  const BATCH = 20; // 20 parallel eth_calls per round
+  const BATCH = 8;          // ↓ from 20 — public RPC can't handle 20 concurrent
+  const BATCH_DELAY = 250;  // pause between batches so we don't get 429'd
 
   function paintScroller(nfts) {
     const half = Math.floor(nfts.length / 2);
@@ -449,6 +466,11 @@ async function loadFeaturedUndeadsFromRenderer() {
     if (!firstPaintDone && collected.length > 0) {
       firstPaintDone = true;
       paintScroller([...collected]);
+    }
+
+    // Throttle: wait between batches to stay under public RPC rate limits
+    if (b + BATCH < ids.length) {
+      await new Promise(r => setTimeout(r, BATCH_DELAY));
     }
   }
 
