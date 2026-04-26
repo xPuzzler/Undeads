@@ -381,9 +381,15 @@ async function rpcCallTo(url, method, params) {
 }
 
 async function fetchTokenViaRPC(id) {
-  const renderer = NET.rendererAddress;
+  // Mirror the same fallback logic loadFeaturedUndeadsFromRenderer uses,
+  // so the modal works on both mainnet and the Sepolia preview.
+  const useFallback = !NET.rendererAddress && window.FEATURED_FALLBACK;
+  const renderer = useFallback ? window.FEATURED_FALLBACK.rendererAddress : NET.rendererAddress;
+  const url      = useFallback ? window.FEATURED_FALLBACK.rpcUrl          : NET.rpcUrl;
+  if (!renderer || !url) throw new Error('No renderer/rpc configured');
+
   const data = '0xc87b56dd' + u256(id);
-  const raw  = await rpcCallTo(rpcUrl, 'eth_call', [{ to: renderer, data }, 'latest']);
+  const raw  = await rpcCallTo(url, 'eth_call', [{ to: renderer, data }, 'latest']);
   const uri  = abiDecodeString(raw);
   const b64  = uri.replace(/^data:application\/json;base64,/, '');
   return JSON.parse(atob(b64));
@@ -454,7 +460,12 @@ async function loadFeaturedUndeadsFromRenderer() {
         const uri  = abiDecodeString(raw);
         const b64  = uri.replace(/^data:application\/json;base64,/, '');
         const json = JSON.parse(atob(b64));
-        return { identifier: id, name: json.name, image_url: json.image };
+        return {
+          identifier: id,
+          name: json.name,
+          image_url: json.image,
+          attributes: json.attributes || []   // ← keep traits so the modal doesn't refetch
+        };
       })
     );
 
@@ -556,12 +567,20 @@ function openUndeadModal (nft) {
   // If we don't have traits yet, pull them from the renderer (mainnet or fallback).
   const needTraits = !attrs || attrs.length === 0;
 
-  // Always link to MAINNET OpenSea; if contract is zero, fall back to collection page.
-  const contract = (NET.NFT_ADDRESS && NET.NFT_ADDRESS !== '0x0000000000000000000000000000000000000000')
-    ? NET.NFT_ADDRESS : null;
-  const openseaUrl = contract
-    ? `https://opensea.io/item/base/${contract}/${tokenId}`
-    : 'https://opensea.io/collection/basedundeads/overview';
+// Mainnet contract live? Use opensea.io. Still on testnet preview? Use testnets.opensea.io.
+  const useFallback   = !NET.rendererAddress && window.FEATURED_FALLBACK;
+  const mainContract  = NET.NFT_ADDRESS;
+  const isMainSet     = mainContract && mainContract !== '0x0000000000000000000000000000000000000000';
+  const fbContract    = useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS : null;
+
+  let openseaUrl;
+  if (isMainSet) {
+    openseaUrl = `https://opensea.io/item/base/${mainContract}/${tokenId}`;
+  } else if (fbContract) {
+    openseaUrl = `https://testnets.opensea.io/assets/base-sepolia/${fbContract}/${tokenId}`;
+  } else {
+    openseaUrl = 'https://opensea.io/collection/basedundeads/overview';
+  }
 
   const traitsHtml = (list) => (list && list.length)
     ? `<div class="undead-modal-traits">
