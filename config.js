@@ -21,7 +21,7 @@ const NETWORKS = {
     nativeSymbol:       'ETH',
 
     // ⚠ PASTE THESE THE MOMENT YOU DEPLOY ON MAINNET
-    NFT_ADDRESS:        '0x0000000000000000000000000000000000000000',
+    NFT_ADDRESS:        '0x4aec4eddfab595c04557f78178f0962e46a02989',
     STAKING_ADDRESS:    '0x0000000000000000000000000000000000000000',
     rendererAddress:    '',   // mainnet renderer address here
 
