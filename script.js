@@ -427,12 +427,12 @@ async function loadFeaturedUndeadsFromRenderer() {
   // Cap total tokens fetched. Scroller shows ~80 max, about/staking grids use 9 each.
   // Loading 150 random tokens covers all displays with variety + room for retries.
   // Bump this to 500+ once you're on Alchemy/private RPC; on public RPC it kills you.
-  const MAX_LOAD = 150;
+  const MAX_LOAD = 500;
   const ids = allIds.slice(0, Math.min(MAX_LOAD, totalSupply));
 
   const collected = [];
   let firstPaintDone = false;
-  const BATCH = 8;          // ↓ from 20 — public RPC can't handle 20 concurrent
+  const BATCH = 50;          // ↓ from 20 — public RPC can't handle 20 concurrent
   const BATCH_DELAY = 250;  // pause between batches so we don't get 429'd
 
   function paintScroller(nfts) {
