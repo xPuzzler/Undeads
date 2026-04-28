@@ -128,6 +128,182 @@
       .stake-hero, .stats-bar, .tabs-nav, .tab-panel, .rewards-panel, .how-it-works { padding-left: 16px; padding-right: 16px; }
       .nft-stake-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
+    /* ────── STAKING NOT-YET-LIVE STYLES ────── */
+    .pre-launch-banner {
+      max-width: 1400px;
+      margin: 0 auto 28px;
+      padding: 0 40px;
+    }
+    .pre-launch-banner-inner {
+      background: linear-gradient(135deg, rgba(200,164,80,0.08), rgba(139,26,26,0.05));
+      border: 1px solid rgba(200,164,80,0.3);
+      border-radius: 20px;
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .pre-launch-banner .left { display: flex; align-items: center; gap: 14px; }
+    .pre-launch-banner .pulse-dot {
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 14px var(--accent);
+      animation: pulse 1.8s infinite;
+      flex-shrink: 0;
+    }
+    .pre-launch-banner .lbl {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .pre-launch-banner .msg {
+      font-family: 'Instrument Serif', serif;
+      font-size: 17px;
+      color: var(--fg);
+    }
+    .pre-launch-banner a {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px;
+      background: rgba(200,164,80,0.1);
+      border: 1px solid rgba(200,164,80,0.4);
+      border-radius: 100px;
+      color: var(--accent);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-decoration: none;
+      transition: all .25s;
+    }
+    .pre-launch-banner a:hover {
+      background: rgba(200,164,80,0.18);
+      transform: translateY(-1px);
+    }
+    /* When staking is locked, dim the action buttons but keep the cards interactive */
+    .staking-locked .btn-primary,
+    .staking-locked .btn-secondary,
+    .staking-locked #claimBtn {
+      opacity: 0.5;
+    }
+
+    /* ────── PRE-LAUNCH MODAL ────── */
+    .prelaunch-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(5,2,2,0.85);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+      padding: 20px;
+    }
+    .prelaunch-modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .prelaunch-modal {
+      max-width: 480px;
+      width: 100%;
+      background: linear-gradient(180deg, rgba(20,8,8,0.98), rgba(10,5,5,0.98));
+      border: 1px solid rgba(200,164,80,0.35);
+      border-radius: 24px;
+      padding: 44px 36px 36px;
+      text-align: center;
+      position: relative;
+      transform: translateY(20px) scale(0.96);
+      transition: transform .35s cubic-bezier(.2,.7,.3,1);
+      box-shadow: 0 30px 80px rgba(139,26,26,0.4), 0 0 0 1px rgba(200,164,80,0.12);
+    }
+    .prelaunch-modal-overlay.open .prelaunch-modal {
+      transform: translateY(0) scale(1);
+    }
+    .prelaunch-modal-close {
+      position: absolute; top: 14px; right: 14px;
+      width: 36px; height: 36px;
+      background: transparent;
+      border: 1px solid var(--glass-border);
+      border-radius: 50%;
+      color: var(--fg);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all .25s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .prelaunch-modal-close:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: rotate(90deg);
+    }
+    .prelaunch-modal-icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 18px;
+      filter: drop-shadow(0 0 16px rgba(200,164,80,0.4));
+    }
+    .prelaunch-modal h3 {
+      font-family: 'Creepster', cursive;
+      font-size: 38px;
+      letter-spacing: .04em;
+      color: var(--fg);
+      margin-bottom: 14px;
+      text-shadow: 0 0 24px rgba(200,164,80,0.3);
+    }
+    .prelaunch-modal .eyebrow {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9.5px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .prelaunch-modal .eyebrow::before,
+    .prelaunch-modal .eyebrow::after {
+      content: '';
+      width: 24px; height: 1px;
+      background: rgba(200,164,80,0.4);
+    }
+    .prelaunch-modal p {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12.5px;
+      color: var(--muted-2);
+      line-height: 1.85;
+      margin-bottom: 26px;
+    }
+    .prelaunch-modal .twitter-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: var(--bg);
+      border: none;
+      border-radius: 100px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all .25s;
+    }
+    .prelaunch-modal .twitter-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 38px rgba(200,164,80,0.4);
+    }
+    .prelaunch-modal .small-link {
+      display: block;
+      margin-top: 16px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10.5px;
+      color: var(--muted);
+      letter-spacing: .12em;
+      text-decoration: none;
+      transition: color .25s;
+    }
+    .prelaunch-modal .small-link:hover { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -164,6 +340,22 @@
       50% flows straight to stakers, split by your share of the pool.
     </p>
   </section>
+
+  <!-- PRE-LAUNCH BANNER (shown only when stakingEnabled === false) -->
+  <div class="pre-launch-banner" id="preLaunchBanner" style="display:none;">
+    <div class="pre-launch-banner-inner">
+      <div class="left">
+        <span class="pulse-dot"></span>
+        <div>
+          <div class="lbl">Coming Soon</div>
+          <div class="msg">Staking is not yet live. Browsing only — stake actions disabled.</div>
+        </div>
+      </div>
+      <a href="https://x.com/_sxms" target="_blank" rel="noopener">
+        <i class="fab fa-x-twitter"></i> Contact @_sxms
+      </a>
+    </div>
+  </div>
 
   <!-- STATS BAR -->
   <div class="stats-bar">
@@ -313,6 +505,26 @@
       <span class="footer-copy">© 2026 Based Undeads</span>
     </div>
   </footer>
+
+  <!-- PRE-LAUNCH MODAL (shown when user tries to stake/claim before launch) -->
+  <div class="prelaunch-modal-overlay" id="prelaunchModal">
+    <div class="prelaunch-modal">
+      <button class="prelaunch-modal-close" id="prelaunchModalClose" aria-label="Close">×</button>
+      <div class="prelaunch-modal-icon">⚱️</div>
+      <p class="eyebrow">Coming Soon</p>
+      <h3>NOT YET LIVE</h3>
+      <p>
+        The horde isn't quite ready to feast on royalties yet. Staking will be enabled
+        soon — your Undeads are visible here so you can confirm everything's in order.
+        <br><br>
+        For launch updates and questions, reach out on Twitter.
+      </p>
+      <a href="https://x.com/_sxms" target="_blank" rel="noopener" class="twitter-cta">
+        <i class="fab fa-x-twitter"></i> Message @_sxms
+      </a>
+      <a href="staking-guide.html" class="small-link">Read the staking guide →</a>
+    </div>
+  </div>
 
   <script>
   window.ALCHEMY_KEY = '';

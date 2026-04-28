@@ -41,6 +41,22 @@ const selectedStaked = new Set();
 let ethPriceUsd = 0;
 let pollTimer = null;
 
+// ─── PRE-LAUNCH FLAG ──────────────────────────────────────────
+// Read from config.js. When false: wallet/NFTs visible but
+// stake/unstake/claim blocked with the "not yet live" modal.
+const STAKING_ENABLED = !!(NETWORK && NETWORK.stakingEnabled);
+
+function showPreLaunchModal() {
+  const m = document.getElementById('prelaunchModal');
+  if (!m) return;
+  m.classList.add('open');
+}
+function hidePreLaunchModal() {
+  const m = document.getElementById('prelaunchModal');
+  if (!m) return;
+  m.classList.remove('open');
+}
+
 // ─── HELPERS ──────────────────────────────────────────────────
 function notify(msg, type = 'info') {
   const old = document.querySelector('.notification');
@@ -643,6 +659,7 @@ function updateActionBars () {
 
 // ─── ACTIONS: STAKE / UNSTAKE / CLAIM ─────────────────────────
 async function doStake (ids) {
+  if (!STAKING_ENABLED) { showPreLaunchModal(); return; }
   if (!ids.length) return;
   try {
     const approved = await nftContract.isApprovedForAll(userAddress, NETWORK.STAKING_ADDRESS);
@@ -664,6 +681,7 @@ async function doStake (ids) {
 }
 
 async function doUnstake (ids) {
+  if (!STAKING_ENABLED) { showPreLaunchModal(); return; }
   if (!ids.length) return;
   try {
     notify(`Unstaking ${ids.length}…`, 'info');
@@ -679,6 +697,7 @@ async function doUnstake (ids) {
 }
 
 async function doClaim () {
+  if (!STAKING_ENABLED) { showPreLaunchModal(); return; }
   try {
     notify('Claiming rewards…', 'info');
     const tx = await stakingContract.claim();
@@ -723,6 +742,23 @@ async function sendDemoRoyalty () {
 // ─── BOOT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   mountNetworkBadge();
+
+  // ─── Pre-launch UI: banner + dim buttons + modal close handlers ───
+  if (!STAKING_ENABLED) {
+    const banner = document.getElementById('preLaunchBanner');
+    if (banner) banner.style.display = 'block';
+    document.body.classList.add('staking-locked');
+    console.info('[staking] Pre-launch mode — staking actions disabled');
+  }
+
+  // Modal close handlers (work regardless of pre-launch state)
+  document.getElementById('prelaunchModalClose')?.addEventListener('click', hidePreLaunchModal);
+  document.getElementById('prelaunchModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'prelaunchModal') hidePreLaunchModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hidePreLaunchModal();
+  });
 
   document.getElementById('connectBtn')       ?.addEventListener('click', connectWallet);
   document.getElementById('connectBannerBtn') ?.addEventListener('click', connectWallet);

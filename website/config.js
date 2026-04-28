@@ -23,6 +23,7 @@ const NETWORKS = {
     // ⚠ PASTE THESE THE MOMENT YOU DEPLOY ON MAINNET
     NFT_ADDRESS:        '0x4Ec576C1Cc8e462cEca264FE52B10Cc75F7EC7Ea',
     STAKING_ADDRESS:    '0xCd3Ce3d26926Cc942E0A58cE290fB3709dA42dB1',
+    
     rendererAddress:    '0x71565FD19431f917F38DA462433bA1D7A81Ec700',   // mainnet renderer address here
 
     openseaChain:       'base',
@@ -34,6 +35,14 @@ const NETWORKS = {
 
     showDemoRoyalty:    false,
     demoRoyaltyEthAmount: '0',
+
+    // ──────────────────────────────────────────────────────────
+    // STAKING LAUNCH SWITCH
+    // Set to `true` when ready to allow stake/unstake/claim.
+    // While false: wallet shows Undeads, but action buttons
+    // are disabled and trigger the "not yet live" popup.
+    // ──────────────────────────────────────────────────────────
+    stakingEnabled: false,
   },
 };
 
