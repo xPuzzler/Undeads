@@ -58,12 +58,50 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 3500);
 }
 
-function loadImg(src) {
-  return new Promise((res, rej) => {
+// Loads an image and guarantees the resulting bitmap is CORS-clean
+// for canvas export. Strategy:
+//   1) Try direct load with crossOrigin='anonymous' (fastest, no extra fetch)
+//   2) If that fails or canvas test reveals taint, fetch as blob → blob URL
+//   3) If even blob fetch is blocked by CORS, route through public CORS proxy
+async function loadImg(src) {
+  if (!src) throw new Error('No src');
+
+  // Attempt 1: direct load with CORS attribute
+  try {
+    return await loadImgDirect(src);
+  } catch (e) {
+    // Fall through to blob approach
+  }
+
+  // Attempt 2: fetch as blob, then load from blob URL
+  try {
+    const r = await fetch(src, { mode: 'cors' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const img = await loadImgDirect(blobUrl);
+    // Don't revoke immediately — caller may still need it cached
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    return img;
+  } catch (e) {
+    // Fall through to proxy
+  }
+
+  // Attempt 3: route through a public CORS proxy (last resort)
+  try {
+    const proxied = 'https://corsproxy.io/?' + encodeURIComponent(src);
+    return await loadImgDirect(proxied);
+  } catch (e) {
+    throw new Error('Image load failed (CORS): ' + src);
+  }
+}
+
+function loadImgDirect(src) {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload  = () => res(img);
-    img.onerror = rej;
+    img.onload  = () => resolve(img);
+    img.onerror = () => reject(new Error('Image error: ' + src));
     img.src = src;
   });
 }
@@ -160,11 +198,7 @@ async function onFetchNFTs() {
   setNFTGridLoading();
 
   try {
-    if (chain === 'onchain') {
-      walletNFTs = await fetchOnchain(addr);
-    } else {
-      walletNFTs = await fetchOpenSeaWallet(addr, chain);
-    }
+    walletNFTs = await fetchOpenSeaWallet(addr, chain);
     processNFTsByCollection(walletNFTs);
     displayCollectionSelector();
     currentDisplayedNFTs = walletNFTs;
@@ -190,60 +224,6 @@ async function resolveENS(name) {
     if (r.ok) { const d = await r.json(); if (d.address) return d.address; }
   } catch(_) {}
   return null;
-}
-
-/* Onchain via ethers */
-async function fetchOnchain(addr) {
-  if (typeof ethers === 'undefined') { toast('ethers.js not available', 'error'); return []; }
-
-  const provider = new ethers.JsonRpcProvider(CONFIG.rpc);
-  let tokenIds   = [];
-
-  try {
-    const ABI = ['function tokensOfOwner(address) view returns (uint256[])'];
-    const c   = new ethers.Contract(CONFIG.nft, ABI, provider);
-    const ids = await c.tokensOfOwner(addr);
-    tokenIds  = ids.map(n => Number(n));
-  } catch (_) {
-    try {
-      const ABI = ['function tokensOfOwner(address) view returns (uint256[])'];
-      const c   = new ethers.Contract(CONFIG.storage, ABI, provider);
-      const ids = await c.tokensOfOwner(addr);
-      tokenIds  = ids.map(n => Number(n));
-    } catch (_2) {
-      toast('Could not enumerate tokens onchain', 'error');
-      return [];
-    }
-  }
-
-  if (!tokenIds.length) return [];
-
-  const ABI_URI = ['function tokenURI(uint256) view returns (string)'];
-  const tc      = new ethers.Contract(CONFIG.nft, ABI_URI, provider);
-  const nfts    = [];
-
-  for (const id of tokenIds) {
-    try {
-      const uri  = await tc.tokenURI(id);
-      const meta = await resolveTokenURI(uri);
-      nfts.push({ id: String(id), name: meta.name || 'Undead #'+id, image: proxyUrl(meta.image||''), source:'onchain' });
-    } catch (_) {
-      nfts.push({ id: String(id), name: 'Undead #'+id, image: '', source:'onchain' });
-    }
-  }
-  return nfts;
-}
-
-async function resolveTokenURI(uri) {
-  if (!uri) return {};
-  if (uri.startsWith('data:application/json')) {
-    const json = uri.includes('base64,')
-      ? atob(uri.split('base64,')[1])
-      : decodeURIComponent(uri.split(',').slice(1).join(','));
-    try { return JSON.parse(json); } catch(_) { return {}; }
-  }
-  try { const r = await fetch(proxyUrl(uri)); return r.ok ? r.json() : {}; }
-  catch(_) { return {}; }
 }
 
 /* OpenSea wallet fetch - mirrors script.js loadWalletCollections */
@@ -472,13 +452,32 @@ async function buildGridCanvas(nfts, rows, cols) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle=sepC; ctx.fillRect(0,0,W,H);
 
+  // Pre-load all images in parallel — much faster than serial
+  const imagePromises = nfts.slice(0, rows*cols).map(nft =>
+    nft?.image ? loadImg(nft.image).catch(() => null) : Promise.resolve(null)
+  );
+  const images = await Promise.all(imagePromises);
+
+  let failures = 0;
   for (let i=0; i<rows*cols; i++) {
     const r=Math.floor(i/cols), c=i%cols;
     const x=sep+c*(cellSize+sep), y=sep+r*(cellSize+sep);
-    if (nfts[i]?.image) {
-      try { const img=await loadImg(nfts[i].image); ctx.drawImage(img,x,y,cellSize,cellSize); }
-      catch(_) { ctx.fillStyle=emtyC; ctx.fillRect(x,y,cellSize,cellSize); }
-    } else { ctx.fillStyle=emtyC; ctx.fillRect(x,y,cellSize,cellSize); }
+    const img = images[i];
+    if (img) {
+      try {
+        ctx.drawImage(img, x, y, cellSize, cellSize);
+      } catch (_) {
+        ctx.fillStyle=emtyC; ctx.fillRect(x,y,cellSize,cellSize);
+        failures++;
+      }
+    } else {
+      ctx.fillStyle=emtyC; ctx.fillRect(x,y,cellSize,cellSize);
+      if (nfts[i]?.image) failures++;
+    }
+  }
+
+  if (failures > 0) {
+    console.warn(`[tools] ${failures} image(s) skipped (CORS or load failed)`);
   }
   return canvas;
 }
@@ -523,12 +522,35 @@ async function downloadAllZip() {
     }).catch(()=>{ toast('Could not load JSZip','error'); return; });
   }
   toast('Zipping images…');
-  const zip=new JSZip(); let ok=0;
+  const zip=new JSZip(); let ok=0, fail=0;
+
   for (const nft of walletNFTs) {
     if (!nft.image) continue;
-    try { const r=await fetch(nft.image); if(r.ok){zip.file(`undead-${nft.id}.png`,await r.blob());ok++;} }
-    catch(_) {}
+    let blob = null;
+
+    // Tier 1: direct fetch
+    try {
+      const r = await fetch(nft.image, { mode: 'cors' });
+      if (r.ok) blob = await r.blob();
+    } catch(_) {}
+
+    // Tier 2: CORS proxy fallback
+    if (!blob) {
+      try {
+        const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(nft.image));
+        if (r.ok) blob = await r.blob();
+      } catch(_) {}
+    }
+
+    if (blob) {
+      zip.file(`undead-${nft.id}.png`, blob);
+      ok++;
+    } else {
+      fail++;
+    }
   }
+
+  if (fail > 0) console.warn(`[tools] ${fail} images skipped during ZIP build`);
   if (!ok) { toast('Could not fetch any images','error'); return; }
   const blob=await zip.generateAsync({type:'blob'});
   const a=document.createElement('a');
