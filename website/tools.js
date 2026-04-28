@@ -349,6 +349,7 @@ async function fetchOpenSeaWallet(addr, chainKey) {
           id: n.identifier,
           name: n.name || '#' + n.identifier,
           image: imgUrl,
+          rawImage: imgUrl,                  // OpenSea's image is already raw
           animation: animUrl,
           mediaType: mt,
           collection: n.collection,
@@ -388,6 +389,7 @@ async function fetchOpenSeaWallet(addr, chainKey) {
             id: n.token_id,
             name: n.name || meta.name || '#'+n.token_id,
             image: imgUrl || animUrl,
+            rawImage: imgUrl,   
             animation: animUrl,
             mediaType: mt,
             collection: n.name,
@@ -417,15 +419,14 @@ async function fetchOpenSeaWallet(addr, chainKey) {
         (d.ownedNfts || []).forEach(n => {
           const uid = (n.contract?.address||'').toLowerCase() + '_' + normalizeTokenId(n.tokenId);
           if (seenNFTs.has(uid)) return;
-          // Prefer original URL over Alchemy's CDN-converted thumbnail for animated content
+          // Capture every URL Alchemy gives us so we can fall back later
           const rawImage = n.raw?.metadata?.image || n.raw?.metadata?.image_url || '';
           const rawAnim  = n.raw?.metadata?.animation_url || n.raw?.metadata?.animation || '';
           const cdnImage = n.image?.cachedUrl || n.image?.thumbnailUrl || '';
-          // For static use cdn (faster), but capture raw for media type detection
+          // Display URL (prefer CDN — faster), but keep raw for the GIF/video builder
           const imgUrl = proxyUrl(cdnImage || rawImage);
           const animUrl = proxyUrl(rawAnim);
           if (!imgUrl && !animUrl) return;
-          // Use Alchemy's contentType hint if available (most reliable!)
           const contentType = n.image?.contentType || n.raw?.metadata?.mime_type || '';
           const mt = detectMediaType(animUrl || rawImage || imgUrl, contentType);
           seenNFTs.add(uid);
@@ -433,6 +434,7 @@ async function fetchOpenSeaWallet(addr, chainKey) {
             id: n.tokenId,
             name: n.name||n.title||'#'+n.tokenId,
             image: imgUrl || animUrl,
+            rawImage: proxyUrl(rawImage),     // ← keep raw for animation decoding
             animation: animUrl,
             mediaType: mt,
             collection: n.contract?.openSeaMetadata?.collectionName || n.contract?.name,
@@ -725,14 +727,30 @@ function showPreviewVideo(src) {
    ============================================================ */
 
 // Lazy-load gif.js from CDN (only when needed)
+// Lazy-load gif.js + create a same-origin blob URL for its worker.
+// (Browsers block cross-origin Worker scripts, so we have to fetch the
+// worker text and turn it into a blob: URL.)
+let GIF_WORKER_URL = null;
+
 async function loadGifJS() {
-  if (window.GIF) return window.GIF;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  // Load main library if not present
+  if (!window.GIF) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  // Build same-origin worker URL once
+  if (!GIF_WORKER_URL) {
+    const r = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+    if (!r.ok) throw new Error('Could not fetch gif.worker.js');
+    const code = await r.text();
+    GIF_WORKER_URL = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+  }
+
   return window.GIF;
 }
 
@@ -776,22 +794,31 @@ async function buildAnimatedGifGrid(nfts, rows, cols) {
   const H = rows * cellSize + (rows + 1) * sep;
 
   toast('Decoding animated frames…');
-  // Decode each NFT in parallel
+  // Decode each NFT in parallel — try multiple URL candidates per NFT
   const decodedSlots = await Promise.all(
     nfts.slice(0, rows * cols).map(async (nft) => {
-      const url = nft?.animation || nft?.image;
-      if (!url) return null;
-      try {
-        return await decodeAnimatedToFrames(url);
-      } catch (e) {
-        console.warn('Decode failed for', nft.id, e.message);
-        // Fallback: try as static image
+      // Try every URL we have, in order of likelihood of being animated
+      const candidates = [nft?.animation, nft?.rawImage, nft?.image].filter(Boolean);
+      for (const url of candidates) {
         try {
-          const img = await loadImg(url, nft);
-          return { frames: [{ bitmap: img, durationMs: 100 }], totalDurationMs: 100 };
-        } catch (_) {
-          return null;
+          const result = await decodeAnimatedToFrames(url);
+          if (result.frames.length > 1) {
+            console.info(`[tools] #${nft.id}: decoded ${result.frames.length} frames from ${url.slice(0, 60)}`);
+            return result;
+          }
+          // Single frame? Try next candidate before giving up
+          console.info(`[tools] #${nft.id}: ${url.slice(0, 60)} only had 1 frame, trying next URL`);
+        } catch (e) {
+          console.warn(`[tools] #${nft.id} decode failed for ${url.slice(0, 60)}: ${e.message}`);
         }
+      }
+      // Fallback: load as static image
+      try {
+        const url = nft?.image || nft?.animation;
+        const img = await loadImg(url, nft);
+        return { frames: [{ bitmap: img, durationMs: 100 }], totalDurationMs: 100 };
+      } catch (_) {
+        return null;
       }
     })
   );
@@ -808,7 +835,7 @@ async function buildAnimatedGifGrid(nfts, rows, cols) {
     quality: 10,
     width: W,
     height: H,
-    workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js',
+    workerScript: GIF_WORKER_URL,   // same-origin blob URL
   });
 
   const canvas = document.createElement('canvas');
@@ -861,9 +888,17 @@ async function buildVideoGrid(nfts, rows, cols) {
   toast('Loading source videos…');
   const slots = await Promise.all(
     nfts.slice(0, rows * cols).map(async (nft) => {
-      const url = nft?.animation || nft?.image;
-      if (!url) return null;
-      return loadVideoElement(url).catch(() => null);
+      // Try animation first, then rawImage, then image as fallback
+      const candidates = [nft?.animation, nft?.rawImage, nft?.image].filter(Boolean);
+      for (const url of candidates) {
+        const v = await loadVideoElement(url).catch(() => null);
+        if (v && v.duration > 0) {
+          console.info(`[tools] #${nft.id}: video loaded (${v.duration.toFixed(1)}s) from ${url.slice(0, 60)}`);
+          return v;
+        }
+      }
+      console.warn(`[tools] #${nft.id}: no playable video URL`);
+      return null;
     })
   );
 
@@ -915,6 +950,107 @@ async function buildVideoGrid(nfts, rows, cols) {
         const x = sep + c * (cellSize + sep);
         const y = sep + r * (cellSize + sep);
         try { ctx.drawImage(v, x, y, cellSize, cellSize); } catch(_) {}
+      });
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }));
+    recorder.onerror = reject;
+  });
+}
+
+// Build an animated grid by playing source media (any animated format)
+// in HTML <img> elements and recording the canvas to WebM.
+// Works for animated GIFs/WebPs/videos — anything the browser can natively animate.
+async function buildAnimatedGridViaCanvas(nfts, rows, cols, mediaType) {
+  const cellSize = 256;
+  const sep = Math.max(0, parseInt(document.getElementById('separatorWidth').value) || 0);
+  const sepColor = document.getElementById('separatorColor').value || '#0a0505';
+  const W = cols * cellSize + (cols + 1) * sep;
+  const H = rows * cellSize + (rows + 1) * sep;
+
+  toast('Loading source media…');
+
+  // Load each NFT as either <img> (gif/webp) or <video> (mp4/webm)
+  const slots = await Promise.all(
+    nfts.slice(0, rows * cols).map(async (nft) => {
+      const candidates = [nft?.animation, nft?.rawImage, nft?.image].filter(Boolean);
+      for (const url of candidates) {
+        try {
+          if (mediaType === 'video') {
+            const v = await loadVideoElement(url);
+            if (v && v.duration > 0) return { kind: 'video', el: v, duration: v.duration };
+          } else {
+            // For gif/webp: load as <img>, animation plays automatically
+            const img = await loadImg(url, nft);
+            return { kind: 'image', el: img, duration: 3 }; // assume 3s default
+          }
+        } catch (e) {
+          console.warn(`[tools] #${nft.id} candidate failed: ${e.message}`);
+        }
+      }
+      return null;
+    })
+  );
+
+  const validSlots = slots.filter(Boolean);
+  if (!validSlots.length) throw new Error('No media could be loaded');
+  const maxDuration = Math.max(...validSlots.map(s => s.duration), 1);
+
+  // Setup canvas + recorder
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const stream = canvas.captureStream(30);
+
+  const mimeCandidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  const mime = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m));
+  if (!mime) throw new Error('Browser does not support WebM recording');
+
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  toast(`Recording ${maxDuration.toFixed(1)}s…`);
+
+  // Start playback for videos
+  slots.forEach(s => {
+    if (s?.kind === 'video') {
+      s.el.currentTime = 0;
+      s.el.loop = true;
+      s.el.muted = true;
+      s.el.play().catch(() => {});
+    }
+  });
+
+  recorder.start();
+
+  return new Promise((resolve, reject) => {
+    const startTime = performance.now();
+    let stopped = false;
+
+    function frame() {
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (elapsed >= maxDuration) {
+        if (!stopped) {
+          stopped = true;
+          recorder.stop();
+          slots.forEach(s => { if (s?.kind === 'video') s.el.pause(); });
+        }
+        return;
+      }
+
+      ctx.fillStyle = sepColor;
+      ctx.fillRect(0, 0, W, H);
+
+      slots.forEach((s, i) => {
+        if (!s) return;
+        const r = Math.floor(i / cols), c = i % cols;
+        const x = sep + c * (cellSize + sep);
+        const y = sep + r * (cellSize + sep);
+        try { ctx.drawImage(s.el, x, y, cellSize, cellSize); } catch(_) {}
       });
 
       requestAnimationFrame(frame);
