@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Staking Guide - Based Undeads</title>
+<meta name="description" content="The complete guide to BasedUndeads staking. How royalties flow, how rewards split, and the lock rules that trip everyone up.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+<link rel="stylesheet" href="styles.css"/>
+<script src="config.js"></script>
+<script src="skulls.js" defer></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   STAKING GUIDE - page-specific styles only.
+   Nav, footer, cursor, buttons all come from styles.css.
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --gold:   var(--accent);
+  --gold2:  var(--accent-2);
+  --bone:   var(--fg);
+}
+
+/* ── HERO HEADER ─────────────────────────────────────────────── */
+.guide-header {
+  padding: 130px 24px 72px;
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid var(--glass-border);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.guide-header::after {
+  content: '';
+  display: block;
+  width: 140px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 1.5rem auto 0;
+}
+.guide-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--blood);
+  margin-bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.guide-eyebrow .pulse {
+  width: 6px; height: 6px;
+  background: var(--blood);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--blood);
+  animation: pulse 2s infinite;
+}
+.guide-title {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(44px, 9vw, 96px);
+  line-height: .95;
+  letter-spacing: .04em;
+  color: var(--fg);
+  text-shadow: 0 0 40px rgba(200,164,80,0.25), 0 0 80px rgba(139,26,26,0.15);
+  margin-bottom: 18px;
+  background: linear-gradient(180deg, #ece4d0 0%, #c8a450 60%, #7a5a2a 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.guide-subtitle {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(18px, 2.8vw, 26px);
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.guide-lede {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--muted-2);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* ── MAIN CONTENT WRAPPER ────────────────────────────────────── */
+main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
+@media (max-width: 768px) { main { padding: 40px 18px 60px; } }
+
+/* ── SECTION ─────────────────────────────────────────────────── */
+.guide-section { margin-bottom: 96px; }
+.guide-section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.guide-section-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.guide-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--glass-border), transparent);
+}
+.guide-section-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(32px, 5vw, 52px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+}
+.guide-section-title em { font-style: italic; color: var(--accent); }
+.guide-section-sub {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  max-width: 700px;
+  margin-bottom: 36px;
+}
+
+/* ── PROSE BLOCK ─────────────────────────────────────────────── */
+.prose {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--muted-2);
+  line-height: 1.95;
+}
+.prose p { margin-bottom: 18px; }
+.prose strong { color: var(--accent-2); font-weight: 500; }
+.prose em { color: var(--fg); font-style: italic; }
+.prose .callout {
+  background: linear-gradient(135deg, rgba(139,26,26,0.08), rgba(200,164,80,0.04));
+  border: 1px dashed rgba(200,164,80,0.35);
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin: 24px 0;
+  position: relative;
+}
+.prose .callout::before {
+  content: '⚠';
+  position: absolute; top: -14px; left: 22px;
+  font-size: 22px; background: var(--bg);
+  padding: 0 8px; color: var(--accent);
+}
+
+/* ── TLDR GRID ───────────────────────────────────────────────── */
+.tldr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+.tldr-card {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 26px 24px;
+  position: relative;
+  transition: all .35s;
+}
+.tldr-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 1px rgba(200,164,80,0.18), 0 18px 44px rgba(139,26,26,0.18);
+}
+.tldr-num {
+  font-family: 'Creepster', cursive;
+  font-size: 32px;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.tldr-card h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 19px;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+.tldr-card p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.7;
+}
+
+/* ── MATH BLOCK ──────────────────────────────────────────────── */
+.math-flow {
+  background: #0a0505;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--bone);
+  line-height: 2.1;
+  margin: 28px 0;
+  white-space: pre;
+  overflow-x: auto;
+  letter-spacing: .02em;
+}
+.math-flow .gold { color: var(--accent-2); }
+.math-flow .blood { color: #ff8888; }
+.math-flow .muted { color: var(--muted); }
+
+/* ── PHASE TIMELINE ──────────────────────────────────────────── */
+.phase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+}
+.phase-list::before {
+  content: '';
+  position: absolute;
+  left: 38px; top: 30px; bottom: 30px;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--accent), rgba(200,164,80,0.15) 70%, transparent);
+  z-index: 0;
+}
+@media (max-width: 600px) {
+  .phase-list::before { left: 28px; }
+}
+.phase {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 600px) {
+  .phase { grid-template-columns: 56px 1fr; gap: 14px; }
+}
+.phase-marker {
+  width: 76px; height: 76px;
+  background: linear-gradient(135deg, rgba(20,8,8,0.95), rgba(10,5,5,0.95));
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Creepster', cursive;
+  font-size: 32px;
+  color: var(--accent-2);
+  text-shadow: 0 0 14px rgba(200,164,80,0.5);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px rgba(200,164,80,0.18);
+}
+@media (max-width: 600px) {
+  .phase-marker { width: 56px; height: 56px; font-size: 22px; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px rgba(200,164,80,0.18); }
+}
+.phase-body {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 26px 28px;
+  transition: all .35s;
+}
+.phase-body:hover { border-color: rgba(200,164,80,0.4); }
+@media (max-width: 600px) {
+  .phase-body { padding: 18px 20px; }
+}
+.phase-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(20px, 3vw, 26px);
+  color: var(--fg);
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+.phase-actor {
+  display: inline-block;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--blood);
+  background: rgba(139,26,26,0.12);
+  border: 1px solid rgba(139,26,26,0.3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+.phase-text {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  margin-bottom: 14px;
+}
+.phase-text strong { color: var(--accent-2); font-weight: 500; }
+.phase-text em { color: var(--fg); font-style: italic; }
+
+.state-block {
+  background: rgba(10,5,5,0.6);
+  border: 1px solid rgba(200,164,80,0.15);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.95;
+  margin-top: 10px;
+}
+.state-block strong { color: var(--accent-2); font-weight: 500; }
+.state-block .arrow { color: var(--accent); margin: 0 4px; }
+.state-block .label {
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Pool share visual */
+.share-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 100px;
+  overflow: hidden;
+  margin-top: 14px;
+  border: 1px solid rgba(200,164,80,0.15);
+}
+.share-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,0.85);
+  min-width: 0;
+}
+.share-alice { background: linear-gradient(90deg, #c8a450, #e8c878); color: #1a0a0a; }
+.share-bob   { background: linear-gradient(90deg, #8b1a1a, #b33030); }
+.share-carol { background: linear-gradient(90deg, #5a3a1a, #7a5a2a); color: #ece4d0; }
+
+/* ── RULES TABLE ─────────────────────────────────────────────── */
+.rules-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.rules-table thead th {
+  background: rgba(20,8,8,0.85);
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 9.5px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid rgba(200,164,80,0.3);
+}
+.rules-table tbody td {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(200,164,80,0.08);
+  color: var(--muted-2);
+  line-height: 1.65;
+  vertical-align: top;
+}
+.rules-table tbody tr:hover td {
+  background: rgba(200,164,80,0.04);
+}
+.rules-table .action {
+  color: var(--fg);
+  font-weight: 500;
+  font-size: 12px;
+}
+.rules-table .ok { color: var(--accent-2); }
+.rules-table .alert { color: #ff8888; font-weight: 500; }
+@media (max-width: 760px) {
+  .rules-table { font-size: 10.5px; }
+  .rules-table thead th, .rules-table tbody td { padding: 12px 14px; }
+}
+
+/* ── FAQ (details/summary) ───────────────────────────────────── */
+.faq {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.faq details {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color .3s;
+}
+.faq details[open] { border-color: rgba(200,164,80,0.4); }
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 18px 22px;
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  color: var(--fg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  transition: color .3s;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:hover { color: var(--accent-2); }
+.faq summary::after {
+  content: '+';
+  font-family: 'Geist Mono', monospace;
+  font-size: 20px;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform .3s;
+  line-height: 1;
+}
+.faq details[open] summary::after {
+  content: '−';
+}
+.faq .answer {
+  padding: 0 22px 20px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.85;
+}
+.faq .answer strong { color: var(--accent-2); font-weight: 500; }
+.faq .answer code {
+  background: rgba(200,164,80,0.08);
+  border: 1px solid rgba(200,164,80,0.18);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--accent-2);
+}
+
+/* ── PRO TIP ─────────────────────────────────────────────────── */
+.pro-tip {
+  background: linear-gradient(135deg, rgba(200,164,80,0.08), rgba(139,26,26,0.04));
+  border: 1px solid rgba(200,164,80,0.3);
+  border-radius: 24px;
+  padding: 36px 40px;
+  position: relative;
+  margin-top: 28px;
+}
+.pro-tip::before {
+  content: '⚱';
+  position: absolute; top: -16px; left: 36px;
+  font-size: 28px; background: var(--bg);
+  padding: 0 8px; color: var(--accent);
+}
+.pro-tip h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 26px;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.pro-tip-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 22px;
+}
+@media (max-width: 720px) { .pro-tip-rows { grid-template-columns: 1fr; } }
+.pro-tip-row {
+  background: rgba(10,5,5,0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 18px 22px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.7;
+}
+.pro-tip-row .lbl {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.pro-tip-row.bad .lbl { color: #ff8888; }
+.pro-tip-row.good .lbl { color: var(--accent-2); }
+
+/* ── MENTAL MODEL ────────────────────────────────────────────── */
+.mental-model {
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 44px;
+  margin-top: 28px;
+}
+@media (max-width: 600px) { .mental-model { padding: 28px 24px; } }
+.mental-model h3 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(28px, 4vw, 40px);
+  color: var(--accent-2);
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+  text-shadow: 0 0 24px rgba(200,164,80,0.25);
+}
+.mental-model > p {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--fg);
+  margin-bottom: 28px;
+}
+.locker-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.locker-rule {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(10,5,5,0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.locker-rule i {
+  color: var(--accent);
+  font-size: 16px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.locker-rule p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.7;
+  margin: 0;
+}
+.locker-rule p strong { color: var(--accent-2); font-weight: 500; }
+
+/* ── BACK TO STAKE CTA ───────────────────────────────────────── */
+.back-cta {
+  text-align: center;
+  margin: 64px auto 0;
+  max-width: 560px;
+}
+.back-cta h3 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(32px, 5vw, 48px);
+  color: var(--fg);
+  letter-spacing: .04em;
+  margin-bottom: 14px;
+  text-shadow: 0 0 30px rgba(200,164,80,0.3);
+}
+.back-cta p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  margin-bottom: 28px;
+}
+.back-cta-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+</style>
+</head>
+<body>
+
+<div class="cursor"></div>
+<div class="cursor-dot"></div>
+<div class="noise"></div>
+<div class="scroll-progress"></div>
+<div class="skull-floaters" aria-hidden="true"></div>
+
+<!-- ============== NAV ============== -->
+<nav>
+  <a href="index.html" class="nav-logo">BASED UNDEADS</a>
+  <div class="nav-links">
+    <a href="index.html#featured" class="nav-link">Collection</a>
+    <a href="staking.html"        class="nav-link" style="color:var(--accent);opacity:1;">Stake</a>
+    <a href="game.html"           class="nav-link">$1 Game</a>
+    <a href="tools.html"          class="nav-link">Tools</a>
+    <a href="validate.html"       class="nav-link">Validator</a>
+    <a href="index.html#about"    class="nav-link">About</a>
+  </div>
+  <div class="nav-social">
+    <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+    <a href="https://x.com/BasedUndeads"     target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+    <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
+      <svg width="22" height="22" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#sgc0)"><g clip-path="url(#sgc1)">
+        <path d="M181.566 0C80.91 -0.828 -0.828 80.91 0 181.566C0.846 279.306 80.694 359.172 178.416 359.982C279.072 360.846 360.846 279.072 359.982 178.416C359.172 80.712 279.306 0.846 181.566 0ZM127.746 89.586C139.266 104.22 146.16 122.742 146.16 142.83C146.16 160.236 140.994 176.436 132.12 189.954H69.714L127.728 89.568L127.746 89.586ZM318.006 199.242V212.202C318.006 213.048 317.556 213.768 316.782 214.092C312.552 215.892 298.602 222.372 292.788 230.436C277.812 251.28 266.382 284.04 240.822 284.04H134.172C96.408 284.04 64.818 254.07 64.836 214.146C64.836 213.156 65.682 212.346 66.672 212.346H117.216C118.962 212.346 120.33 213.75 120.33 215.46V225.216C120.33 230.4 124.524 234.612 129.726 234.612H168.066V212.292H141.876C156.942 193.212 165.906 169.128 165.906 142.902C165.906 113.652 154.692 86.976 136.332 67.032C147.438 68.328 158.058 70.542 168.066 73.476V67.266C168.066 60.822 173.286 55.602 179.73 55.602C186.174 55.602 191.394 60.822 191.394 67.266V82.242C227.178 98.946 250.614 126.666 250.614 158.022C250.614 176.418 242.568 193.536 228.69 207.936C226.026 210.69 222.336 212.256 218.466 212.256H191.412V234.54H225.378C232.704 234.54 245.844 220.644 252.072 212.274C252.342 211.86 253.062 211.644C253.782 211.428 315.432 197.28 315.432 197.28C316.728 196.92 318.006 197.91 318.006 199.224V199.242Z" fill="white"/>
+        </g></g>
+        <defs>
+          <clipPath id="sgc0"><rect width="360" height="360" fill="white"/></clipPath>
+          <clipPath id="sgc1"><rect width="360" height="360" fill="white"/></clipPath>
+        </defs>
+      </svg>
+    </a>
+  </div>
+  <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
+</nav>
+
+<!-- ============== HEADER ============== -->
+<header class="guide-header">
+  <p class="guide-eyebrow">
+    <span class="pulse"></span>
+    The Complete Guide
+  </p>
+  <h1 class="guide-title">STAKING GUIDE</h1>
+  <p class="guide-subtitle">Royalty-powered rewards, plain English</p>
+  <p class="guide-lede">
+    Stake your Undeads. Earn your share of every secondary sale royalty.
+    This guide walks you through how it actually works, with real numbers
+    and a realistic scenario. Read it once and you'll never have a surprise.
+  </p>
+</header>
+
+<main>
+
+<!-- ════════ 30-SECOND VERSION ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Quick Read</p>
+  <h2 class="guide-section-title">The <em>30-Second</em> Version</h2>
+  <p class="guide-section-sub">
+    The whole protocol in five steps. The rest of this guide expands on each.
+  </p>
+
+  <div class="tldr-grid">
+    <div class="tldr-card">
+      <div class="tldr-num">01</div>
+      <h4>Stake</h4>
+      <p>Lock any of your BasedUndeads NFTs into the staking contract.</p>
+    </div>
+    <div class="tldr-card">
+      <div class="tldr-num">02</div>
+      <h4>Royalties Arrive</h4>
+      <p>Every secondary sale on OpenSea pays a 7.5% royalty. <strong style="color:var(--accent-2);">50%</strong> flows to the staker pool. <strong style="color:var(--accent-2);">50%</strong> to the creator wallet.</p>
+    </div>
+    <div class="tldr-card">
+      <div class="tldr-num">03</div>
+      <h4>Your Share</h4>
+      <p>Hold 100 of 1,000 staked? You earn 10% of every royalty deposit. Pure proportional split.</p>
+    </div>
+    <div class="tldr-card">
+      <div class="tldr-num">04</div>
+      <h4>Claim Anytime</h4>
+      <p>Rewards accrue in real time onchain. Claim whenever, no minimum, no delay.</p>
+    </div>
+    <div class="tldr-card">
+      <div class="tldr-num">05</div>
+      <h4>Unstake After 24h</h4>
+      <p>Each stake action locks your <strong style="color:var(--accent-2);">entire</strong> staked balance for 24 hours.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ WHY STAKE ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Why Stake at All?</p>
+  <h2 class="guide-section-title">From <em>Idle</em> to <em>Yield-Bearing</em></h2>
+
+  <div class="prose">
+    <p>
+      You hold a BasedUndead. It just sits there. Someone buys another one for 1 ETH on OpenSea,
+      the creator earns 0.075 ETH royalty. <strong>Without staking, that royalty goes 100% to the creator wallet.</strong>
+    </p>
+    <p>
+      With staking active, half of every royalty flows directly to people who locked their NFTs.
+      The contract handles everything onchain. No admin discretion, no off-chain spreadsheets,
+      no trust required.
+    </p>
+    <div class="callout">
+      <strong>The catch:</strong> while you're staked, your NFT is locked in the contract.
+      You can't sell it, transfer it, or use it anywhere else. You're trading liquidity for yield.
+    </div>
+  </div>
+</section>
+
+<!-- ════════ THE MATH ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">The Mechanics</p>
+  <h2 class="guide-section-title">The <em>Math</em>, Plain English</h2>
+  <p class="guide-section-sub">When a royalty arrives at the staking contract, here's what happens:</p>
+
+  <div class="math-flow"><span class="muted">Sale:</span> <span class="gold">1.0 ETH</span> on OpenSea
+  <span class="muted">└─</span> Royalty: <span class="gold">0.075 ETH</span> <span class="muted">(7.5%)</span>
+       <span class="muted">├─</span> <span class="gold">0.0375 ETH</span> <span class="blood">→ creator wallet</span> <span class="muted">(instant)</span>
+       <span class="muted">└─</span> <span class="gold">0.0375 ETH</span> <span class="blood">→ reward pool</span>
+            <span class="muted">└─</span> Distributed by stake share
+                 <span class="muted">(your NFTs ÷ total staked NFTs)</span></div>
+
+  <div class="prose">
+    <p>
+      The reward pool isn't actually held in a literal "pool", it uses a math trick called the
+      <strong>Synthetix pull pattern</strong>. Instead of paying every staker individually
+      (which would cost a fortune in gas every sale), the contract just bumps a global counter.
+      Each user's earnings are calculated <em>the moment they ask</em>, based on how that
+      counter has moved since they last interacted.
+    </p>
+    <p>
+      Result: gas costs stay constant whether there are 5 stakers or 5,000.
+    </p>
+  </div>
+</section>
+
+<!-- ════════ REALISTIC SCENARIO ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Walkthrough</p>
+  <h2 class="guide-section-title">A <em>Realistic</em> Scenario</h2>
+  <p class="guide-section-sub">
+    Setup: 700 unique holders, 6,666 NFTs in circulation, mainnet just launched.
+    Three holders enter and exit at different times. Watch the math play out.
+  </p>
+
+  <div class="phase-list">
+
+    <!-- Phase 1 -->
+    <div class="phase">
+      <div class="phase-marker">01</div>
+      <div class="phase-body">
+        <span class="phase-actor">ALICE STAKES ALONE</span>
+        <h3 class="phase-title">Alice stakes 250 NFTs</h3>
+        <p class="phase-text">
+          Alice connects her wallet and stakes all 250 of her BasedUndeads.
+          She is the <strong>only staker</strong>. Her 24h lock starts now,
+          she can't unstake until tomorrow at this time.
+        </p>
+        <div class="state-block">
+          <span class="label">Pool State</span>
+          totalStaked = <strong>250</strong><span class="arrow">·</span>Alice's share = <strong>100%</strong>
+        </div>
+        <p class="phase-text" style="margin-top:14px;margin-bottom:6px;">
+          <em>A sale happens.</em> Bob buys an Undead for 1 ETH on OpenSea.
+        </p>
+        <div class="state-block">
+          <span class="label">Royalty Distribution</span>
+          0.075 ETH royalty arrives<br>
+          0.0375 ETH<span class="arrow">→</span>creator wallet<br>
+          0.0375 ETH<span class="arrow">→</span>pool (Alice gets 100%)<br>
+          <strong style="color:var(--accent-2);">Alice's earned = 0.0375 ETH</strong>
+        </div>
+        <p class="phase-text" style="margin-top:12px;">
+          She can <code style="background:rgba(200,164,80,0.08);padding:1px 6px;border-radius:4px;color:var(--accent-2);font-size:11px;">claim()</code>
+          that 0.0375 ETH any time. Claiming doesn't reset her lock.
+        </p>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase">
+      <div class="phase-marker">02</div>
+      <div class="phase-body">
+        <span class="phase-actor">BOB JOINS</span>
+        <h3 class="phase-title">A second Bob stakes 100 NFTs</h3>
+        <p class="phase-text">
+          Now there are two stakers. Alice's share drops because the pool grew.
+        </p>
+        <div class="state-block">
+          <span class="label">Pool State</span>
+          totalStaked = <strong>350</strong><br>
+          Alice = 250 / 350 = <strong>71.4%</strong><br>
+          Bob = 100 / 350 = <strong>28.6%</strong>
+        </div>
+        <div class="share-bar" style="margin-top:14px;">
+          <div class="share-seg share-alice" style="flex: 71.4;">71.4% Alice</div>
+          <div class="share-seg share-bob"   style="flex: 28.6;">Bob</div>
+        </div>
+        <p class="phase-text" style="margin-top:14px;margin-bottom:6px;">
+          <em>A sale happens.</em> Another 0.075 ETH royalty arrives.
+        </p>
+        <div class="state-block">
+          <span class="label">Royalty Distribution</span>
+          0.0375 ETH<span class="arrow">→</span>creator<br>
+          0.0375 ETH<span class="arrow">→</span>pool, split:<br>
+          <strong>Alice gets 0.02678 ETH</strong> <span style="color:var(--muted);">(71.4%)</span><br>
+          <strong>Bob gets 0.01071 ETH</strong> <span style="color:var(--muted);">(28.6%)</span>
+        </div>
+        <p class="phase-text" style="margin-top:12px;">
+          <strong>Note:</strong> Alice's 0.0375 ETH from Phase 1 is still in her balance, untouched.
+          The new royalty just adds on top.
+        </p>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase">
+      <div class="phase-marker">03</div>
+      <div class="phase-body">
+        <span class="phase-actor">CAROL JOINS</span>
+        <h3 class="phase-title">Carol stakes 250 NFTs</h3>
+        <p class="phase-text">
+          Three stakers now. Pool grows to 600. All three split future royalties by share.
+        </p>
+        <div class="state-block">
+          <span class="label">Pool State</span>
+          totalStaked = <strong>600</strong><br>
+          Alice = 250 / 600 = <strong>41.67%</strong><br>
+          Bob = 100 / 600 = <strong>16.67%</strong><br>
+          Carol = 250 / 600 = <strong>41.67%</strong>
+        </div>
+        <div class="share-bar" style="margin-top:14px;">
+          <div class="share-seg share-alice" style="flex: 41.67;">41.67%</div>
+          <div class="share-seg share-bob"   style="flex: 16.67;">17%</div>
+          <div class="share-seg share-carol" style="flex: 41.67;">41.67%</div>
+        </div>
+        <div class="callout" style="margin-top:18px;">
+          <strong>Critical:</strong> Carol does <em>not</em> retroactively earn from Phase 1 or Phase 2 royalties.
+          She only earns from royalties that arrive <em>after</em> she stakes. Past royalties stay
+          with the people who were staked at the time.
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase">
+      <div class="phase-marker">04</div>
+      <div class="phase-body">
+        <span class="phase-actor">ALICE EXITS</span>
+        <h3 class="phase-title">Alice unstakes all 250 (24h+ later)</h3>
+        <p class="phase-text">
+          The lock has expired. When <code style="background:rgba(200,164,80,0.08);padding:1px 6px;border-radius:4px;color:var(--accent-2);font-size:11px;">unstake()</code>
+          runs, the contract automatically:
+        </p>
+        <div class="state-block">
+          <span class="label">What Happens, In Order</span>
+          1. Calculates Alice's total earned based on her <strong>old</strong> weight (250)<br>
+          2. Locks that amount into <strong>pendingRewards[Alice]</strong>, preserved<br>
+          3. Returns her 250 NFTs<br>
+          4. <strong>stakedBalance[Alice] = 0</strong>, totalStaked drops to 350
+        </div>
+        <p class="phase-text" style="margin-top:14px;">
+          Alice now has her 250 NFTs back in her wallet (transferable, sellable),
+          plus an accumulated <code style="background:rgba(200,164,80,0.08);padding:1px 6px;border-radius:4px;color:var(--accent-2);font-size:11px;">pendingRewards</code>
+          balance she can claim anytime.
+        </p>
+        <p class="phase-text">
+          <strong>She does NOT lose her unclaimed rewards by unstaking.</strong>
+          They sit there until she calls claim().
+        </p>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase">
+      <div class="phase-marker">05</div>
+      <div class="phase-body">
+        <span class="phase-actor">ALICE RETURNS</span>
+        <h3 class="phase-title">Alice re-stakes without claiming</h3>
+        <p class="phase-text">
+          Alice changes her mind and re-stakes (without claiming first).
+        </p>
+        <div class="state-block">
+          <span class="label">What Resets, What Doesn't</span>
+          stakeTimestamp resets<span class="arrow">→</span><strong style="color:#ff8888;">24h lock restarts</strong><br>
+          pendingRewards from Phase 4<span class="arrow">→</span><strong style="color:var(--accent-2);">untouched, still claimable</strong><br>
+          Future earned<span class="arrow">→</span>adds on top of pending balance
+        </div>
+        <p class="phase-text" style="margin-top:14px;">
+          <strong>Translation:</strong> re-staking doesn't reset rewards. Only the lock timer resets.
+        </p>
+      </div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="phase">
+      <div class="phase-marker">06</div>
+      <div class="phase-body">
+        <span class="phase-actor">ALICE ADDS MORE</span>
+        <h3 class="phase-title">24h+ later, Alice adds 10 more NFTs</h3>
+        <p class="phase-text">
+          Alice has 250 staked. She just bought 10 more and wants to stake them.
+        </p>
+        <div class="state-block">
+          <span class="label">After Adding 10 More</span>
+          stakedBalance[Alice] = <strong>260</strong><br>
+          totalStaked += 10<br>
+          stakeTimestamp resets<span class="arrow">→</span><strong style="color:#ff8888;">24h lock applies to ALL 260</strong>
+        </div>
+        <div class="callout" style="margin-top:18px;">
+          <strong>This is the most counterintuitive rule.</strong> Alice cannot unstake any of her 260 NFTs
+          (including the original 250 that were already past their lock) until 24 hours pass from this
+          new stake action.
+          <br><br>
+          The <code style="background:rgba(200,164,80,0.08);padding:1px 6px;border-radius:4px;color:var(--accent-2);font-size:11px;">stakeTimestamp</code>
+          field is per-wallet, not per-NFT. Adding more stake = resetting the entire timer.
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 7 -->
+    <div class="phase">
+      <div class="phase-marker">07</div>
+      <div class="phase-body">
+        <span class="phase-actor">THE HORDE GROWS</span>
+        <h3 class="phase-title">More holders join the pool</h3>
+        <p class="phase-text">
+          Dave, Eve, Frank, they all stake. The pool grows. Each new staker:
+        </p>
+        <div class="state-block">
+          <span class="label">For Every New Staker</span>
+          • Gets a share = their NFTs / new total<br>
+          • Only earns from royalties arriving <strong>after</strong> they stake<br>
+          • Locks themselves for 24 hours
+        </div>
+        <p class="phase-text" style="margin-top:14px;">
+          Existing stakers' earned balances are unaffected by new joiners, but their
+          <strong>share percentage drops</strong> as the pool grows. If you held 5%
+          when the pool was 1000 NFTs, you'd hold 2.5% when the pool reaches 2000 NFTs
+          (assuming you don't add more stake).
+        </p>
+        <p class="phase-text" style="margin-bottom:0;">
+          <strong style="color:var(--accent-2);">Nothing breaks. The math always sums to 100%.</strong>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════ KEY RULES TABLE ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Quick Reference</p>
+  <h2 class="guide-section-title">Key <em>Rules</em></h2>
+  <p class="guide-section-sub">
+    The full lifecycle of every action, in one table. Bookmark this section.
+  </p>
+
+  <div style="overflow-x:auto;">
+  <table class="rules-table">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Effect on Lock</th>
+        <th>Effect on Rewards</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="action">First stake</td>
+        <td><span class="alert">Starts 24h lock</span></td>
+        <td>Begin earning future royalties</td>
+      </tr>
+      <tr>
+        <td class="action">Add more stake</td>
+        <td><span class="alert">Resets lock to 24h from now</span></td>
+        <td>Past earnings preserved, new flow joins them</td>
+      </tr>
+      <tr>
+        <td class="action">Claim rewards</td>
+        <td><span class="ok">No effect on lock</span></td>
+        <td>Pays out and zeroes pendingRewards</td>
+      </tr>
+      <tr>
+        <td class="action">Partial unstake (after 24h)</td>
+        <td><span class="ok">No effect, remaining NFTs keep their unlocked status</span></td>
+        <td>Earnings up to this moment locked into pendingRewards</td>
+      </tr>
+      <tr>
+        <td class="action">Full unstake (after 24h)</td>
+        <td><span class="ok">Lock irrelevant once at zero balance</span></td>
+        <td>All earnings preserved, claimable anytime</td>
+      </tr>
+      <tr>
+        <td class="action">Re-stake after full unstake</td>
+        <td><span class="alert">Restarts 24h lock</span></td>
+        <td>Past pendingRewards preserved, future earnings stack on top</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ════════ FAQ ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Common Questions</p>
+  <h2 class="guide-section-title">Things People <em>Always</em> Ask</h2>
+  <p class="guide-section-sub">
+    Click any question to expand the answer. Covers every scenario you'll likely hit.
+  </p>
+
+  <div class="faq">
+
+    <details>
+      <summary>When do I start earning rewards after I stake?</summary>
+      <div class="answer">
+        <strong>Immediately.</strong> The reward math only looks at how many NFTs you have staked — not how long they've been there. The moment your stake transaction confirms, you're earning your share of any royalties that arrive afterward.<br><br>
+        The 24h lock is purely about <em>when you can unstake</em> — it has zero effect on earnings. You could stake at 3:00 PM, see a sale happen at 3:01 PM, and watch your earned balance tick up immediately. You can even <code>claim()</code> those rewards before the lock expires — claiming and unstaking are two separate things.
+      </div>
+    </details>
+
+    <details>
+      <summary>If I claim rewards, does my staking position change?</summary>
+      <div class="answer">
+        No. Claim only takes the ETH out, your NFTs stay staked, your lock stays where it is.
+      </div>
+    </details>
+
+    <details>
+      <summary>If I unstake, do I lose my unclaimed rewards?</summary>
+      <div class="answer">
+        <strong>No.</strong> The contract automatically preserves them. You can claim them anytime,
+        even if you have zero NFTs staked.
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I stake at any time, or only at launch?</summary>
+      <div class="answer">
+        Anytime. The pool is permanent and ongoing.
+      </div>
+    </details>
+
+    <details>
+      <summary>Why does the dashboard ask me to sign an "approval" the first time I stake?</summary>
+      <div class="answer">
+        NFTs use a permission system. Before the staking contract can move your NFTs out of your wallet, you have to grant it permission once via <code>setApprovalForAll</code>. After that <strong>single signature</strong>, every future stake works without re-approval.<br><br>
+        This is standard for every NFT marketplace and staking platform, same pattern OpenSea, Magic Eden, and others use. The approval is for the staking contract specifically, not a blanket permission for anyone else. You can revoke it any time by calling <code>setApprovalForAll(stakingContract, false)</code> if you want — though you'd just have to re-approve to stake again.
+      </div>
+    </details>
+
+    <details>
+      <summary>What if no one is staking when a royalty arrives?</summary>
+      <div class="answer">
+        The full royalty (100%) goes to the creator wallet. Stakers can't earn from a pool with
+        no stakers, so the contract sensibly routes everything to the creator.
+        <strong>No ETH is ever wasted or trapped.</strong>
+      </div>
+    </details>
+
+    <details>
+      <summary>Why does adding more NFTs reset my full lock?</summary>
+      <div class="answer">
+        The contract tracks one <code>stakeTimestamp</code> per wallet, not per NFT. This keeps
+        the contract simple and gas-efficient. The tradeoff: think carefully before adding to a
+        stake, you're committing the whole position for another 24 hours.
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I stake a subset and keep some in my wallet?</summary>
+      <div class="answer">
+        Yes. You only stake the token IDs you choose. The rest stay liquid.
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I sell a staked NFT?</summary>
+      <div class="answer">
+        No. The contract owns it while it's staked. You'd have to unstake first
+        (and pass the 24h lock), then sell.
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I claim my rewards and stake more NFTs in the same transaction?</summary>
+      <div class="answer">
+        Yes. There's a <code>stakeAndClaim()</code> function that pays out any pending rewards <em>and</em> stakes new NFTs in a single transaction. Saves gas vs. doing both separately.<br><br>
+        Heads up: the 24h lock will still reset, because adding more stake always counts as a fresh stake action. But at least you only pay gas once. The dashboard will offer this option automatically when you have both unclaimed rewards and NFTs selected to stake.
+      </div>
+    </details>
+
+    <details>
+      <summary>What's the gas cost?</summary>
+      <div class="answer">
+        Stake: ~80k gas per NFT (or ~50k each in a batch).<br>
+        Unstake: similar.<br>
+        Claim: ~50k gas regardless of accumulated amount.<br><br>
+        On Base, that's typically pennies in ETH.
+      </div>
+    </details>
+
+    <details>
+      <summary>Where do my rewards go when I claim?</summary>
+      <div class="answer">
+        Direct ETH transfer to your wallet. Same wallet you're staking from.
+      </div>
+    </details>
+
+    <details>
+      <summary>Can the team take my staked NFTs?</summary>
+      <div class="answer">
+        No. The staking contract is non-upgradeable and only <strong>YOU</strong> can call
+        <code>unstake()</code> for your tokens. The contract owner can update the royalty
+        receiver address (used to redirect royalties to a redeployed staking contract if
+        ever needed) but cannot touch your NFTs or your earned rewards.
+      </div>
+    </details>
+
+    <details>
+      <summary>What if I lose my wallet or private key?</summary>
+      <div class="answer">
+        Your staked NFTs and unclaimed rewards are tied to that wallet address <strong>forever</strong>. Only YOU (or anyone with your private key) can call <code>unstake()</code> or <code>claim()</code> for that wallet.<br><br>
+        The team has <strong>no admin override</strong> to recover NFTs from a lost wallet. This is a feature, not a bug it's why the staking contract is genuinely trustless. But it means you should treat your wallet security as protecting <em>both</em> your NFTs <em>and</em> your accumulated rewards.<br><br>
+        Use a hardware wallet (Ledger, Trezor) for any wallet holding significant NFTs or staking positions. Back up your seed phrase. Never share it with anyone — not even people claiming to be from the team.
+      </div>
+    </details>
+
+    <details>
+      <summary>What if the staking contract gets redeployed?</summary>
+      <div class="answer">
+        You'd be given a migration window. During that window, you must:<br>
+        1. Call <code>claim()</code> to take your rewards.<br>
+        2. Call <code>unstake()</code> (after 24h lock passes) to get your NFTs back.<br>
+        3. Stake fresh into the new contract.<br><br>
+        There is no automated migration, only YOU control your staked NFTs.
+        The team will announce migrations well in advance.
+      </div>
+    </details>
+
+  </div>
+</section>
+
+<!-- ════════ PRO TIP ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Pro Tip</p>
+  <h2 class="guide-section-title">A Word on <em>Lock Timing</em></h2>
+  <p class="guide-section-sub">
+    If you want to stake NFTs in waves and avoid restarting your lock unnecessarily,
+    plan ahead.
+  </p>
+
+  <div class="pro-tip">
+    <h3>Stake in batches, not in dribbles</h3>
+    <div class="pro-tip-rows">
+      <div class="pro-tip-row bad">
+        <span class="lbl">✗ Don't</span>
+        Stake 100 today, stake 50 tomorrow. The entire 150 will be locked for 24h
+        after tomorrow's stake, you've effectively delayed your unlock by a day.
+      </div>
+      <div class="pro-tip-row good">
+        <span class="lbl">✓ Do</span>
+        Stake all 150 at once. Single 24h lock. Clean exit.
+      </div>
+    </div>
+    <p style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted-2);line-height:1.85;margin-top:24px;">
+      If your stake plan is "buy more over the next month," consider waiting until you're
+      done buying before staking, or accept that each new stake adds another 24h to the
+      clock for the whole position. You can also treat future Undeads as a separate "round"
+      and keep them in your wallet until you have a clean batch ready.
+    </p>
+  </div>
+</section>
+
+<!-- ════════ MENTAL MODEL ════════ -->
+<section class="guide-section">
+  <p class="guide-section-label">Final Mental Model</p>
+  <h2 class="guide-section-title">A Yield-Bearing <em>Locker</em></h2>
+
+  <div class="mental-model">
+    <h3>The Locker Analogy</h3>
+    <p>Think of staking like a yield-bearing locker.</p>
+    <div class="locker-rules">
+      <div class="locker-rule">
+        <i class="fas fa-arrow-right-to-bracket"></i>
+        <p>You put NFTs <strong>in</strong>.</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-clock"></i>
+        <p>The lock door says: <strong>"24h after the most recent deposit."</strong></p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-coins"></i>
+        <p>While locked, the locker <strong>pays you ETH</strong> based on royalties from secondary sales.</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-window-restore"></i>
+        <p>You can <strong>withdraw the ETH</strong> anytime through a window in the door (claim).</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-unlock"></i>
+        <p>You can take the <strong>NFTs out</strong> only after the lock door opens.</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-lock"></i>
+        <p>Adding new NFTs <strong>bolts the door shut for another 24h</strong>.</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-door-open"></i>
+        <p>Taking some NFTs out <strong>doesn't reset</strong> the lock, once open, it stays open until you add more.</p>
+      </div>
+      <div class="locker-rule">
+        <i class="fas fa-skull"></i>
+        <p>That's it. <strong>Welcome to the horde.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="back-cta">
+    <h3>READY?</h3>
+    <p>Open the staking dashboard, connect your wallet, and lock your Undeads. Royalties begin flowing the moment you stake.</p>
+    <div class="back-cta-actions">
+      <a href="staking.html" class="btn-primary">
+        <i class="fas fa-bolt"></i> Open Staking Dashboard
+      </a>
+      <a href="index.html" class="btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back Home
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer>
+  <div class="footer-content">
+    <a href="index.html" class="footer-logo">BASED UNDEADS</a>
+    <div class="footer-links">
+      <a href="staking.html"  class="footer-link">Stake</a>
+      <a href="game.html"     class="footer-link">$1 Game</a>
+      <a href="tools.html"    class="footer-link">Tools</a>
+      <a href="validate.html" class="footer-link">Validator</a>
+      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
+      <a href="https://x.com/BasedUndeads"     target="_blank" class="footer-link">Twitter</a>
+      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
+    </div>
+    <span class="footer-copy">© 2026 Based Undeads. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+/* MOBILE NAV */
+(function () {
+  const btn   = document.getElementById('mobileMenuBtn');
+  const links = document.querySelector('nav .nav-links');
+  if (!btn || !links) return;
+  btn.addEventListener('click', () => {
+    links.classList.toggle('mobile-open');
+    btn.innerHTML = links.classList.contains('mobile-open')
+      ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+  });
+})();
+
+/* CURSOR */
+(function () {
+  const cursor = document.querySelector('.cursor');
+  const dot    = document.querySelector('.cursor-dot');
+  if (!cursor || !dot) return;
+  let mx = 0, my = 0, cx = 0, cy = 0;
+  (function loop () {
+    cx += (mx - cx) * 0.12; cy += (my - cy) * 0.12;
+    cursor.style.transform = `translate(${cx - 10}px, ${cy - 10}px)`;
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx - 2}px, ${my - 2}px)`;
+  }, { passive: true });
+  ['a', 'button', '.tldr-card', '.phase-body', 'summary', '.locker-rule'].forEach(sel => {
+    document.addEventListener('mouseover', e => {
+      if (e.target.closest(sel)) cursor.classList.add('hover');
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.closest(sel)) cursor.classList.remove('hover');
+    });
+  });
+})();
+
+/* SCROLL PROGRESS */
+window.addEventListener('scroll', () => {
+  const bar = document.querySelector('.scroll-progress');
+  if (!bar) return;
+  const h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  bar.style.width = ((window.pageYOffset / h) * 100) + '%';
+}, { passive: true });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BasedUndeads · Deployment Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+
+  <style>
+    /* ── Tracker-specific overrides ── */
+    body { cursor: default; }
+    .cursor, .cursor-dot { display: none; }
+
+    .tracker-hero {
+      padding: 130px 40px 60px;
+      text-align: center;
+      position: relative;
+    }
+    .tracker-hero-title {
+      font-family: 'Creepster', cursive;
+      font-size: clamp(40px, 7vw, 90px);
+      color: var(--fg);
+      letter-spacing: .06em;
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(200,164,80,0.4);
+      margin-bottom: 12px;
+    }
+    .tracker-hero-sub {
+      font-family: 'Instrument Serif', serif;
+      font-style: italic;
+      font-size: clamp(16px, 2vw, 22px);
+      color: var(--accent);
+      margin-bottom: 28px;
+    }
+    .network-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; letter-spacing: .15em;
+      text-transform: uppercase;
+      background: rgba(200,164,80,0.08);
+      border: 1px solid rgba(200,164,80,0.25);
+      color: var(--accent);
+      padding: 7px 16px; border-radius: 100px;
+      margin-bottom: 10px;
+    }
+    .network-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4caf50;
+      box-shadow: 0 0 8px #4caf50;
+      animation: pulse 2s infinite;
+    }
+    .network-badge .dot.loading { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .network-badge .dot.error   { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    /* ── Layout ── */
+    .tracker-body { max-width: 1300px; margin: 0 auto; padding: 0 40px 100px; }
+
+    /* ── Section ── */
+    .t-section { margin-bottom: 64px; }
+    .t-section-header { margin-bottom: 24px; }
+    .t-section-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--accent); opacity: .7;
+      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .t-section-label::before { content:''; display:block; width:20px; height:1px; background: var(--accent); opacity:.4; }
+    .t-section-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(22px, 3vw, 32px);
+      color: var(--fg); font-style: italic;
+    }
+
+    /* ── Steps / Checklist ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .step-card {
+      background: rgba(20,8,8,0.7);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      position: relative; overflow: hidden;
+      transition: border-color .3s, box-shadow .3s;
+    }
+    .step-card.done   { border-color: rgba(200,164,80,0.35); }
+    .step-card.done::before {
+      content:''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(200,164,80,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .step-card.pending { border-color: rgba(200,164,80,0.15); }
+    .step-card.active  { border-color: rgba(200,164,80,0.5); box-shadow: 0 0 20px rgba(200,164,80,0.12); }
+    .step-card.error   { border-color: rgba(200,60,60,0.4); }
+
+    .step-icon {
+      font-size: 22px; width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(200,164,80,0.08);
+      border: 1px solid rgba(200,164,80,0.15);
+      flex-shrink: 0;
+    }
+    .step-top { display: flex; align-items: center; gap: 12px; }
+    .step-num {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9px; letter-spacing: .15em;
+      color: var(--muted); text-transform: uppercase;
+    }
+    .step-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px; font-weight: 600;
+      color: var(--fg);
+    }
+    .step-detail {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px; color: var(--muted-2);
+      line-height: 1.6;
+    }
+    .step-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 10px; border-radius: 100px;
+      width: fit-content; margin-top: 4px;
+    }
+    .step-status.done    { background: rgba(200,164,80,0.12); color: var(--accent-2); border: 1px solid rgba(200,164,80,0.3); }
+    .step-status.pending { background: rgba(100,80,40,0.12); color: var(--muted); border: 1px solid rgba(100,80,40,0.2); }
+    .step-status.loading { background: rgba(200,164,80,0.06); color: var(--accent); border: 1px solid rgba(200,164,80,0.2); }
+    .step-status.error   { background: rgba(200,40,40,0.12); color: #ff7070; border: 1px solid rgba(200,40,40,0.3); }
+    .step-status i { font-size: 9px; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-box {
+      background: rgba(20,8,8,0.7);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      text-align: center;
+    }
+    .stat-box-val {
+      font-family: 'Creepster', cursive;
+      font-size: 36px; letter-spacing: .05em;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(200,164,80,0.3);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-box-val.good  { color: #5dde8a; text-shadow: 0 0 20px rgba(93,222,138,0.3); }
+    .stat-box-val.bad   { color: var(--danger); text-shadow: 0 0 20px rgba(200,50,50,0.3); }
+    .stat-box-val.muted { color: var(--muted); }
+    .stat-box-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted-2);
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin-bottom: 32px; }
+    .progress-label-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .progress-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; color: var(--muted-2); letter-spacing: .08em;
+    }
+    .progress-pct {
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px; color: var(--accent); font-weight: 500;
+    }
+    .progress-track {
+      height: 5px; background: rgba(200,164,80,0.08);
+      border-radius: 100px; overflow: hidden;
+      border: 1px solid rgba(200,164,80,0.1);
+    }
+    .progress-fill {
+      height: 100%; border-radius: 100px;
+      background: linear-gradient(90deg, var(--blood), var(--accent));
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 0 12px rgba(200,164,80,0.5);
+    }
+
+    /* ── Contract addresses table ── */
+    .addr-table {
+      background: rgba(20,8,8,0.7);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      width: 100%;
+    }
+    .addr-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 110px 90px;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .addr-row:last-child { border-bottom: none; }
+    .addr-row.header {
+      background: rgba(200,164,80,0.05);
+      font-size: 9px; letter-spacing: .15em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .addr-cell {
+      padding: 13px 16px;
+      border-right: 1px solid var(--border);
+    }
+    .addr-cell:last-child { border-right: none; }
+    .addr-name { color: var(--accent-2); }
+    .addr-hash { color: var(--bone); font-size: 11px; }
+    .addr-hash a { color: var(--bone); text-decoration: none; }
+    .addr-hash a:hover { color: var(--accent); }
+    .frozen-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .frozen-badge.yes { background: rgba(93,222,138,0.12); color: #5dde8a; border: 1px solid rgba(93,222,138,0.3); }
+    .frozen-badge.no  { background: rgba(200,164,80,0.1); color: var(--accent); border: 1px solid rgba(200,164,80,0.2); }
+    .frozen-badge.na  { background: rgba(100,80,60,0.1); color: var(--muted); border: 1px solid rgba(100,80,60,0.2); }
+    .verified-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+      background: rgba(93,222,138,0.12); color: #5dde8a; border: 1px solid rgba(93,222,138,0.3);
+    }
+
+    /* ── NFT Gallery ── */
+    .nft-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+    }
+    .nft-card {
+      background: rgba(20,8,8,0.7);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color .3s, transform .3s;
+      cursor: default;
+    }
+    .nft-card:hover {
+      border-color: rgba(200,164,80,0.4);
+      transform: translateY(-3px);
+    }
+    .nft-card-img {
+      width: 100%; aspect-ratio: 1/1;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(10,5,5,0.8);
+      position: relative; overflow: hidden;
+    }
+    .nft-card-img img, .nft-card-img iframe {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .nft-card-img .nft-loading {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9px; color: var(--muted);
+      animation: pulse 1.5s infinite;
+    }
+    .nft-card-footer {
+      padding: 10px 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nft-card-id {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; color: var(--accent-2); font-weight: 500;
+    }
+    .nft-card-link {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9px; color: var(--muted);
+      text-decoration: none; letter-spacing: .08em;
+    }
+    .nft-card-link:hover { color: var(--accent); }
+
+    /* ── Log terminal ── */
+    .log-terminal {
+      background: rgba(5,2,2,0.9);
+      border: 1px solid rgba(200,164,80,0.15);
+      border-radius: 12px;
+      padding: 20px 22px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      line-height: 1.8;
+      max-height: 320px;
+      overflow-y: auto;
+      color: var(--muted-2);
+    }
+    .log-terminal::-webkit-scrollbar { width: 3px; }
+    .log-entry { display: flex; gap: 10px; align-items: flex-start; }
+    .log-entry .ts { color: var(--muted); opacity: .5; flex-shrink: 0; }
+    .log-entry.ok  .msg { color: #5dde8a; }
+    .log-entry.err .msg { color: #ff7070; }
+    .log-entry.info .msg { color: var(--accent-2); }
+    .log-entry.dim  .msg { color: var(--muted); }
+
+    /* ── Refresh btn ── */
+    .refresh-btn {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 10px 22px;
+      background: transparent; color: var(--fg);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: all .3s;
+    }
+    .refresh-btn:hover { background: rgba(200,164,80,0.1); border-color: rgba(200,164,80,0.4); color: var(--accent); }
+    .refresh-btn.spinning i { animation: spin .7s linear infinite; }
+    @keyframes spin { from{ transform: rotate(0deg) } to{ transform: rotate(360deg) } }
+
+    /* ── Divider ── */
+    .gold-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(200,164,80,0.3), transparent);
+      margin: 56px 0;
+    }
+
+    /* ── Responsive ── */
+    @media(max-width: 768px) {
+      .tracker-body { padding: 0 20px 80px; }
+      .addr-row { grid-template-columns: 120px 1fr; }
+      .addr-row .addr-cell:nth-child(3),
+      .addr-row .addr-cell:nth-child(4) { display: none; }
+      .nft-gallery { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="skull-floaters" aria-hidden="true"></div>
+
+  <!-- NAV -->
+  <nav>
+    <a href="index.html" class="nav-logo">BASED UNDEADS</a>
+    <div class="nav-links">
+      <a href="index.html#featured" class="nav-link">Collection</a>
+      <a href="staking.html"        class="nav-link">Stake</a>
+      <a href="game.html"           class="nav-link">$1 Game</a>
+      <a href="tools.html"          class="nav-link">Tools</a>
+      <a href="validate.html"       class="nav-link">Validator</a>
+      <a href="index.html#about"    class="nav-link">About</a>
+    </div>
+    <div class="nav-social">
+      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
+      <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="tracker-hero">
+    <div id="networkBadge" class="network-badge">
+      <span class="dot loading" id="dotStatus"></span>
+      <span id="networkLabel">Connecting to Base Sepolia…</span>
+    </div>
+    <h1 class="tracker-hero-title">Deployment Tracker</h1>
+    <p class="tracker-hero-sub">BasedUndeads · Sepolia Testnet · Live EVM Read</p>
+  </section>
+
+  <!-- BODY -->
+  <div class="tracker-body">
+
+    <!-- ── STEP CHECKLIST ── -->
+    <div class="t-section">
+      <div class="t-section-header">
+        <div class="t-section-label">Deployment Pipeline</div>
+        <div class="t-section-title">Step-by-Step Progress</div>
+      </div>
+      <div class="steps-grid">
+
+        <!-- Step 1: Deploy -->
+        <div class="step-card done" id="step-deploy">
+          <div class="step-top">
+            <div class="step-icon">🏗</div>
+            <div>
+              <div class="step-num">Step 01</div>
+              <div class="step-name">Deploy Contracts</div>
+            </div>
+          </div>
+          <div class="step-detail">
+            UndeadStorage → UndeadRenderer →
+            UndeadNFT → UndeadStaking<br>
+            Post-wiring: royalty receiver + NFT contract set.
+          </div>
+          <div class="step-status done"><i class="fas fa-check"></i> Complete</div>
+        </div>
+
+        <!-- Step 2: Verify -->
+        <div class="step-card done" id="step-verify">
+          <div class="step-top">
+            <div class="step-icon">🔎</div>
+            <div>
+              <div class="step-num">Step 02</div>
+              <div class="step-name">Verify on Basescan</div>
+            </div>
+          </div>
+          <div class="step-detail">
+            All 4 contracts verified on Base Sepolia.
+            Source code publicly readable.
+          </div>
+          <div class="step-status done"><i class="fas fa-check"></i> Complete</div>
+        </div>
+
+        <!-- Step 3: Upload Assets -->
+        <div class="step-card" id="step-upload">
+          <div class="step-top">
+            <div class="step-icon">🖼</div>
+            <div>
+              <div class="step-num">Step 03</div>
+              <div class="step-name">Upload Assets</div>
+            </div>
+          </div>
+          <div class="step-detail">
+            PNG images + traits packed into SSTORE2 blobs
+            via <code>uploadBatch()</code> on UndeadStorage.
+          </div>
+          <div class="step-status loading" id="upload-status-badge">
+            <i class="fas fa-circle-notch fa-spin"></i> Checking…
+          </div>
+        </div>
+
+        <!-- Step 4: Airdrop -->
+        <div class="step-card" id="step-airdrop">
+          <div class="step-top">
+            <div class="step-icon">🪂</div>
+            <div>
+              <div class="step-num">Step 04</div>
+              <div class="step-name">Airdrop Tokens</div>
+            </div>
+          </div>
+          <div class="step-detail">
+            <code>airdropExact()</code> called on UndeadNFT.
+            6,666 tokens minted to holders.
+          </div>
+          <div class="step-status loading" id="airdrop-status-badge">
+            <i class="fas fa-circle-notch fa-spin"></i> Checking…
+          </div>
+        </div>
+
+        <!-- Step 5: Freeze -->
+        <div class="step-card" id="step-freeze">
+          <div class="step-top">
+            <div class="step-icon">🧊</div>
+            <div>
+              <div class="step-num">Step 05</div>
+              <div class="step-name">Freeze Contracts</div>
+            </div>
+          </div>
+          <div class="step-detail">
+            <code>freeze()</code> called on UndeadStorage
+            and UndeadNFT. Art locked forever.
+          </div>
+          <div class="step-status loading" id="freeze-status-badge">
+            <i class="fas fa-circle-notch fa-spin"></i> Checking…
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="gold-divider"></div>
+
+    <!-- ── LIVE STATS ── -->
+    <div class="t-section">
+      <div class="t-section-header">
+        <div class="t-section-label">Live Onchain Data</div>
+        <div class="t-section-title">Contract State at a Glance</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-supply">—</div>
+          <div class="stat-box-label">Tokens Minted</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-maxsupply">6,666</div>
+          <div class="stat-box-label">Max Supply</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-uploaded">—</div>
+          <div class="stat-box-label">Assets Sampled ✓</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-staked">—</div>
+          <div class="stat-box-label">NFTs Staked</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-pool">—</div>
+          <div class="stat-box-label">Reward Pool (ETH)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" id="stat-frozen">—</div>
+          <div class="stat-box-label">Storage Frozen</div>
+        </div>
+      </div>
+
+      <!-- Upload progress bar -->
+      <div class="progress-wrap">
+        <div class="progress-label-row">
+          <span class="progress-label">Asset Upload Coverage (sampled)</span>
+          <span class="progress-pct" id="upload-pct">—</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="upload-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Mint progress bar -->
+      <div class="progress-wrap">
+        <div class="progress-label-row">
+          <span class="progress-label">Airdrop Completion</span>
+          <span class="progress-pct" id="mint-pct">—</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="mint-bar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gold-divider"></div>
+
+    <!-- ── CONTRACT ADDRESSES ── -->
+    <div class="t-section">
+      <div class="t-section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="t-section-label">Deployed Contracts</div>
+          <div class="t-section-title">Addresses &amp; Status</div>
+        </div>
+        <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">
+          <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+      </div>
+
+      <div class="addr-table">
+        <div class="addr-row header">
+          <div class="addr-cell">Contract</div>
+          <div class="addr-cell">Address</div>
+          <div class="addr-cell">Frozen</div>
+          <div class="addr-cell">Verified</div>
+        </div>
+
+        <div class="addr-row">
+          <div class="addr-cell addr-name">UndeadStorage</div>
+          <div class="addr-cell addr-hash">
+            <a href="https://sepolia.basescan.org/address/0x6DA9E0fdfee9a300457B2391620F41e560213303" target="_blank">
+              0x6DA9E0ff…213303 <i class="fas fa-external-link-alt" style="font-size:8px;opacity:.5;margin-left:4px"></i>
+            </a>
+          </div>
+          <div class="addr-cell"><span id="frozen-storage" class="frozen-badge na">…</span></div>
+          <div class="addr-cell"><span class="verified-badge"><i class="fas fa-check"></i> Yes</span></div>
+        </div>
+
+        <div class="addr-row">
+          <div class="addr-cell addr-name">UndeadRenderer</div>
+          <div class="addr-cell addr-hash">
+            <a href="https://sepolia.basescan.org/address/0xA6c3168C7C92Dd956742Aa3574818af0D24d0497" target="_blank">
+              0xA6c3168C…d0497 <i class="fas fa-external-link-alt" style="font-size:8px;opacity:.5;margin-left:4px"></i>
+            </a>
+          </div>
+          <div class="addr-cell"><span class="frozen-badge na">N/A</span></div>
+          <div class="addr-cell"><span class="verified-badge"><i class="fas fa-check"></i> Yes</span></div>
+        </div>
+
+        <div class="addr-row">
+          <div class="addr-cell addr-name">UndeadNFT</div>
+          <div class="addr-cell addr-hash">
+            <a href="https://sepolia.basescan.org/address/0xae65a210651c1e0468dF4D2bf47CB98804af5EFe" target="_blank">
+              0xae65a210…5EFe <i class="fas fa-external-link-alt" style="font-size:8px;opacity:.5;margin-left:4px"></i>
+            </a>
+          </div>
+          <div class="addr-cell"><span id="frozen-nft" class="frozen-badge na">…</span></div>
+          <div class="addr-cell"><span class="verified-badge"><i class="fas fa-check"></i> Yes</span></div>
+        </div>
+
+        <div class="addr-row">
+          <div class="addr-cell addr-name">UndeadStaking</div>
+          <div class="addr-cell addr-hash">
+            <a href="https://sepolia.basescan.org/address/0x54F42834b6304955A509F39Aff5202597dF8F91E" target="_blank">
+              0x54F42834…F91E <i class="fas fa-external-link-alt" style="font-size:8px;opacity:.5;margin-left:4px"></i>
+            </a>
+          </div>
+          <div class="addr-cell"><span class="frozen-badge na">N/A</span></div>
+          <div class="addr-cell"><span class="verified-badge"><i class="fas fa-check"></i> Yes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gold-divider"></div>
+
+    <!-- ── NFT GALLERY ── -->
+    <div class="t-section">
+      <div class="t-section-header">
+        <div class="t-section-label">Asset Verification</div>
+        <div class="t-section-title">Live Rendered Tokens</div>
+      </div>
+    </div>
+  </div><!-- /tracker-body -->
+
+  <section class="nft-scroller-section" style="padding: 0 0 80px;">
+    <div class="scrolling-container" style="overflow-x: auto; overflow-y: visible; padding: 20px 40px 30px; cursor: grab;">
+      <div id="nftGallery" class="nft-scroll-row" style="animation: none; flex-wrap: wrap; width: 100%; gap: 20px;">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </section>
+
+  <div class="tracker-body" style="padding-top: 0;">
+
+    <div class="gold-divider"></div>
+
+    <!-- ── LOG TERMINAL ── -->
+    <div class="t-section">
+      <div class="t-section-header">
+        <div class="t-section-label">Console</div>
+        <div class="t-section-title">RPC Activity Log</div>
+      </div>
+      <div class="log-terminal" id="logTerminal">
+        <div class="log-entry info"><span class="ts">00:00</span><span class="msg">BasedUndeads Deployment Tracker — initializing…</span></div>
+      </div>
+    </div>
+
+  </div><!-- /tracker-body -->
+
+  <script>
+  // ════════════════════════════════════════════════
+  //  CONFIG
+  // ════════════════════════════════════════════════
+  const CFG = {
+    rpc:     'https://sepolia.base.org',
+    chainId:  84532,
+    explorer: 'https://sepolia.basescan.org',
+    STORAGE:  '0x6DA9E0fdfee9a300457B2391620F41e560213303',
+    RENDERER: '0xA6c3168C7C92Dd956742Aa3574818af0D24d0497',
+    NFT:      '0xae65a210651c1e0468dF4D2bf47CB98804af5EFe',
+    STAKING:  '0x54F42834b6304955A509F39Aff5202597dF8F91E',
+    MAX_SUPPLY: 6666,
+    // Token IDs to display in gallery — all 50 sampled tokens
+    GALLERY_IDS: Array.from({length: 50}, (_, i) => Math.floor(1 + i * (6666/50))),
+    // Sample IDs to probe upload coverage
+    SAMPLE_IDS: Array.from({length: 50}, (_, i) => Math.floor(1 + i * (6666/50))),
+  };
+
+  const STORAGE_ABI = [
+    "function frozen() view returns (bool)",
+    "function isTokenDataSet(uint256 tokenId) view returns (bool)",
+    "function owner() view returns (address)",
+    "function MAX_TOKEN_ID() view returns (uint256)",
+  ];
+  const NFT_ABI = [
+    "function frozen() view returns (bool)",
+    "function totalSupply() view returns (uint256)",
+    "function tokenURI(uint256 tokenId) view returns (string)",
+    "function exists(uint256 tokenId) view returns (bool)",
+    "function MAX_SUPPLY() view returns (uint256)",
+    "function owner() view returns (address)",
+  ];
+  const STAKING_ABI = [
+    "function totalStaked() view returns (uint256)",
+    "function rewardPoolBalance() view returns (uint256)",
+    "function totalRewardsDistributed() view returns (uint256)",
+    "function ownerWallet() view returns (address)",
+    "function nftContract() view returns (address)",
+  ];
+
+  // ════════════════════════════════════════════════
+  //  STATE
+  // ════════════════════════════════════════════════
+  let provider, storageC, nftC, stakingC;
+  const startTime = Date.now();
+
+  // ════════════════════════════════════════════════
+  //  LOGGING
+  // ════════════════════════════════════════════════
+  function ts() {
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }
+  function log(msg, type='dim') {
+    const el = document.getElementById('logTerminal');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="ts">${ts()}</span><span class="msg">${msg}</span>`;
+    el.appendChild(entry);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ════════════════════════════════════════════════
+  //  UI HELPERS
+  // ════════════════════════════════════════════════
+  function setStepDone(id)    { const c = document.getElementById(id); c.className='step-card done'; }
+  function setStepPending(id) { const c = document.getElementById(id); c.className='step-card pending'; }
+  function setStepError(id)   { const c = document.getElementById(id); c.className='step-card error'; }
+
+  function setBadgeDone(id, label)    {
+    const b = document.getElementById(id);
+    b.className = 'step-status done';
+    b.innerHTML = `<i class="fas fa-check"></i> ${label}`;
+  }
+  function setBadgePending(id, label) {
+    const b = document.getElementById(id);
+    b.className = 'step-status pending';
+    b.innerHTML = `<i class="fas fa-clock"></i> ${label}`;
+  }
+  function setBadgeError(id, label) {
+    const b = document.getElementById(id);
+    b.className = 'step-status error';
+    b.innerHTML = `<i class="fas fa-times"></i> ${label}`;
+  }
+
+  function setFrozenBadge(id, frozen) {
+    const el = document.getElementById(id);
+    if (frozen === true) {
+      el.className = 'frozen-badge yes';
+      el.innerHTML = '<i class="fas fa-lock"></i> Frozen';
+    } else if (frozen === false) {
+      el.className = 'frozen-badge no';
+      el.innerHTML = '<i class="fas fa-lock-open"></i> Live';
+    }
+  }
+
+  function setStat(id, val, cls='') {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    if (cls) el.className = `stat-box-val ${cls}`;
+  }
+
+  // ════════════════════════════════════════════════
+  //  INIT
+  // ════════════════════════════════════════════════
+  async function init() {
+    try {
+      log('→ Connecting to Base Sepolia RPC…', 'info');
+      provider  = new ethers.JsonRpcProvider(CFG.rpc);
+      storageC  = new ethers.Contract(CFG.STORAGE,  STORAGE_ABI, provider);
+      nftC      = new ethers.Contract(CFG.NFT,      NFT_ABI,     provider);
+      stakingC  = new ethers.Contract(CFG.STAKING,  STAKING_ABI, provider);
+
+      const network = await provider.getNetwork();
+      if (Number(network.chainId) === CFG.chainId) {
+        document.getElementById('dotStatus').className   = 'dot';
+        document.getElementById('networkLabel').textContent = 'Base Sepolia — Connected';
+        log(`✓ RPC connected — chainId ${network.chainId}`, 'ok');
+      }
+    } catch(e) {
+      document.getElementById('dotStatus').className = 'dot error';
+      document.getElementById('networkLabel').textContent = 'RPC Error';
+      log(`✗ RPC connection failed: ${e.message}`, 'err');
+      return;
+    }
+
+    await refreshAll();
+    spawnSkulls();
+  }
+
+  // ════════════════════════════════════════════════
+  //  MAIN REFRESH
+  // ════════════════════════════════════════════════
+  async function refreshAll() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+    log('─── Refresh started ───', 'info');
+
+    try { await checkFreeze();   } catch(e) { log(`freeze check error: ${e.message}`, 'err'); }
+    try { await checkAirdrop();  } catch(e) { log(`airdrop check error: ${e.message}`, 'err'); }
+    try { await checkUploads();  } catch(e) { log(`upload check error: ${e.message}`, 'err'); }
+    try { await checkStaking();  } catch(e) { log(`staking check error: ${e.message}`, 'err'); }
+    try { await loadGallery();   } catch(e) { log(`gallery error: ${e.message}`, 'err'); }
+
+    btn.classList.remove('spinning');
+    log('─── Refresh complete ───', 'ok');
+  }
+
+  // ════════════════════════════════════════════════
+  //  CHECK FREEZE
+  // ════════════════════════════════════════════════
+  async function checkFreeze() {
+    log('Checking freeze status…');
+    const [storageFrozen, nftFrozen] = await Promise.all([
+      storageC.frozen(),
+      nftC.frozen(),
+    ]);
+
+    setFrozenBadge('frozen-storage', storageFrozen);
+    setFrozenBadge('frozen-nft',     nftFrozen);
+
+    const bothFrozen = storageFrozen && nftFrozen;
+    setStat('stat-frozen', storageFrozen ? '✓ YES' : '✗ NO', storageFrozen ? 'good' : 'bad');
+
+    if (bothFrozen) {
+      setStepDone('step-freeze');
+      setBadgeDone('freeze-status-badge', 'Both Frozen');
+      log(`✓ UndeadStorage: frozen=${storageFrozen}, UndeadNFT: frozen=${nftFrozen}`, 'ok');
+    } else {
+      setStepPending('step-freeze');
+      const pending = [];
+      if (!storageFrozen) pending.push('Storage');
+      if (!nftFrozen)     pending.push('NFT');
+      setBadgePending('freeze-status-badge', `${pending.join(' & ')} Not Frozen`);
+      log(`ℹ Freeze pending — Storage:${storageFrozen} NFT:${nftFrozen}`, 'info');
+    }
+  }
+
+  // ════════════════════════════════════════════════
+  //  CHECK AIRDROP
+  // ════════════════════════════════════════════════
+  async function checkAirdrop() {
+    log('Checking totalSupply…');
+    const supply = await nftC.totalSupply();
+    const n      = Number(supply);
+    const pct    = Math.round((n / CFG.MAX_SUPPLY) * 100);
+
+    setStat('stat-supply', n.toLocaleString(), n === CFG.MAX_SUPPLY ? 'good' : 'accent');
+
+    document.getElementById('mint-bar').style.width = pct + '%';
+    document.getElementById('mint-pct').textContent  = pct + '%  (' + n.toLocaleString() + ' / 6,666)';
+
+    if (n === CFG.MAX_SUPPLY) {
+      setStepDone('step-airdrop');
+      setBadgeDone('airdrop-status-badge', '6,666 Minted');
+      log(`✓ totalSupply = ${n} (100%)`, 'ok');
+    } else if (n > 0) {
+      setStepDone('step-airdrop');   // partial but running
+      setBadgeDone('airdrop-status-badge', `${n.toLocaleString()} / 6,666`);
+      log(`ℹ Airdrop in progress — ${n} / ${CFG.MAX_SUPPLY}`, 'info');
+    } else {
+      setStepPending('step-airdrop');
+      setBadgePending('airdrop-status-badge', 'Not Started');
+      log(`ℹ No tokens minted yet`, 'info');
+    }
+  }
+
+  // ════════════════════════════════════════════════
+  //  CHECK UPLOADS (sample probe)
+  // ════════════════════════════════════════════════
+  async function checkUploads() {
+    log(`Sampling ${CFG.SAMPLE_IDS.length} token IDs for upload coverage…`);
+    const results = await Promise.allSettled(
+      CFG.SAMPLE_IDS.map(id => storageC.isTokenDataSet(id))
+    );
+    const hits = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+    const pct  = Math.round((hits / CFG.SAMPLE_IDS.length) * 100);
+
+    setStat('stat-uploaded', `${hits}/${CFG.SAMPLE_IDS.length}`, hits === CFG.SAMPLE_IDS.length ? 'good' : 'accent');
+
+    document.getElementById('upload-bar').style.width = pct + '%';
+    document.getElementById('upload-pct').textContent  = pct + '%  (' + hits + ' of ' + CFG.SAMPLE_IDS.length + ' sampled)';
+
+    if (pct === 100) {
+      setStepDone('step-upload');
+      setBadgeDone('upload-status-badge', 'All Sampled ✓');
+      log(`✓ Upload probe: ${hits}/${CFG.SAMPLE_IDS.length} set (100%)`, 'ok');
+    } else if (hits > 0) {
+      setStepDone('step-upload');
+      setBadgeDone('upload-status-badge', `${pct}% Coverage`);
+      log(`ℹ Upload probe: ${hits}/${CFG.SAMPLE_IDS.length} set (${pct}%)`, 'info');
+    } else {
+      setStepPending('step-upload');
+      setBadgePending('upload-status-badge', 'Not Uploaded');
+      log(`ℹ Upload probe: 0 tokens found in storage`, 'info');
+    }
+  }
+
+  // ════════════════════════════════════════════════
+  //  CHECK STAKING
+  // ════════════════════════════════════════════════
+  async function checkStaking() {
+    log('Reading staking contract state…');
+    const [staked, poolBal] = await Promise.all([
+      stakingC.totalStaked(),
+      stakingC.rewardPoolBalance(),
+    ]);
+    const poolEth = parseFloat(ethers.formatEther(poolBal)).toFixed(5);
+    setStat('stat-staked', Number(staked).toLocaleString(), 'accent');
+    setStat('stat-pool',   poolEth + ' Ξ', 'accent');
+    log(`✓ Staking — totalStaked:${staked}  pool:${poolEth} ETH`, 'ok');
+  }
+
+  // ════════════════════════════════════════════════
+  //  GALLERY — mirrors website's fetchTokenViaRPC
+  //  (raw fetch to renderer, no ethers needed here)
+  // ════════════════════════════════════════════════
+  const RPC_URL      = 'https://sepolia.base.org';
+  const RENDERER_ADDR = '0xA6c3168C7C92Dd956742Aa3574818af0D24d0497';
+  let _rpcId = 1;
+
+  function u256(n) { return BigInt(n).toString(16).padStart(64, '0'); }
+
+  function abiDecodeString(hex) {
+    hex = hex.replace(/^0x/, '');
+    const offset = parseInt(hex.slice(0, 64), 16) * 2;
+    const len    = parseInt(hex.slice(offset, offset + 64), 16);
+    const bytes  = hex.slice(offset + 64, offset + 64 + len * 2);
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 2)
+      out += String.fromCharCode(parseInt(bytes.slice(i, i + 2), 16));
+    return out;
+  }
+
+  async function rpcFetch(method, params) {
+    const res  = await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: _rpcId++, method, params }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.result;
+  }
+
+  async function fetchTokenJSON(id) {
+    const data = '0xc87b56dd' + u256(id);
+    const raw  = await rpcFetch('eth_call', [{ to: RENDERER_ADDR, data }, 'latest']);
+    const uri  = abiDecodeString(raw);
+    return JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, '')));
+  }
+
+  async function loadGallery() {
+    const gallery = document.getElementById('nftGallery');
+    gallery.innerHTML = '';
+
+    CFG.GALLERY_IDS.forEach(id => {
+      const card = document.createElement('div');
+      card.className = 'nft-card';
+      card.id = `nft-${id}`;
+      card.style.cursor = 'pointer';
+      card.innerHTML = `<img src="" alt="#${id}"/><p style="opacity:.35">Loading #${id}…</p>`;
+      gallery.appendChild(card);
+    });
+
+    log(`Loading ${CFG.GALLERY_IDS.length} tokens from renderer…`);
+    await Promise.allSettled(CFG.GALLERY_IDS.map(id => loadNFTCard(id)));
+  }
+
+  async function loadNFTCard(id) {
+    const card = document.getElementById(`nft-${id}`);
+    if (!card) return;
+    try {
+      const json = await fetchTokenJSON(id);
+      card.querySelector('img').src = json.image;
+      card.querySelector('p').textContent = json.name || `BasedUndead #${id}`;
+      card.addEventListener('click', () => openUndeadModal(id, json));
+      log(`✓ #${id} rendered`, 'ok');
+    } catch(e) {
+      card.querySelector('img').src = `https://placehold.co/220x220/0a0505/8b1a1a/png?text=%23${id}`;
+      card.querySelector('p').textContent = `#${id} — not minted`;
+      log(`ℹ #${id}: ${e.message.slice(0, 60)}`, 'dim');
+    }
+  }
+
+  function openUndeadModal(id, json) {
+    const name   = json.name  || `BasedUndead #${id}`;
+    const image  = json.image || '';
+    const attrs  = json.attributes || [];
+    const osUrl  = `https://testnets.opensea.io/assets/base-sepolia/${CFG.NFT}/${id}`;
+
+    const traitsHtml = attrs.length
+      ? `<div class="undead-modal-traits">${attrs.map(a =>
+          `<div class="undead-trait-pill">
+             <span class="utp-type">${a.trait_type || a.type}</span>
+             <span class="utp-val">${a.value}</span>
+           </div>`).join('')}</div>`
+      : '<p class="undead-modal-notraits">No traits available.</p>';
+
+    const modal = document.createElement('div');
+    modal.className = 'undead-modal-overlay';
+    modal.innerHTML = `
+      <div class="undead-modal">
+        <button class="undead-modal-close">&times;</button>
+        <div class="undead-modal-grid">
+          <div class="undead-modal-img">
+            <img src="${image}" alt="${name}"
+              onerror="this.src='https://placehold.co/500x500/0a0505/c8a450/png?text=%23${id}'"/>
+          </div>
+          <div class="undead-modal-info">
+            <p class="undead-modal-eyebrow">Token #${String(id).padStart(4,'0')}</p>
+            <h2 class="undead-modal-name">${name}</h2>
+            <div class="undead-modal-body">${traitsHtml}</div>
+            <a href="${osUrl}" target="_blank" class="undead-modal-cta">
+              <i class="fas fa-external-link-alt"></i> View on OpenSea
+            </a>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => modal.classList.add('open'));
+    const close = () => { modal.classList.remove('open'); setTimeout(() => modal.remove(), 220); };
+    modal.querySelector('.undead-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+  }
+
+  // ════════════════════════════════════════════════
+  //  SKULL FLOATERS (from skulls.js inline)
+  // ════════════════════════════════════════════════
+  function spawnSkulls() {
+    const container = document.querySelector('.skull-floaters');
+    if (!container) return;
+    const icons = ['💀','☠','🦴','👻','🕯'];
+    for (let i = 0; i < 8; i++) {
+      const el = document.createElement('div');
+      el.className = 'skull-float';
+      el.textContent = icons[Math.floor(Math.random() * icons.length)];
+      el.style.cssText = `
+        --x: ${Math.random() * 100}%;
+        --dur: ${8 + Math.random() * 14}s;
+        --delay: ${Math.random() * -20}s;
+      `;
+      container.appendChild(el);
+    }
+  }
+
+  // ════════════════════════════════════════════════
+  //  BOOT
+  // ════════════════════════════════════════════════
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+# ============================================================
+#  IMPORTANT — never commit these
+# ============================================================
+
+# Environment variables — API keys, secrets
+.env
+.env.*
+!.env.example
+
+# Netlify build cache & local state
+.netlify/
+.netlify-cache/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnpm-debug.log
+
+# Build outputs
+dist/
+build/
+out/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Testing & coverage
+coverage/
+.nyc_output/
+
+# Hardhat (if you're keeping any contract scripts here too)
+artifacts/
+cache/
+typechain-types/

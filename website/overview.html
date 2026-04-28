@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Overview - Based Undeads</title>
+<meta name="description" content="The complete overview of Based Undeads — 6,666 fully onchain souls on Base. Art, staking, tools, and the philosophy behind the horde."/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+
+<meta property="og:title" content="Based Undeads — Overview">
+<meta property="og:description" content="6,666 souls. Forever onchain. The horde explained."/>
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+<link rel="stylesheet" href="styles.css"/>
+<script src="config.js"></script>
+<script src="skulls.js" defer></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   OVERVIEW PAGE — page-specific styles only.
+   Nav, footer, cursor, buttons inherit from styles.css.
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --gold:   var(--accent);
+  --gold2:  var(--accent-2);
+  --bone:   var(--fg);
+}
+
+/* ── HERO ───────────────────────────────────────────────────── */
+.ov-hero {
+  padding: 140px 24px 80px;
+  text-align: center;
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--glass-border);
+}
+.ov-hero::after {
+  content: '';
+  display: block;
+  width: 160px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 2rem auto 0;
+}
+.ov-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--blood);
+  margin-bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.ov-eyebrow .pulse {
+  width: 6px; height: 6px;
+  background: var(--blood);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--blood);
+  animation: pulse 2s infinite;
+}
+.ov-title {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(48px, 11vw, 128px);
+  line-height: .92;
+  letter-spacing: .04em;
+  color: var(--fg);
+  margin-bottom: 18px;
+  background: linear-gradient(180deg, #ece4d0 0%, #c8a450 60%, #7a5a2a 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 60px rgba(200,164,80,0.3), 0 0 120px rgba(139,26,26,0.2);
+}
+.ov-subtitle {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(18px, 3vw, 28px);
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+.ov-lede {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13.5px;
+  line-height: 1.95;
+  color: var(--muted-2);
+  max-width: 660px;
+  margin: 0 auto;
+}
+
+/* ── HERO STAT STRIP ────────────────────────────────────────── */
+.ov-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 56px auto 0;
+  max-width: 880px;
+}
+@media (max-width: 700px) {
+  .ov-strip { grid-template-columns: repeat(2, 1fr); }
+}
+.ov-strip-cell {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 22px 14px;
+  text-align: center;
+  transition: all .3s;
+}
+.ov-strip-cell:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.ov-strip-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+.ov-strip-num.accent { color: var(--accent-2); text-shadow: 0 0 18px rgba(200,164,80,0.3); }
+.ov-strip-lbl {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── MAIN ───────────────────────────────────────────────────── */
+main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
+@media (max-width: 768px) { main { padding: 48px 18px 60px; } }
+
+/* ── SECTION SHELL ──────────────────────────────────────────── */
+.ov-section { margin-bottom: 120px; }
+.ov-section:last-child { margin-bottom: 0; }
+.ov-section-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ov-section-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.ov-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--glass-border), transparent);
+}
+.ov-section-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(34px, 5.5vw, 60px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 22px;
+}
+.ov-section-title em { font-style: italic; color: var(--accent); }
+.ov-section-sub {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  max-width: 720px;
+  margin-bottom: 48px;
+}
+
+.prose {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--muted-2);
+  line-height: 2;
+}
+.prose p { margin-bottom: 18px; }
+.prose strong { color: var(--accent-2); font-weight: 500; }
+.prose em { color: var(--fg); font-style: italic; }
+
+/* ── ONCHAIN ARCHITECTURE SECTION ───────────────────────────── */
+.arch-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-top: 36px;
+}
+@media (max-width: 800px) { .arch-stack { grid-template-columns: 1fr; } }
+.arch-card {
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: 32px 30px;
+  position: relative;
+  transition: all .35s;
+}
+.arch-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(139,26,26,0.18), 0 0 0 1px rgba(200,164,80,0.15);
+}
+.arch-card-icon {
+  width: 52px; height: 52px;
+  background: linear-gradient(135deg, rgba(200,164,80,0.15), rgba(139,26,26,0.08));
+  border: 1px solid rgba(200,164,80,0.3);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--accent-2);
+  margin-bottom: 18px;
+}
+.arch-card-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.arch-card h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  color: var(--fg);
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+.arch-card p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.85;
+}
+.arch-card code {
+  display: inline-block;
+  padding: 1px 8px;
+  background: rgba(200,164,80,0.08);
+  border: 1px solid rgba(200,164,80,0.2);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--accent-2);
+}
+
+/* ── COMPARISON TABLE (vs IPFS) ─────────────────────────────── */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 32px;
+}
+@media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+.compare-col {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 28px;
+}
+.compare-col.us {
+  border-color: rgba(200,164,80,0.4);
+  background: linear-gradient(135deg, rgba(200,164,80,0.06), rgba(139,26,26,0.03));
+}
+.compare-col h4 {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.compare-col.them h4 { color: #ff8888; }
+.compare-col.us h4 { color: var(--accent); }
+.compare-col h4::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.compare-col.them h4::before { background: #ff8888; }
+.compare-col.us h4::before { background: var(--accent); }
+.compare-col ul {
+  list-style: none;
+  padding: 0;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.85;
+}
+.compare-col li {
+  padding: 8px 0 8px 22px;
+  position: relative;
+  border-bottom: 1px dashed var(--glass-border);
+}
+.compare-col li:last-child { border-bottom: 0; }
+.compare-col li::before {
+  position: absolute;
+  left: 0; top: 8px;
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 11px;
+}
+.compare-col.them li::before { content: '\f00d'; color: #ff8888; }
+.compare-col.us li::before { content: '\f00c'; color: var(--accent); }
+
+/* ── ROYALTY FLOW DIAGRAM ───────────────────────────────────── */
+.flow-diagram {
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 44px 36px;
+  margin-top: 28px;
+  position: relative;
+}
+.flow-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 28px;
+  align-items: center;
+  margin-bottom: 32px;
+}
+@media (max-width: 720px) {
+  .flow-grid { grid-template-columns: 1fr; }
+  .flow-divider { display: none; }
+}
+.flow-block {
+  background: rgba(10,5,5,0.5);
+  border: 1px solid rgba(200,164,80,0.18);
+  border-radius: 16px;
+  padding: 24px 22px;
+  text-align: center;
+  transition: border-color .3s;
+}
+.flow-block:hover { border-color: var(--accent); }
+.flow-block .pct {
+  font-family: 'Instrument Serif', serif;
+  font-size: 48px;
+  line-height: 1;
+  color: var(--accent-2);
+  margin-bottom: 10px;
+  text-shadow: 0 0 24px rgba(200,164,80,0.3);
+}
+.flow-block .who {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.flow-block .desc {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  color: var(--muted-2);
+  line-height: 1.7;
+}
+.flow-divider {
+  font-family: 'Creepster', cursive;
+  font-size: 36px;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 0 16px rgba(200,164,80,0.3);
+}
+.flow-source {
+  text-align: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  padding-top: 20px;
+  border-top: 1px dashed var(--glass-border);
+}
+.flow-source strong { color: var(--accent-2); font-weight: 500; }
+
+/* ── HOW IT WORKS STEPS ─────────────────────────────────────── */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .steps { grid-template-columns: 1fr; } }
+.step {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 26px 22px;
+  position: relative;
+  transition: all .3s;
+}
+.step:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+}
+.step .num {
+  font-family: 'Creepster', cursive;
+  font-size: 38px;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 14px;
+  text-shadow: 0 0 18px rgba(200,164,80,0.3);
+}
+.step h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 19px;
+  color: var(--fg);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.step p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.75;
+}
+
+/* ── TOOLS BLOCK ────────────────────────────────────────────── */
+.tools-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-top: 32px;
+}
+@media (max-width: 800px) { .tools-block { grid-template-columns: 1fr; } }
+.tool-tile {
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: 32px 30px;
+  position: relative;
+  overflow: hidden;
+  transition: all .35s;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tool-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgba(139,26,26,0.18);
+}
+.tool-tile .icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(200,164,80,0.15), rgba(139,26,26,0.08));
+  border: 1px solid rgba(200,164,80,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--accent-2);
+}
+.tool-tile h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 26px;
+  color: var(--fg);
+  line-height: 1.15;
+}
+.tool-tile h4 em { font-style: italic; color: var(--accent); }
+.tool-tile p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.85;
+}
+.tool-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.tool-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(200,164,80,0.08);
+  border: 1px solid rgba(200,164,80,0.22);
+  border-radius: 100px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.78);
+  letter-spacing: .04em;
+}
+.tool-feature-pill i { font-size: 8.5px; color: var(--accent); }
+.tool-tile .cta {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ── DOLLAR GAME HIGHLIGHT ──────────────────────────────────── */
+.dg-block {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 50px;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(200,164,80,0.06), rgba(139,26,26,0.03));
+  border: 1px solid rgba(200,164,80,0.2);
+  border-radius: 32px;
+  padding: 56px 48px;
+  margin-top: 28px;
+}
+@media (max-width: 880px) {
+  .dg-block { grid-template-columns: 1fr; gap: 36px; padding: 36px 28px; }
+}
+.dg-block .left h3 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: .95;
+  letter-spacing: .04em;
+  color: var(--fg);
+  margin-bottom: 16px;
+  text-shadow: 0 0 32px rgba(200,164,80,0.25);
+}
+.dg-block .left h3 .dollar { color: var(--accent); }
+.dg-block .left p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  margin-bottom: 14px;
+}
+.dg-block .left .ctas {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dg-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.dg-cell {
+  background: rgba(10,5,5,0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 26px 18px;
+  text-align: center;
+  transition: all .3s;
+}
+.dg-cell:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.dg-cell .v {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.dg-cell .v.accent { color: var(--accent-2); }
+.dg-cell .l {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── CONTRACTS TABLE ────────────────────────────────────────── */
+.contracts-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 32px;
+}
+@media (max-width: 720px) { .contracts-list { grid-template-columns: 1fr; } }
+.contract-row {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  transition: border-color .3s;
+}
+.contract-row:hover { border-color: rgba(200,164,80,0.4); }
+.contract-row .name {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.contract-row .desc {
+  font-family: 'Instrument Serif', serif;
+  font-size: 17px;
+  color: var(--fg);
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+.contract-row .role {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--muted-2);
+  line-height: 1.7;
+}
+
+/* ── ROADMAP ────────────────────────────────────────────────── */
+.roadmap {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 32px;
+}
+@media (max-width: 880px) { .roadmap { grid-template-columns: 1fr; } }
+.road-card {
+  background: linear-gradient(180deg, rgba(20,8,8,0.55), rgba(10,5,5,0.35));
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: 30px 28px;
+  position: relative;
+  transition: all .3s;
+}
+.road-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+}
+.road-card.now {
+  border-color: rgba(200,164,80,0.45);
+  background: linear-gradient(135deg, rgba(200,164,80,0.07), rgba(139,26,26,0.03));
+}
+.road-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  border: 1px solid currentColor;
+}
+.road-status.live  { color: var(--accent-2); }
+.road-status.next  { color: #ddb070; }
+.road-status.later { color: var(--muted-2); }
+.road-status .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.road-status.live .dot { animation: pulse 2s infinite; }
+.road-card h4 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  color: var(--fg);
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+.road-card ul {
+  list-style: none;
+  padding: 0;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.85;
+}
+.road-card li {
+  padding: 6px 0 6px 18px;
+  position: relative;
+}
+.road-card li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ── FOUNDER CARD ───────────────────────────────────────────── */
+.founder {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 32px;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(20,8,8,0.6), rgba(10,5,5,0.3));
+  border: 1px solid var(--glass-border);
+  border-radius: 26px;
+  padding: 40px 38px;
+  margin-top: 28px;
+  transition: all .35s;
+}
+@media (max-width: 700px) {
+  .founder { grid-template-columns: 1fr; text-align: center; padding: 32px 24px; }
+}
+.founder:hover { border-color: var(--accent); }
+.founder-avatar {
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(200,164,80,0.3);
+  flex-shrink: 0;
+  box-shadow: 0 0 40px rgba(200,164,80,0.18);
+  margin: 0 auto;
+}
+.founder-avatar img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: grayscale(.5) contrast(1.05);
+  transition: filter .4s;
+}
+.founder:hover .founder-avatar img { filter: grayscale(0) contrast(1.1); }
+.founder-meta h3 {
+  font-family: 'Creepster', cursive;
+  font-size: 36px;
+  letter-spacing: .04em;
+  color: var(--fg);
+  margin-bottom: 4px;
+  text-shadow: 0 0 18px rgba(200,164,80,0.25);
+}
+.founder-meta .role {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.founder-meta p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  margin-bottom: 14px;
+}
+.founder-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+@media (max-width: 700px) { .founder-links { justify-content: center; } }
+.founder-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(200,164,80,0.06);
+  border: 1px solid rgba(200,164,80,0.25);
+  border-radius: 100px;
+  text-decoration: none;
+  color: var(--bone);
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  transition: all .3s;
+}
+.founder-links a:hover {
+  border-color: var(--accent);
+  color: var(--accent-2);
+  transform: translateY(-1px);
+}
+
+/* ── FINAL CTA ──────────────────────────────────────────────── */
+.final-cta {
+  text-align: center;
+  background: linear-gradient(135deg, rgba(200,164,80,0.06), rgba(139,26,26,0.03));
+  border: 1px dashed rgba(200,164,80,0.35);
+  border-radius: 32px;
+  padding: 64px 40px;
+  margin-top: 28px;
+  position: relative;
+}
+.final-cta::before {
+  content: '⚱';
+  position: absolute;
+  top: -16px; left: 50%; transform: translateX(-50%);
+  font-size: 30px;
+  background: var(--bg);
+  padding: 0 12px;
+  color: var(--accent);
+}
+.final-cta h3 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(38px, 6vw, 64px);
+  letter-spacing: .04em;
+  color: var(--fg);
+  margin-bottom: 18px;
+  text-shadow: 0 0 32px rgba(200,164,80,0.3);
+}
+.final-cta p {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--muted-2);
+  line-height: 1.85;
+  max-width: 560px;
+  margin: 0 auto 32px;
+}
+.final-cta-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+</style>
+</head>
+<body>
+
+<div class="cursor"></div>
+<div class="cursor-dot"></div>
+<div class="noise"></div>
+<div class="scroll-progress"></div>
+<div class="skull-floaters" aria-hidden="true"></div>
+
+<!-- ============== NAV ============== -->
+<nav>
+  <a href="index.html" class="nav-logo">BASED UNDEADS</a>
+  <div class="nav-links">
+    <a href="index.html#featured" class="nav-link">Collection</a>
+    <a href="staking.html"        class="nav-link">Stake</a>
+    <a href="game.html"           class="nav-link">$1 Game</a>
+    <a href="tools.html"          class="nav-link">Tools</a>
+    <a href="validate.html"       class="nav-link">Validator</a>
+    <a href="overview.html"       class="nav-link" style="color:var(--accent);opacity:1;">Overview</a>
+  </div>
+  <div class="nav-social">
+    <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+    <a href="https://x.com/BasedUndeads"     target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+    <a href="https://opensea.io/collection/basedundeads-112104013/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
+      <svg width="22" height="22" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#ovc0)"><g clip-path="url(#ovc1)">
+        <path d="M181.566 0C80.91 -0.828 -0.828 80.91 0 181.566C0.846 279.306 80.694 359.172 178.416 359.982C279.072 360.846 360.846 279.072 359.982 178.416C359.172 80.712 279.306 0.846 181.566 0ZM127.746 89.586C139.266 104.22 146.16 122.742 146.16 142.83C146.16 160.236 140.994 176.436 132.12 189.954H69.714L127.728 89.568L127.746 89.586ZM318.006 199.242V212.202C318.006 213.048 317.556 213.768 316.782 214.092C312.552 215.892 298.602 222.372 292.788 230.436C277.812 251.28 266.382 284.04 240.822 284.04H134.172C96.408 284.04 64.818 254.07 64.836 214.146C64.836 213.156 65.682 212.346 66.672 212.346H117.216C118.962 212.346 120.33 213.75 120.33 215.46V225.216C120.33 230.4 124.524 234.612 129.726 234.612H168.066V212.292H141.876C156.942 193.212 165.906 169.128 165.906 142.902C165.906 113.652 154.692 86.976 136.332 67.032C147.438 68.328 158.058 70.542 168.066 73.476V67.266C168.066 60.822 173.286 55.602 179.73 55.602C186.174 55.602 191.394 60.822 191.394 67.266V82.242C227.178 98.946 250.614 126.666 250.614 158.022C250.614 176.418 242.568 193.536 228.69 207.936C226.026 210.69 222.336 212.256 218.466 212.256H191.412V234.54H225.378C232.704 234.54 245.844 220.644 252.072 212.274C252.342 211.86 253.062 211.644C253.782 211.428 315.432 197.28 315.432 197.28C316.728 196.92 318.006 197.91 318.006 199.224V199.242Z" fill="white"/>
+        </g></g>
+        <defs>
+          <clipPath id="ovc0"><rect width="360" height="360" fill="white"/></clipPath>
+          <clipPath id="ovc1"><rect width="360" height="360" fill="white"/></clipPath>
+        </defs>
+      </svg>
+    </a>
+  </div>
+  <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
+</nav>
+
+<!-- ============== HERO ============== -->
+<header class="ov-hero">
+  <p class="ov-eyebrow">
+    <span class="pulse"></span>
+    The Complete Overview
+  </p>
+  <h1 class="ov-title">THE HORDE</h1>
+  <p class="ov-subtitle">Forever onchain. Yield-bearing. Pixel by pixel.</p>
+  <p class="ov-lede">
+    Based Undeads is a 6,666-piece pixel art collection living entirely
+    onchain on Base. No IPFS. No servers. No third parties. The art,
+    the metadata, the rules — every byte etched into smart contracts
+    that will outlive this website. This is what the project is, why
+    it exists, and where it's going.
+  </p>
+
+  <div class="ov-strip">
+    <div class="ov-strip-cell">
+      <div class="ov-strip-num">6,666</div>
+      <div class="ov-strip-lbl">Total Supply</div>
+    </div>
+    <div class="ov-strip-cell">
+      <div class="ov-strip-num accent">100%</div>
+      <div class="ov-strip-lbl">Onchain Art</div>
+    </div>
+    <div class="ov-strip-cell">
+      <div class="ov-strip-num">7.5%</div>
+      <div class="ov-strip-lbl">Royalty Rate</div>
+    </div>
+    <div class="ov-strip-cell">
+      <div class="ov-strip-num accent">∞</div>
+      <div class="ov-strip-lbl">Stakers Earn</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ════════ THE COLLECTION ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">The Collection</p>
+    <h2 class="ov-section-title">6,666 <em>Souls</em></h2>
+    <p class="ov-section-sub">
+      A horde of skeletal warriors, phantom wanderers, undead rulers, and forgotten
+      kings — each one rendered pixel by pixel as a one-of-a-kind sprite. Some are
+      common foot-soldiers of the army. Others are 1-of-1 legends with traits no
+      other Undead carries.
+    </p>
+
+    <div class="prose">
+      <p>
+        Every Undead has up to <strong>8 traits</strong>: Background, Type, Clothes,
+        Eyes, Eyewear, Head, Mask, and Mouth. The combinations produce a wide
+        spectrum — the foot-soldier in dirty rags is as much a part of the horde as
+        the gilded vampire king. Trait rarity is preserved permanently in the
+        renderer contract, so the on-chain record itself is the source of truth
+        for which traits are common and which are rare.
+      </p>
+      <p>
+        The art is a deliberate departure for the artist — <em>SAM's first venture
+        into pixel art</em>, learned sprite by sprite, shadow by shadow. The result
+        is a collection with a unified gothic aesthetic: blood-red palettes,
+        candlelit highlights, decay rendered in gold and bone. Look at one Undead
+        and you'll know what tribe it belongs to.
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════ FULLY ONCHAIN ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">The Architecture</p>
+    <h2 class="ov-section-title">Fully <em>Onchain</em>. No Exceptions.</h2>
+    <p class="ov-section-sub">
+      Most NFT collections store art on IPFS or centralized servers, leaving the
+      "permanent" part hanging on a thread. Based Undeads stores everything on
+      Base directly — split across four contracts that work together to render
+      a complete NFT entirely from chain state.
+    </p>
+
+    <div class="arch-stack">
+      <div class="arch-card">
+        <div class="arch-card-icon"><i class="fas fa-database"></i></div>
+        <p class="arch-card-eyebrow">Layer 1 of 4</p>
+        <h3>Storage Contract</h3>
+        <p>
+          Holds the raw PNG bytes for every Undead, deployed as compressed
+          <code>SSTORE2</code> blobs. Each token's image is fetched directly
+          from chain — no external lookup, no proxy, no decay.
+        </p>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-card-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+        <p class="arch-card-eyebrow">Layer 2 of 4</p>
+        <h3>Renderer Contract</h3>
+        <p>
+          Turns raw bytes into full ERC-721 metadata at request time. Calls
+          <code>tokenURI()</code> and you get a base64 data URI — image,
+          name, description, traits — assembled live, never cached off-chain.
+        </p>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-card-icon"><i class="fas fa-skull"></i></div>
+        <p class="arch-card-eyebrow">Layer 3 of 4</p>
+        <h3>NFT Contract</h3>
+        <p>
+          Standard ERC-721 with ERC-2981 royalties baked in. Routes 7.5% of
+          every secondary sale to the staking contract. Frozen post-mint:
+          art is locked, supply is locked, the collection is finalized.
+        </p>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-card-icon"><i class="fas fa-coins"></i></div>
+        <p class="arch-card-eyebrow">Layer 4 of 4</p>
+        <h3>Staking Contract</h3>
+        <p>
+          The yield engine. Receives every royalty, splits 50/50 between
+          creator and stakers, distributes to lockers using the Synthetix
+          pull pattern — gas-efficient at any scale, mathematically airtight.
+        </p>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-col them">
+        <h4>The Old Way</h4>
+        <ul>
+          <li>Art hosted on IPFS — pinned by a service that may stop tomorrow</li>
+          <li>Metadata served from a website — taken offline = NFT goes blank</li>
+          <li>Centralized image gateways throttle, cache, censor</li>
+          <li>"Forever" depends on someone paying a hosting bill</li>
+          <li>Disappears the moment the team walks away</li>
+        </ul>
+      </div>
+      <div class="compare-col us">
+        <h4>The Undead Way</h4>
+        <ul>
+          <li>PNG bytes stored as immutable contract code on Base</li>
+          <li>Metadata generated fresh from chain on every <code>tokenURI</code> call</li>
+          <li>No external dependencies of any kind — IPFS, servers, all gone</li>
+          <li>"Forever" really means as long as Base exists</li>
+          <li>Survives the team, the website, the founders entirely</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ STAKING ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">Yield-Bearing Pixels</p>
+    <h2 class="ov-section-title">Stake. <em>Earn.</em> Forever.</h2>
+    <p class="ov-section-sub">
+      Holders aren't just collectors. Every secondary sale on OpenSea pays a 7.5%
+      royalty into the staking contract — and half of that flows directly to
+      Undeads who are locked in. Your slice scales with your stake.
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-grid">
+        <div class="flow-block">
+          <div class="pct">50%</div>
+          <div class="who">→ Creator</div>
+          <div class="desc">Direct push to founder wallet, instant.</div>
+        </div>
+        <div class="flow-divider">⚱</div>
+        <div class="flow-block">
+          <div class="pct">50%</div>
+          <div class="who">→ Stakers</div>
+          <div class="desc">Distributed by share of total staked NFTs.</div>
+        </div>
+      </div>
+      <p class="flow-source">
+        Source: <strong>7.5%</strong> royalty on every secondary sale,
+        enforced via ERC-2981
+      </p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h4>Stake</h4>
+        <p>Lock any of your Undeads. Minimum lock is 24 hours per stake action.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h4>Earn</h4>
+        <p>Royalties from every sale flow in. Your share = your locked NFTs ÷ total staked.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h4>Claim</h4>
+        <p>Withdraw rewards anytime. Claim doesn't reset the lock or unstake anything.</p>
+      </div>
+      <div class="step">
+        <div class="num">04</div>
+        <h4>Unstake</h4>
+        <p>After 24h, pull NFTs out anytime. Pending rewards stay yours forever.</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:48px;">
+      <a href="staking-guide.html" class="btn-secondary">
+        <i class="fas fa-book-open"></i> Read the Full Staking Guide
+      </a>
+    </div>
+  </section>
+
+  <!-- ════════ TOOLS ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">The Workshop</p>
+    <h2 class="ov-section-title">Free <em>Tools</em> for Every Holder</h2>
+    <p class="ov-section-sub">
+      Built by the project, gifted to the community. Both tools work with any NFT
+      collection on Base, Ethereum, ApeChain, or Abstract — not just Undeads. Use
+      them, share them, never pay for them.
+    </p>
+
+    <div class="tools-block">
+      <div class="tool-tile">
+        <div class="icon"><i class="fas fa-th"></i></div>
+        <h4>NFT Grid <em>Maker</em></h4>
+        <p>
+          Stitch any selection of NFTs into a single high-resolution PNG. Banner
+          posts, wall art, collection flexes, profile mosaics — built for collectors
+          who want their horde seen. Up to 50×50 grids, manual or random placement,
+          custom borders, export as PNG or ZIP.
+        </p>
+        <div class="tool-features">
+          <span class="tool-feature-pill"><i class="fas fa-globe"></i> Multi-chain</span>
+          <span class="tool-feature-pill"><i class="fas fa-th-large"></i> Up to 50&times;50</span>
+          <span class="tool-feature-pill"><i class="fas fa-dice"></i> Random or manual</span>
+          <span class="tool-feature-pill"><i class="fas fa-paint-brush"></i> Borders</span>
+        </div>
+        <div class="cta">
+          <a href="tools.html#grid-maker" class="btn-primary">
+            <i class="fas fa-th"></i> Open Grid Maker
+          </a>
+        </div>
+      </div>
+
+      <div class="tool-tile">
+        <div class="icon"><i class="fas fa-mobile-screen"></i></div>
+        <h4>Wallpaper <em>Maker</em></h4>
+        <p>
+          Build phone wallpapers featuring any NFT. Pick a backdrop, drop a
+          character, drag to resize, export ready for your lock screen. 12 gradients,
+          9 patterns, 6 device frames, optional background removal — make your
+          favorite Undead the first thing you see in the morning.
+        </p>
+        <div class="tool-features">
+          <span class="tool-feature-pill"><i class="fas fa-palette"></i> 12 gradients</span>
+          <span class="tool-feature-pill"><i class="fas fa-th"></i> 9 patterns</span>
+          <span class="tool-feature-pill"><i class="fas fa-arrows-alt"></i> Drag to resize</span>
+          <span class="tool-feature-pill"><i class="fas fa-magic"></i> BG removal</span>
+        </div>
+        <div class="cta">
+          <a href="tools.html#wallpaper" class="btn-primary">
+            <i class="fas fa-mobile-alt"></i> Open Wallpaper Maker
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ DOLLAR GAME ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">A Live Mini-Protocol</p>
+    <h2 class="ov-section-title">The <em>$1 Game</em></h2>
+    <p class="ov-section-sub">
+      A no-trust raffle protocol launched alongside Based Undeads. Anyone can list
+      any NFT, anyone can buy $1 tickets, the smart contract picks the winner and
+      pays out automatically. Used by holders to flip rare pieces, by collectors to
+      get a long-shot at blue-chips for a buck, by everyone for the thrill.
+    </p>
+
+    <div class="dg-block">
+      <div class="left">
+        <h3>THE <span class="dollar">$1</span> GAME</h3>
+        <p>
+          Got an NFT collecting dust? List it. Set a target ticket count. Watch
+          tickets get bought — each one a chance to win. When the target hits,
+          the contract picks a winner using on-chain randomness, sends the NFT
+          to them, sends 90% of the pot to you, and that's it. No middleman.
+          No admin. No trust required.
+        </p>
+        <p>
+          Works with any NFT on Base. Fully composable, zero fees beyond the 10%
+          protocol take. Open source.
+        </p>
+        <div class="ctas">
+          <a href="game.html" class="btn-primary">
+            <i class="fas fa-ticket-alt"></i> Play Now
+          </a>
+          <a href="game.html" class="btn-secondary">
+            <i class="fas fa-plus"></i> List Your NFT
+          </a>
+        </div>
+      </div>
+
+      <div class="dg-stats">
+        <div class="dg-cell">
+          <div class="v accent">$1</div>
+          <div class="l">Per Ticket</div>
+        </div>
+        <div class="dg-cell">
+          <div class="v">90%</div>
+          <div class="l">To Creator</div>
+        </div>
+        <div class="dg-cell">
+          <div class="v accent">∞</div>
+          <div class="l">Any NFT</div>
+        </div>
+        <div class="dg-cell">
+          <div class="v">Auto</div>
+          <div class="l">Winner Pick</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ THE STACK ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">The Stack</p>
+    <h2 class="ov-section-title">Four <em>Contracts</em>. One Horde.</h2>
+    <p class="ov-section-sub">
+      Every piece of the protocol is open and verifiable on Basescan. Hover the
+      cards below to see what each contract does. Storage and NFT contracts are
+      frozen — the renderer is intentionally upgradable so we can ship better
+      art tooling later, while the underlying art and supply stay locked.
+    </p>
+
+    <div class="contracts-list">
+      <div class="contract-row">
+        <div class="name">UndeadStorage</div>
+        <div class="desc">Stores raw PNG bytes for every Undead.</div>
+        <div class="role">
+          SSTORE2 blob contracts hold compressed pixel data on-chain.
+          Frozen post-upload — art cannot be modified.
+        </div>
+      </div>
+
+      <div class="contract-row">
+        <div class="name">UndeadRenderer</div>
+        <div class="desc">Builds full metadata at <code>tokenURI()</code> time.</div>
+        <div class="role">
+          Reads from Storage, assembles base64 data URI with image + traits.
+          Owner-controlled to allow future upgrades.
+        </div>
+      </div>
+
+      <div class="contract-row">
+        <div class="name">UndeadNFT</div>
+        <div class="desc">ERC-721 + ERC-2981 royalties, points to renderer.</div>
+        <div class="role">
+          Standard token contract with built-in 7.5% royalty routing to the
+          staking contract. Frozen — supply, art, and royalty target are locked.
+        </div>
+      </div>
+
+      <div class="contract-row">
+        <div class="name">UndeadStaking</div>
+        <div class="desc">Receives royalties, distributes to stakers and creator.</div>
+        <div class="role">
+          50/50 split. Synthetix pull pattern keeps gas constant at any pool size.
+          Replaceable if ever needed via royalty receiver swap.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ ROADMAP ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">What's Next</p>
+    <h2 class="ov-section-title">The <em>Roadmap</em></h2>
+    <p class="ov-section-sub">
+      No vague promises, no token launches, no "phase 2 metaverse expansion."
+      Just the things actually being built.
+    </p>
+
+    <div class="roadmap">
+      <div class="road-card now">
+        <span class="road-status live">
+          <span class="dot"></span> Live Now
+        </span>
+        <h4>The Foundation</h4>
+        <ul>
+          <li>6,666 fully onchain Undeads on Base</li>
+          <li>Staking contract live, royalties flowing</li>
+          <li>Grid Maker and Wallpaper Maker public</li>
+          <li>$1 Game protocol active</li>
+          <li>Validator + Staking Guide pages</li>
+        </ul>
+      </div>
+
+      <div class="road-card">
+        <span class="road-status next">
+          <span class="dot"></span> In Progress
+        </span>
+        <h4>The Refinements</h4>
+        <ul>
+          <li>Twitter sales bot — automated alerts on every secondary sale</li>
+          <li>Trait rarity rankings + on-page filtering</li>
+          <li>Holder dashboard with personal stats</li>
+          <li>Collector leaderboards by stake share</li>
+          <li>Mobile UX polish across all pages</li>
+        </ul>
+      </div>
+
+      <div class="road-card">
+        <span class="road-status later">
+          <span class="dot"></span> Coming
+        </span>
+        <h4>The Horde Grows</h4>
+        <ul>
+          <li>More creator tools — open to community requests</li>
+          <li>Cross-collection collab features</li>
+          <li>Discord integrations for holders</li>
+          <li>Possibility: secondary item drops, holder-gated</li>
+          <li>Whatever the horde asks for</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ FOUNDER ════════ -->
+  <section class="ov-section">
+    <p class="ov-section-label">Behind the Horde</p>
+    <h2 class="ov-section-title">The <em>Founder</em></h2>
+
+    <div class="founder">
+      <div class="founder-avatar">
+        <img src="https://pbs.twimg.com/profile_images/2013051300615712769/kA7TYlWK_400x400.jpg" alt="SAM" loading="lazy"/>
+      </div>
+      <div class="founder-meta">
+        <h3>SAM</h3>
+        <div class="role">Artist · Developer · One-Person Studio</div>
+        <p>
+          Based Undeads is the work of a single person. Every contract written,
+          every sprite drawn, every line of frontend code, every piece of copy
+          on this site. SAM is also the artist behind <strong>Based Squiggles</strong>
+          and <strong>Crypto Puzzles</strong> — projects that paved the way for the
+          fully-onchain approach used here. The horde represents a new chapter:
+          a leap from generative scripts into hand-drawn pixels, from solo dev
+          tooling into community-owned infrastructure.
+        </p>
+        <div class="founder-links">
+          <a href="https://x.com/_sxms" target="_blank" rel="noopener">
+            <i class="fab fa-x-twitter"></i> @_sxms
+          </a>
+          <a href="https://x.com/BasedUndeads" target="_blank" rel="noopener">
+            <i class="fab fa-x-twitter"></i> @BasedUndeads
+          </a>
+          <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" rel="noopener">
+            <i class="fab fa-discord"></i> Discord
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ FINAL CTA ════════ -->
+  <section class="ov-section">
+    <div class="final-cta">
+      <h3>JOIN THE HORDE</h3>
+      <p>
+        Pick up an Undead on OpenSea. Stake it. Earn from every sale across the
+        whole collection, forever — or just admire the art and let it rot in your
+        wallet. Either way, welcome.
+      </p>
+      <div class="final-cta-actions">
+        <a href="https://opensea.io/collection/basedundeads-112104013/overview" target="_blank" rel="noopener" class="btn-primary">
+          <i class="fas fa-shopping-bag"></i> Buy on OpenSea
+        </a>
+        <a href="staking.html" class="btn-secondary">
+          <i class="fas fa-bolt"></i> Open Staking Dashboard
+        </a>
+        <a href="validate.html" class="btn-secondary">
+          <i class="fas fa-search"></i> Browse the Collection
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer>
+  <div class="footer-content">
+    <a href="index.html" class="footer-logo">BASED UNDEADS</a>
+    <div class="footer-links">
+      <a href="staking.html"  class="footer-link">Stake</a>
+      <a href="game.html"     class="footer-link">$1 Game</a>
+      <a href="tools.html"    class="footer-link">Tools</a>
+      <a href="validate.html" class="footer-link">Validator</a>
+      <a href="overview.html" class="footer-link">Overview</a>
+      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
+      <a href="https://x.com/BasedUndeads"     target="_blank" class="footer-link">Twitter</a>
+      <a href="https://opensea.io/collection/basedundeads-112104013/overview" target="_blank" class="footer-link">OpenSea</a>
+    </div>
+    <span class="footer-copy">© 2026 Based Undeads. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+/* MOBILE NAV */
+(function () {
+  const btn   = document.getElementById('mobileMenuBtn');
+  const links = document.querySelector('nav .nav-links');
+  if (!btn || !links) return;
+  btn.addEventListener('click', () => {
+    links.classList.toggle('mobile-open');
+    btn.innerHTML = links.classList.contains('mobile-open')
+      ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+  });
+})();
+
+/* CURSOR */
+(function () {
+  const cursor = document.querySelector('.cursor');
+  const dot    = document.querySelector('.cursor-dot');
+  if (!cursor || !dot) return;
+  let mx = 0, my = 0, cx = 0, cy = 0;
+  (function loop () {
+    cx += (mx - cx) * 0.12; cy += (my - cy) * 0.12;
+    cursor.style.transform = `translate(${cx - 10}px, ${cy - 10}px)`;
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx - 2}px, ${my - 2}px)`;
+  }, { passive: true });
+  ['a', 'button', '.arch-card', '.tool-tile', '.contract-row', '.road-card', '.dg-cell', '.step', '.tldr-card', '.flow-block', '.ov-strip-cell'].forEach(sel => {
+    document.addEventListener('mouseover', e => {
+      if (e.target.closest(sel)) cursor.classList.add('hover');
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.closest(sel)) cursor.classList.remove('hover');
+    });
+  });
+})();
+
+/* SCROLL PROGRESS */
+window.addEventListener('scroll', () => {
+  const bar = document.querySelector('.scroll-progress');
+  if (!bar) return;
+  const h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  bar.style.width = ((window.pageYOffset / h) * 100) + '%';
+}, { passive: true });
+</script>
+
+</body>
+</html>

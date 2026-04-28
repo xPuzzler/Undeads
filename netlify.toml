@@ -1,0 +1,53 @@
+# ========================================================
+#  BasedUndeads — Netlify Configuration
+#  Multi-page site with clean URLs
+# ========================================================
+
+[build]
+  publish   = "website"
+  functions = "website/netlify/functions"
+
+[dev]
+  publish   = "website"
+  port      = 8888
+  framework = "#static"
+
+# -------- Clean URLs (no .html in browser bar) --------
+[[redirects]]
+  from   = "/stake"
+  to     = "/staking.html"
+  status = 200
+
+[[redirects]]
+  from   = "/staking"
+  to     = "/staking.html"
+  status = 200
+
+[[redirects]]
+  from   = "/game"
+  to     = "/game.html"
+  status = 200
+
+[[redirects]]
+  from   = "/tools"
+  to     = "/tools.html"
+  status = 200
+
+[[redirects]]
+  from   = "/validator"
+  to     = "/validate.html"
+  status = 200
+
+[[redirects]]
+  from   = "/overview"
+  to     = "/overview.html"
+  status = 200
+
+# -------- Security headers --------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
