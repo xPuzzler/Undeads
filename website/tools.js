@@ -165,6 +165,31 @@ function proxyUrl(url) {
   return url;
 }
 
+// Detects what kind of media the URL/contentType points to.
+// Returns: 'image' | 'gif' | 'webp' | 'video'
+function detectMediaType(url, contentType = '') {
+  // Prefer contentType hint when available (most reliable)
+  const ct = (contentType || '').toLowerCase();
+  if (ct.includes('gif'))                     return 'gif';
+  if (ct.includes('webp'))                    return 'webp';
+  if (ct.startsWith('video/'))                return 'video';
+  if (ct.includes('mp4') || ct.includes('webm') || ct.includes('quicktime')) return 'video';
+
+  // URL-based detection
+  if (!url) return 'image';
+  const lower = url.toLowerCase().split('?')[0].split('#')[0];
+  if (lower.endsWith('.gif'))                                   return 'gif';
+  if (lower.endsWith('.webp'))                                  return 'webp';
+  if (lower.match(/\.(mp4|webm|mov|m4v|ogv)$/))                 return 'video';
+
+  // Common patterns in CDN URLs
+  if (url.includes('content-type=image/gif'))                   return 'gif';
+  if (url.includes('content-type=image/webp'))                  return 'webp';
+  if (url.includes('content-type=video'))                       return 'video';
+
+  return 'image';
+}
+
 function normalizeTokenId(id) {
   if (!id) return '';
   if (typeof id === 'string' && id.startsWith('0x')) return parseInt(id, 16).toString();
@@ -256,6 +281,20 @@ async function onFetchNFTs() {
     currentDisplayedNFTs = walletNFTs;
     renderWalletGrid(walletNFTs);
     document.getElementById('nftCount').textContent = walletNFTs.length + ' NFTs';
+    // Debug: log media type breakdown
+    const breakdown = {};
+    walletNFTs.forEach(n => {
+      const t = n.mediaType || 'unknown';
+      breakdown[t] = (breakdown[t] || 0) + 1;
+    });
+    console.info('[tools] Media type breakdown:', breakdown);
+    console.info('[tools] First 3 NFTs:', walletNFTs.slice(0, 3).map(n => ({
+      id: n.id,
+      mediaType: n.mediaType,
+      image: n.image?.slice(0, 80),
+      animation: n.animation?.slice(0, 80),
+    })));
+
     toast(walletNFTs.length
       ? 'Loaded ' + walletNFTs.length + ' NFTs'
       : 'No NFTs found in this wallet', walletNFTs.length ? 'success' : 'info');
@@ -305,12 +344,13 @@ async function fetchOpenSeaWallet(addr, chainKey) {
         seenNFTs.add(uid);
         const imgUrl = proxyUrl(n.image_url || n.display_image_url || '');
         const animUrl = proxyUrl(n.display_animation_url || n.animation_url || '');
+        const mt = detectMediaType(animUrl || imgUrl, n.mime_type || n.media_type);
         allNFTs.push({
           id: n.identifier,
           name: n.name || '#' + n.identifier,
           image: imgUrl,
           animation: animUrl,
-          mediaType: detectMediaType(animUrl || imgUrl),
+          mediaType: mt,
           collection: n.collection,
           contract: n.contract,
           source: 'opensea'
@@ -320,20 +360,6 @@ async function fetchOpenSeaWallet(addr, chainKey) {
       if (cursor) await sleep(300);
     } while (cursor && page < 20);
   } catch(e) { console.error('OpenSea wallet fetch:', e); }
-
-  // Detects what kind of media the URL points to.
-// Returns: 'image' | 'gif' | 'webp' | 'video'
-function detectMediaType(url) {
-  if (!url) return 'image';
-  const lower = url.toLowerCase().split('?')[0];
-  if (lower.endsWith('.gif')) return 'gif';
-  if (lower.endsWith('.webp')) return 'webp';
-  if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return 'video';
-  // Alchemy serves animated WebPs with mediaType in URL
-  if (url.includes('content-type=image/gif')) return 'gif';
-  if (url.includes('content-type=video')) return 'video';
-  return 'image';
-}
 
   /* Moralis */
   const MORALIS_CHAIN_MAP = { base:'base', ethereum:'eth', apechain:'apechain' };
@@ -354,9 +380,20 @@ function detectMediaType(url) {
           seenNFTs.add(uid);
           let meta = {};
           try { meta = n.metadata ? JSON.parse(n.metadata) : {}; } catch(_) {}
-          const img = proxyUrl(meta.image || meta.image_url || '');
-          if (!img) return;
-          allNFTs.push({ id:n.token_id, name:n.name||meta.name||'#'+n.token_id, image:img, collection:n.name, contract:n.token_address, source:'moralis' });
+          const imgUrl = proxyUrl(meta.image || meta.image_url || '');
+          const animUrl = proxyUrl(meta.animation_url || meta.animation || '');
+          if (!imgUrl && !animUrl) return;
+          const mt = detectMediaType(animUrl || imgUrl);
+          allNFTs.push({
+            id: n.token_id,
+            name: n.name || meta.name || '#'+n.token_id,
+            image: imgUrl || animUrl,
+            animation: animUrl,
+            mediaType: mt,
+            collection: n.name,
+            contract: n.token_address,
+            source: 'moralis'
+          });
         });
         cursor = d.cursor||null; page++;
         if (cursor) await sleep(300);
@@ -380,10 +417,28 @@ function detectMediaType(url) {
         (d.ownedNfts || []).forEach(n => {
           const uid = (n.contract?.address||'').toLowerCase() + '_' + normalizeTokenId(n.tokenId);
           if (seenNFTs.has(uid)) return;
-          const img = proxyUrl(n.image?.cachedUrl || n.image?.thumbnailUrl || n.raw?.metadata?.image || '');
-          if (!img) return;
+          // Prefer original URL over Alchemy's CDN-converted thumbnail for animated content
+          const rawImage = n.raw?.metadata?.image || n.raw?.metadata?.image_url || '';
+          const rawAnim  = n.raw?.metadata?.animation_url || n.raw?.metadata?.animation || '';
+          const cdnImage = n.image?.cachedUrl || n.image?.thumbnailUrl || '';
+          // For static use cdn (faster), but capture raw for media type detection
+          const imgUrl = proxyUrl(cdnImage || rawImage);
+          const animUrl = proxyUrl(rawAnim);
+          if (!imgUrl && !animUrl) return;
+          // Use Alchemy's contentType hint if available (most reliable!)
+          const contentType = n.image?.contentType || n.raw?.metadata?.mime_type || '';
+          const mt = detectMediaType(animUrl || rawImage || imgUrl, contentType);
           seenNFTs.add(uid);
-          allNFTs.push({ id:n.tokenId, name:n.name||n.title||'#'+n.tokenId, image:img, collection:n.contract?.openSeaMetadata?.collectionName||n.contract?.name, contract:n.contract?.address, source:'alchemy' });
+          allNFTs.push({
+            id: n.tokenId,
+            name: n.name||n.title||'#'+n.tokenId,
+            image: imgUrl || animUrl,
+            animation: animUrl,
+            mediaType: mt,
+            collection: n.contract?.openSeaMetadata?.collectionName || n.contract?.name,
+            contract: n.contract?.address,
+            source: 'alchemy'
+          });
         });
         pageKey = d.pageKey||null; page++;
         if (pageKey) await sleep(300);
