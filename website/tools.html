@@ -1101,15 +1101,14 @@
       document.querySelector('.scroll-progress').style.width = p + '%';
     });
 
-    // Config (keep same as original)
+    // Config — pulls live values from config.js (window.NETWORK)
     const CONFIG = {
-      chainIdNum: 84532,
-      rpc:        'https://sepolia.base.org',
-      basescan:   'https://sepolia.basescan.org/',
-      nft:        '0xd3EE3842d3878346a65b44D18C76046c70d46987',
-      staking:    '0x6E06c9F40A35cf327B335e02BAdA53c528dF6A4f',
-      storage:    '0xEa728BF369750A20104FBa37962bBeDD89B7FB75',
-      renderer:   '0x0cF7D86de79Fc48cC99af08Ae31280e88fA9285f',
+      chainIdNum:      window.NETWORK?.chainId,
+      rpc:             window.NETWORK?.rpcUrl,
+      basescan:        window.NETWORK?.explorerBase,
+      nft:             window.NETWORK?.NFT_ADDRESS,
+      staking:         window.NETWORK?.STAKING_ADDRESS,
+      renderer:        window.NETWORK?.rendererAddress,
       OPENSEA_API_KEY: null,
     };
   </script>

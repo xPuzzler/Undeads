@@ -58,36 +58,88 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 3500);
 }
 
+// Cache for renderer-fetched data URLs (avoid re-fetching same token)
+const RENDERER_CACHE = new Map();
+
+// Fetches an Undead's image directly from the onchain renderer.
+// Returns a data URL (canvas-safe, zero CORS issues).
+async function fetchUndeadImageOnchain(tokenId) {
+  if (typeof window.NETWORK === 'undefined' || !window.NETWORK?.rendererAddress) return null;
+  if (typeof ethers === 'undefined') return null;
+
+  const cacheKey = `${window.NETWORK.NFT_ADDRESS.toLowerCase()}_${tokenId}`;
+  if (RENDERER_CACHE.has(cacheKey)) return RENDERER_CACHE.get(cacheKey);
+
+  try {
+    const provider = new ethers.JsonRpcProvider(window.NETWORK.rpcUrl);
+    // tokenURI(uint256) selector = 0xc87b56dd
+    const data = '0xc87b56dd' + BigInt(tokenId).toString(16).padStart(64, '0');
+    const raw = await provider.call({ to: window.NETWORK.rendererAddress, data });
+
+    // Decode the ABI-encoded string return value
+    const hex = raw.replace(/^0x/, '');
+    const offset = parseInt(hex.slice(0, 64), 16) * 2;
+    const len = parseInt(hex.slice(offset, offset + 64), 16);
+    let uri = '';
+    for (let i = 0; i < len * 2; i += 2) {
+      uri += String.fromCharCode(parseInt(hex.slice(offset + 64 + i, offset + 64 + i + 2), 16));
+    }
+
+    // tokenURI returns data:application/json;base64,<JSON>
+    const json = JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, '')));
+    const image = json.image || null;
+    if (image) RENDERER_CACHE.set(cacheKey, image);
+    return image;
+  } catch (e) {
+    console.warn(`[tools] Renderer fetch failed for #${tokenId}:`, e.message);
+    return null;
+  }
+}
+
+// Detects whether an NFT is a BasedUndead from this collection
+function isBasedUndead(nft) {
+  if (!nft || !window.NETWORK?.NFT_ADDRESS) return false;
+  return (nft.contract || '').toLowerCase() === window.NETWORK.NFT_ADDRESS.toLowerCase();
+}
+
 // Loads an image and guarantees the resulting bitmap is CORS-clean
 // for canvas export. Strategy:
+//   0) For BasedUndeads: fetch directly from onchain renderer (always CORS-safe)
 //   1) Try direct load with crossOrigin='anonymous' (fastest, no extra fetch)
-//   2) If that fails or canvas test reveals taint, fetch as blob → blob URL
-//   3) If even blob fetch is blocked by CORS, route through public CORS proxy
-async function loadImg(src) {
+//   2) If that fails, fetch as blob → blob URL
+//   3) If blob fetch is blocked, route through public CORS proxy
+async function loadImg(src, nft = null) {
   if (!src) throw new Error('No src');
 
-  // Attempt 1: direct load with CORS attribute
+  // Tier 0: Onchain fetch for BasedUndeads (zero CORS, always works)
+  if (nft && isBasedUndead(nft)) {
+    const onchainImg = await fetchUndeadImageOnchain(nft.id);
+    if (onchainImg) {
+      try { return await loadImgDirect(onchainImg); } catch(_) {}
+    }
+  }
+
+  // Tier 1: direct load with CORS attribute
   try {
     return await loadImgDirect(src);
   } catch (e) {
-    // Fall through to blob approach
+    // Fall through
   }
 
-  // Attempt 2: fetch as blob, then load from blob URL
+  // Tier 2: fetch as blob, then load from blob URL
   try {
     const r = await fetch(src, { mode: 'cors' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const blob = await r.blob();
     const blobUrl = URL.createObjectURL(blob);
     const img = await loadImgDirect(blobUrl);
-    // Don't revoke immediately — caller may still need it cached
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     return img;
   } catch (e) {
-    // Fall through to proxy
+    // Fall through
   }
 
-  // Attempt 3: route through a public CORS proxy (last resort)
+  // Tier 3: route through a public CORS proxy
   try {
     const proxied = 'https://corsproxy.io/?' + encodeURIComponent(src);
     return await loadImgDirect(proxied);
@@ -452,9 +504,10 @@ async function buildGridCanvas(nfts, rows, cols) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle=sepC; ctx.fillRect(0,0,W,H);
 
-  // Pre-load all images in parallel — much faster than serial
+  // Pre-load all images in parallel — much faster than serial.
+  // Pass the full nft object so loadImg can route BasedUndeads through onchain.
   const imagePromises = nfts.slice(0, rows*cols).map(nft =>
-    nft?.image ? loadImg(nft.image).catch(() => null) : Promise.resolve(null)
+    nft?.image ? loadImg(nft.image, nft).catch(() => null) : Promise.resolve(null)
   );
   const images = await Promise.all(imagePromises);
 
@@ -865,7 +918,7 @@ async function removeBG(img){
 async function addCharacterToWallpaper(nft){
   toast('Adding character…');
   let origImg;
-  try { origImg=await loadImg(nft.image); }
+  try { origImg=await loadImg(nft.image, nft); }
   catch(_){ toast('Could not load character image','error'); return; }
   const noBgImg=WP.removeBackground?await removeBG(origImg):null;
   const canvas=WP.canvas;
