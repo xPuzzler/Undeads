@@ -514,7 +514,7 @@ async function loadFeaturedUndeads() {
     }
 
     if (all.length === 0) {
-      const link = window.NETWORK?.openseaCollection || 'https://opensea.io/collection/basedundeads-112104013/overview';
+      const link = window.NETWORK?.openseaCollection || 'https://opensea.io/collection/basedundeads/overview';
       scroller.innerHTML = `<div class="sales-loading">Unable to load Featured Undeads. Visit <a href="${link}" target="_blank" style="color:var(--accent)">OpenSea</a> directly.</div>`;
       return;
     }
@@ -579,7 +579,7 @@ function openUndeadModal (nft) {
   } else if (fbContract) {
     openseaUrl = `https://testnets.opensea.io/assets/base-sepolia/${fbContract}/${tokenId}`;
   } else {
-    openseaUrl = 'https://opensea.io/collection/basedundeads-112104013/overview';
+    openseaUrl = 'https://opensea.io/collection/basedundeads/overview';
   }
 
   const traitsHtml = (list) => (list && list.length)
