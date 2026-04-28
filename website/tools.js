@@ -303,10 +303,14 @@ async function fetchOpenSeaWallet(addr, chainKey) {
         const uid = (n.contract||'').toLowerCase() + '_' + normalizeTokenId(n.identifier);
         if (seenNFTs.has(uid)) return;
         seenNFTs.add(uid);
+        const imgUrl = proxyUrl(n.image_url || n.display_image_url || '');
+        const animUrl = proxyUrl(n.display_animation_url || n.animation_url || '');
         allNFTs.push({
           id: n.identifier,
           name: n.name || '#' + n.identifier,
-          image: proxyUrl(n.image_url || n.display_image_url || ''),
+          image: imgUrl,
+          animation: animUrl,
+          mediaType: detectMediaType(animUrl || imgUrl),
           collection: n.collection,
           contract: n.contract,
           source: 'opensea'
@@ -316,6 +320,20 @@ async function fetchOpenSeaWallet(addr, chainKey) {
       if (cursor) await sleep(300);
     } while (cursor && page < 20);
   } catch(e) { console.error('OpenSea wallet fetch:', e); }
+
+  // Detects what kind of media the URL points to.
+// Returns: 'image' | 'gif' | 'webp' | 'video'
+function detectMediaType(url) {
+  if (!url) return 'image';
+  const lower = url.toLowerCase().split('?')[0];
+  if (lower.endsWith('.gif')) return 'gif';
+  if (lower.endsWith('.webp')) return 'webp';
+  if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return 'video';
+  // Alchemy serves animated WebPs with mediaType in URL
+  if (url.includes('content-type=image/gif')) return 'gif';
+  if (url.includes('content-type=video')) return 'video';
+  return 'image';
+}
 
   /* Moralis */
   const MORALIS_CHAIN_MAP = { base:'base', ethereum:'eth', apechain:'apechain' };
@@ -409,7 +427,13 @@ function renderWalletGrid(nfts) {
     const card = document.createElement('div');
     card.className = 'stake-nft-card';
     card.dataset.index = i;
+    const typeBadge = nft.mediaType && nft.mediaType !== 'image'
+      ? `<span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.85);
+         padding:3px 8px;border-radius:100px;font-family:'Geist Mono',monospace;font-size:9px;
+         color:#c8a450;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(200,164,80,.3);">
+         ${nft.mediaType}</span>` : '';
     card.innerHTML = `
+      ${typeBadge}
       <img src="${nft.image || 'https://placehold.co/300x300/140808/c8a450?text=%23'+nft.id}"
            alt="${nft.name}" loading="lazy"
            onerror="this.onerror=null;this.src='https://placehold.co/300x300/140808/c8a450?text=%23${nft.id}'"/>
@@ -450,7 +474,21 @@ function toggleGridSelect(nft, card) {
 
 function updateGridSelCount() {
   const el = document.getElementById('gridSelCount');
-  if (el) el.textContent = selectedForGrid.length + ' selected';
+  if (!el) return;
+  if (!selectedForGrid.length) {
+    el.textContent = '0 selected';
+    return;
+  }
+  const types = new Set(selectedForGrid.map(n => n.mediaType || 'image'));
+  if (types.size > 1) {
+    el.textContent = `${selectedForGrid.length} selected · ⚠️ Mixed types (${[...types].join(', ')}) — pick one type only`;
+    el.style.color = '#ff6b6b';
+  } else {
+    const t = [...types][0];
+    const emoji = t === 'image' ? '🖼' : t === 'video' ? '🎥' : '✨';
+    el.textContent = `${selectedForGrid.length} selected · ${emoji} ${t}`;
+    el.style.color = '';
+  }
 }
 
 /* ============================================================
@@ -480,17 +518,41 @@ function getNFTsForGrid(useCache = false) {
   const { rows, cols } = getGridDims();
   const needed = rows * cols;
 
+  let chosenNfts;
+
   if (mode === 'random') {
     if (useCache && lastRandomGrid) return lastRandomGrid;
     const pool = (currentDisplayedNFTs.length ? currentDisplayedNFTs : walletNFTs).filter(n => n.image);
     if (!pool.length) { toast('Load a wallet first to use random mode', 'error'); return null; }
-    lastRandomGrid = { nfts: [...pool].sort(() => Math.random()-.5).slice(0, needed), rows, cols };
+
+    // For random: group by mediaType, pick the largest group
+    const byType = {};
+    pool.forEach(n => {
+      const t = n.mediaType || 'image';
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(n);
+    });
+    const largestType = Object.keys(byType).sort((a, b) => byType[b].length - byType[a].length)[0];
+    const sameTypePool = byType[largestType];
+    chosenNfts = [...sameTypePool].sort(() => Math.random() - 0.5).slice(0, needed);
+
+    lastRandomGrid = { nfts: chosenNfts, rows, cols, mediaType: largestType };
     return lastRandomGrid;
   }
 
+  // Manual mode
   lastRandomGrid = null;
   if (!selectedForGrid.length) { toast('Select NFTs from your wallet for the grid', 'error'); return null; }
-  return { nfts: selectedForGrid.slice(0, needed), rows, cols };
+
+  // Check that all selected are same media type
+  const types = new Set(selectedForGrid.map(n => n.mediaType || 'image'));
+  if (types.size > 1) {
+    toast(`Mixed types selected (${[...types].join(', ')}). Pick all images, all GIFs, or all videos.`, 'error');
+    return null;
+  }
+
+  chosenNfts = selectedForGrid.slice(0, needed);
+  return { nfts: chosenNfts, rows, cols, mediaType: [...types][0] || 'image' };
 }
 
 async function buildGridCanvas(nfts, rows, cols) {
@@ -538,31 +600,333 @@ async function buildGridCanvas(nfts, rows, cols) {
 async function previewGrid() {
   const data = getNFTsForGrid(false);
   if (!data) return;
+
+  if (data.mediaType === 'image') {
+    return previewImageGrid(data);
+  }
+  if (data.mediaType === 'gif' || data.mediaType === 'webp') {
+    return previewAnimatedGrid(data);
+  }
+  if (data.mediaType === 'video') {
+    return previewVideoGrid(data);
+  }
+}
+
+async function previewImageGrid(data) {
   toast('Building preview…');
   try {
     const canvas = await buildGridCanvas(data.nfts, data.rows, data.cols);
-    const container = document.getElementById('gridPreviewContainer');
-    const preview   = document.getElementById('gridPreview');
-    container.classList.remove('hidden');
-    preview.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = canvas.toDataURL();
-    img.style.cssText = 'width:100%;height:auto;display:block;border-radius:8px;';
-    preview.appendChild(img);
-    container.scrollIntoView({ behavior:'smooth', block:'start' });
+    showPreviewImage(canvas.toDataURL());
     toast('Preview ready!', 'success');
   } catch(e) { console.error(e); toast('Failed to build grid', 'error'); }
+}
+
+async function previewAnimatedGrid(data) {
+  toast('Building animated preview… (this can take 10-30s)');
+  try {
+    const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
+    const url = URL.createObjectURL(blob);
+    showPreviewImage(url);
+    toast(`Animated preview ready! (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+  } catch(e) { console.error(e); toast('Failed: ' + e.message, 'error'); }
+}
+
+async function previewVideoGrid(data) {
+  toast('Building video preview… (this can take 10-30s)');
+  try {
+    const blob = await buildVideoGrid(data.nfts, data.rows, data.cols);
+    const url = URL.createObjectURL(blob);
+    showPreviewVideo(url);
+    toast(`Video preview ready! (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+  } catch(e) { console.error(e); toast('Failed: ' + e.message, 'error'); }
+}
+
+function showPreviewImage(src) {
+  const container = document.getElementById('gridPreviewContainer');
+  const preview = document.getElementById('gridPreview');
+  container.classList.remove('hidden');
+  preview.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:100%;height:auto;display:block;border-radius:8px;';
+  preview.appendChild(img);
+  container.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function showPreviewVideo(src) {
+  const container = document.getElementById('gridPreviewContainer');
+  const preview = document.getElementById('gridPreview');
+  container.classList.remove('hidden');
+  preview.innerHTML = '';
+  const v = document.createElement('video');
+  v.src = src; v.controls = true; v.autoplay = true; v.loop = true; v.muted = true;
+  v.style.cssText = 'width:100%;height:auto;display:block;border-radius:8px;';
+  preview.appendChild(v);
+  container.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ============================================================
+   ANIMATED GRID BUILDERS — GIF and Video
+   ============================================================ */
+
+// Lazy-load gif.js from CDN (only when needed)
+async function loadGifJS() {
+  if (window.GIF) return window.GIF;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return window.GIF;
+}
+
+// Decode a GIF/WebP to a sequence of frames using the browser's
+// native ImageDecoder (Chromium/Edge/Safari 17+).
+async function decodeAnimatedToFrames(url) {
+  if (typeof ImageDecoder === 'undefined') {
+    throw new Error('Animated decoding not supported in this browser');
+  }
+  const r = await fetch(url, { mode: 'cors' }).catch(async () => {
+    return fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const blob = await r.blob();
+  const decoder = new ImageDecoder({
+    data: blob.stream(),
+    type: blob.type || 'image/gif',
+  });
+  await decoder.tracks.ready;
+  const track = decoder.tracks.selectedTrack;
+  const frameCount = track.frameCount;
+  const frames = [];
+  let totalDurationMs = 0;
+  for (let i = 0; i < frameCount; i++) {
+    const { image, duration } = await decoder.decode({ frameIndex: i });
+    const durMs = (duration || 100000) / 1000; // microseconds → ms
+    frames.push({ bitmap: image, durationMs: durMs });
+    totalDurationMs += durMs;
+  }
+  return { frames, totalDurationMs };
+}
+
+// Build an animated GIF where each cell loops its source.
+// All cells run at a common timeline; total length = max source length.
+async function buildAnimatedGifGrid(nfts, rows, cols) {
+  const GIF = await loadGifJS();
+  const cellSize = 200; // smaller than PNG to keep filesize manageable
+  const sep = Math.max(0, parseInt(document.getElementById('separatorWidth').value) || 0);
+  const sepColor = document.getElementById('separatorColor').value || '#0a0505';
+  const W = cols * cellSize + (cols + 1) * sep;
+  const H = rows * cellSize + (rows + 1) * sep;
+
+  toast('Decoding animated frames…');
+  // Decode each NFT in parallel
+  const decodedSlots = await Promise.all(
+    nfts.slice(0, rows * cols).map(async (nft) => {
+      const url = nft?.animation || nft?.image;
+      if (!url) return null;
+      try {
+        return await decodeAnimatedToFrames(url);
+      } catch (e) {
+        console.warn('Decode failed for', nft.id, e.message);
+        // Fallback: try as static image
+        try {
+          const img = await loadImg(url, nft);
+          return { frames: [{ bitmap: img, durationMs: 100 }], totalDurationMs: 100 };
+        } catch (_) {
+          return null;
+        }
+      }
+    })
+  );
+
+  // Find the longest clip — that's our timeline
+  const maxDuration = Math.max(...decodedSlots.filter(Boolean).map(s => s.totalDurationMs), 1000);
+  const frameStep = 50; // 20fps output
+  const totalFrames = Math.ceil(maxDuration / frameStep);
+
+  toast(`Building ${totalFrames}-frame GIF…`);
+
+  const gif = new GIF({
+    workers: 2,
+    quality: 10,
+    width: W,
+    height: H,
+    workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js',
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  for (let f = 0; f < totalFrames; f++) {
+    const tMs = f * frameStep;
+    ctx.fillStyle = sepColor;
+    ctx.fillRect(0, 0, W, H);
+
+    decodedSlots.forEach((slot, i) => {
+      if (!slot) return;
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = sep + c * (cellSize + sep);
+      const y = sep + r * (cellSize + sep);
+      const localT = tMs % slot.totalDurationMs;
+      const bitmap = pickFrameAtTime(slot.frames, localT);
+      if (bitmap) ctx.drawImage(bitmap, x, y, cellSize, cellSize);
+    });
+
+    gif.addFrame(ctx, { copy: true, delay: frameStep });
+  }
+
+  return new Promise((resolve, reject) => {
+    gif.on('finished', resolve);
+    gif.on('error', reject);
+    gif.render();
+  });
+}
+
+function pickFrameAtTime(frames, tMs) {
+  let acc = 0;
+  for (const fr of frames) {
+    acc += fr.durationMs;
+    if (tMs < acc) return fr.bitmap;
+  }
+  return frames[frames.length - 1]?.bitmap || null;
+}
+
+// Build a WebM video where each cell plays its source video on loop.
+// Total length = max source video length.
+async function buildVideoGrid(nfts, rows, cols) {
+  const cellSize = 256;
+  const sep = Math.max(0, parseInt(document.getElementById('separatorWidth').value) || 0);
+  const sepColor = document.getElementById('separatorColor').value || '#0a0505';
+  const W = cols * cellSize + (cols + 1) * sep;
+  const H = rows * cellSize + (rows + 1) * sep;
+
+  toast('Loading source videos…');
+  const slots = await Promise.all(
+    nfts.slice(0, rows * cols).map(async (nft) => {
+      const url = nft?.animation || nft?.image;
+      if (!url) return null;
+      return loadVideoElement(url).catch(() => null);
+    })
+  );
+
+  const validSlots = slots.filter(Boolean);
+  if (!validSlots.length) throw new Error('No videos could be loaded');
+  const maxDuration = Math.max(...validSlots.map(v => v.duration || 1));
+
+  // Set up canvas + MediaRecorder
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const stream = canvas.captureStream(30);
+
+  const mimeCandidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  const mime = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m));
+  if (!mime) throw new Error('Browser does not support WebM recording');
+
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  toast(`Recording ${maxDuration.toFixed(1)}s video…`);
+
+  // Start all videos & recorder
+  slots.forEach(v => { if (v) { v.currentTime = 0; v.loop = true; v.muted = true; v.play().catch(() => {}); } });
+  recorder.start();
+
+  return new Promise((resolve, reject) => {
+    const startTime = performance.now();
+    let stopped = false;
+
+    function frame() {
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (elapsed >= maxDuration) {
+        if (!stopped) {
+          stopped = true;
+          recorder.stop();
+          slots.forEach(v => { if (v) v.pause(); });
+        }
+        return;
+      }
+
+      ctx.fillStyle = sepColor;
+      ctx.fillRect(0, 0, W, H);
+
+      slots.forEach((v, i) => {
+        if (!v) return;
+        const r = Math.floor(i / cols), c = i % cols;
+        const x = sep + c * (cellSize + sep);
+        const y = sep + r * (cellSize + sep);
+        try { ctx.drawImage(v, x, y, cellSize, cellSize); } catch(_) {}
+      });
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }));
+    recorder.onerror = reject;
+  });
+}
+
+function loadVideoElement(src) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous';
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.src = src;
+    v.onloadedmetadata = () => resolve(v);
+    v.onerror = () => {
+      // Try CORS proxy
+      const v2 = document.createElement('video');
+      v2.crossOrigin = 'anonymous';
+      v2.muted = true;
+      v2.src = 'https://corsproxy.io/?' + encodeURIComponent(src);
+      v2.onloadedmetadata = () => resolve(v2);
+      v2.onerror = () => reject(new Error('Video load failed'));
+    };
+  });
 }
 
 async function downloadGridPNG() {
   const data = getNFTsForGrid(true);
   if (!data) return;
-  toast('Generating PNG…');
+
   try {
-    const canvas = await buildGridCanvas(data.nfts, data.rows, data.cols);
-    downloadCanvas(canvas, `undead-grid-${data.rows}x${data.cols}.png`);
-    toast('Downloaded!', 'success');
-  } catch(e) { console.error(e); toast('Failed to export PNG', 'error'); }
+    if (data.mediaType === 'image') {
+      toast('Generating PNG…');
+      const canvas = await buildGridCanvas(data.nfts, data.rows, data.cols);
+      downloadCanvas(canvas, `undead-grid-${data.rows}x${data.cols}.png`);
+      toast('Downloaded!', 'success');
+      return;
+    }
+    if (data.mediaType === 'gif' || data.mediaType === 'webp') {
+      toast('Generating GIF… (10-30s)');
+      const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
+      downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.gif`);
+      toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
+      return;
+    }
+    if (data.mediaType === 'video') {
+      toast('Generating video… (10-30s)');
+      const blob = await buildVideoGrid(data.nfts, data.rows, data.cols);
+      downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.webm`);
+      toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
+      return;
+    }
+  } catch(e) { console.error(e); toast('Export failed: ' + e.message, 'error'); }
+}
+
+function downloadBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 async function downloadAllZip() {
