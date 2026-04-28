@@ -29,9 +29,9 @@ const NETWORKS = {
     openseaChain:       'base',
     openseaApiHost:     'https://api.opensea.io',
     openseaWebBase:     'https://opensea.io/assets/base',
-    openseaCollection:  'https://opensea.io/collection/basedundeads-112104013/overview',
+    openseaCollection:  'https://opensea.io/collection/basedundeads/overview',
     alchemyHost:        'https://base-mainnet.g.alchemy.com',
-    collectionSlug:     'basedundeads-112104013',
+    collectionSlug:     'basedundeads',
 
     showDemoRoyalty:    false,
     demoRoyaltyEthAmount: '0',
