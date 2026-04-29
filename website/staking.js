@@ -269,6 +269,27 @@ async function refreshStats () {
     const tot = Number(total), mine = Number(staked);
     el('poolShare').textContent = tot > 0 ? ((mine / tot) * 100).toFixed(2) + '%' : '0%';
     el('claimableEth').textContent = parseFloat(ethers.formatEther(earned)).toFixed(6);
+
+    // Global stats
+    el('totalStakedGlobal').textContent = tot.toLocaleString();
+
+    // Count active stakers — addresses with stakedBalance > 0
+    try {
+      const filter = stakingContract.filters.Staked();
+      const events = await stakingContract.queryFilter(filter);
+      const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
+
+      // Check current balance for each address that ever staked
+      const balances = await Promise.all(
+        uniqueAddresses.map(addr =>
+          stakingContract.stakedBalance(addr).catch(() => 0n)
+        )
+      );
+
+      const activeCount = balances.filter(b => BigInt(b) > 0n).length;
+      el('totalStakers').textContent = activeCount.toLocaleString();
+    } catch { el('totalStakers').textContent = '—'; }
+
   } catch (e) { console.error('refreshStats', e); }
 }
 

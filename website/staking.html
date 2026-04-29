@@ -23,7 +23,7 @@
     .stake-hero .subtitle { font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3vw, 32px); font-style: italic; color: var(--accent); margin-bottom: 20px; }
     .stake-hero p { max-width: 580px; margin: 0 auto; color: var(--muted-2); font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.8; }
 
-    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
     .stats-bar .stat-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 24px; padding: 28px 24px; text-align: center; transition: all .3s; }
     .stats-bar .stat-card:hover { border-color: rgba(0,255,136,0.25); }
     .stats-bar .stat-val { font-family: 'Instrument Serif', serif; font-size: 38px; line-height: 1; margin-bottom: 8px; letter-spacing: -0.02em; }
@@ -121,6 +121,9 @@
     }
 
     @media (max-width: 1024px) {
+      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
       .how-grid { grid-template-columns: 1fr; }
     }
@@ -358,14 +361,14 @@
   </div>
 
   <!-- STATS BAR -->
-  <div class="stats-bar">
+  <div class="stats-bar" style="grid-template-columns: repeat(6, 1fr);">
     <div class="stat-card">
       <div class="stat-val" id="nftsInWallet">-</div>
       <div class="stat-lbl">NFTs in Wallet</div>
     </div>
     <div class="stat-card">
       <div class="stat-val" id="nftsStaked">-</div>
-      <div class="stat-lbl">NFTs Staked</div>
+      <div class="stat-lbl">Your Staked</div>
     </div>
     <div class="stat-card">
       <div class="stat-val accent" id="claimableEth">-</div>
@@ -374,6 +377,14 @@
     <div class="stat-card">
       <div class="stat-val" id="poolShare">-</div>
       <div class="stat-lbl">Your Pool Share</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val accent" id="totalStakedGlobal">-</div>
+      <div class="stat-lbl">Total Staked NFTs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="totalStakers">-</div>
+      <div class="stat-lbl">Total Stakers</div>
     </div>
   </div>
 
