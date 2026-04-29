@@ -23,7 +23,10 @@
     .stake-hero .subtitle { font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3vw, 32px); font-style: italic; color: var(--accent); margin-bottom: 20px; }
     .stake-hero p { max-width: 580px; margin: 0 auto; color: var(--muted-2); font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.8; }
 
-    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    .stats-bar .stat-card { padding: 20px 12px; }
+    .stats-bar .stat-val { font-size: clamp(20px, 3vw, 38px); }
+    .stats-bar .stat-lbl { font-size: 8px; }
     .stats-bar .stat-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 24px; padding: 28px 24px; text-align: center; transition: all .3s; }
     .stats-bar .stat-card:hover { border-color: rgba(0,255,136,0.25); }
     .stats-bar .stat-val { font-family: 'Instrument Serif', serif; font-size: 38px; line-height: 1; margin-bottom: 8px; letter-spacing: -0.02em; }
@@ -123,13 +126,17 @@
     @media (max-width: 1024px) {
       .stats-bar { grid-template-columns: repeat(3, 1fr); }
     }
-    @media (max-width: 600px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .how-grid { grid-template-columns: 1fr; }
-    }
     @media (max-width: 768px) {
       .stake-hero, .stats-bar, .tabs-nav, .tab-panel, .rewards-panel, .how-it-works { padding-left: 16px; padding-right: 16px; }
+      .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 10px; }
       .nft-stake-grid { grid-template-columns: repeat(2, 1fr); }
+      .how-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stats-bar .stat-card { padding: 16px 10px; }
+      .stats-bar .stat-val { font-size: clamp(18px, 6vw, 28px); }
+      .stats-bar .stat-lbl { font-size: 7.5px; letter-spacing: .1em; }
     }
 
     /* ────── STAKING NOT-YET-LIVE STYLES ────── */
@@ -361,7 +368,7 @@
   </div>
 
   <!-- STATS BAR -->
-  <div class="stats-bar" style="grid-template-columns: repeat(6, 1fr);">
+  <div class="stats-bar">
     <div class="stat-card">
       <div class="stat-val" id="nftsInWallet">-</div>
       <div class="stat-lbl">NFTs in Wallet</div>
