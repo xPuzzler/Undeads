@@ -1,4 +1,3 @@
-
 // ─── ABIs (only the functions this page uses) ─────────────────
 const NFT_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
@@ -44,13 +43,7 @@ let unlockTimer = null;       // setInterval handle for the live countdown
 let unlockEndTime = 0;        // unix ms when the lock expires (0 = no lock)
 
 // ─── PRE-LAUNCH FLAG ──────────────────────────────────────────
-// Read from config.js. When false: wallet/NFTs visible but
-// stake/unstake/claim blocked with the "not yet live" modal.
 const STAKING_ENABLED = !!(NETWORK && NETWORK.stakingEnabled);
-
-// Maximum tokenIds per stake/unstake transaction. Higher batches
-// risk gas spikes and indexer lag (OpenSea took ~1h to catch up
-// after a 200+ batch). 50 is the sweet spot.
 const MAX_BATCH_SIZE = 50;
 
 function showPreLaunchModal() {
@@ -62,6 +55,101 @@ function hidePreLaunchModal() {
   const m = document.getElementById('prelaunchModal');
   if (!m) return;
   m.classList.remove('open');
+}
+
+// ─── STAT ANIMATION SYSTEM ───────────────────────────────────
+// Tracks previous values so we can detect changes and animate
+// only the cards whose numbers actually moved.
+const _prevStatValues = {};
+
+/**
+ * updateStat(id, newText)
+ * - First call ever for this id  → plays entrance (count-up + slide-in)
+ * - Subsequent call, value same  → silent no-op
+ * - Subsequent call, value diff  → vibrate + glow flash
+ */
+function updateStat(id, newText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const card = el.closest('.stat-card');
+  const isFirst = !Object.prototype.hasOwnProperty.call(_prevStatValues, id);
+  const prev    = _prevStatValues[id];
+  _prevStatValues[id] = newText;
+
+  if (isFirst) {
+    // Entrance: slide-up fade + count-up number
+    if (card) {
+      card.classList.remove('stat-entering', 'stat-changed');
+      void card.offsetWidth;
+      card.classList.add('stat-entering');
+      setTimeout(() => card.classList.remove('stat-entering'), 700);
+    }
+    _countUpEl(el, newText);
+    return;
+  }
+
+  // Silent if unchanged
+  if (prev === newText) return;
+
+  // Value changed — update text then vibrate + glow
+  _countUpEl(el, newText);
+  if (card) {
+    card.classList.remove('stat-changed');
+    void card.offsetWidth;
+    card.classList.add('stat-changed');
+    setTimeout(() => card.classList.remove('stat-changed'), 1400);
+  }
+}
+
+/**
+ * _countUpEl(el, targetStr)
+ * Animates from 0 to the numeric value embedded in targetStr.
+ * Preserves prefix/suffix (e.g. " Ξ", "%", "— ").
+ */
+function _countUpEl(el, targetStr) {
+  if (!targetStr || targetStr === '-' || targetStr === '—') {
+    el.textContent = targetStr;
+    return;
+  }
+
+  // Match the first run of digits (with optional commas / decimal)
+  const match = targetStr.match(/[\d,]+\.?\d*/);
+  if (!match) { el.textContent = targetStr; return; }
+
+  const raw = match[0].replace(/,/g, '');
+  const num = parseFloat(raw);
+  if (isNaN(num) || num === 0) { el.textContent = targetStr; return; }
+
+  const before = targetStr.slice(0, match.index);
+  const after  = targetStr.slice(match.index + match[0].length);
+  const dec    = raw.includes('.') ? raw.split('.')[1].length : 0;
+  const dur    = 850;
+  const t0     = performance.now();
+
+  (function tick(now) {
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    const v = num * e;
+    const s = dec
+      ? v.toFixed(dec)
+      : Math.round(v).toLocaleString();
+    el.textContent = before + s + after;
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = targetStr; // pin exact final value
+  })(t0);
+}
+
+/**
+ * flashRewardsPanel()
+ * Pulses the big ETH number in the rewards card when rewards change.
+ */
+function flashRewardsPanel() {
+  const el = document.getElementById('rewardsAmount');
+  if (!el) return;
+  el.classList.remove('rewards-updating');
+  void el.offsetWidth;
+  el.classList.add('rewards-updating');
+  setTimeout(() => el.classList.remove('rewards-updating'), 1000);
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────
@@ -86,10 +174,9 @@ function fmtDuration(s) {
 }
 
 // ── Live countdown timer ─────────────────────────────────────
-// Ticks every second on its own — doesn't need refresh cycles.
 function startUnlockCountdown() {
   stopUnlockCountdown();
-  tickUnlockCountdown(); // immediate first paint
+  tickUnlockCountdown();
   unlockTimer = setInterval(tickUnlockCountdown, 1000);
 }
 
@@ -110,22 +197,21 @@ function tickUnlockCountdown() {
     return;
   }
 
-  const remainingMs = unlockEndTime - Date.now();
+  const remainingMs  = unlockEndTime - Date.now();
   const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
 
   if (remainingSec <= 0) {
-    // Just unlocked — switch to the "Unlocked" badge and refresh state once
     notice.innerHTML = `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked — unstake anytime</div>`;
     stopUnlockCountdown();
     unlockEndTime = 0;
-    // Re-fetch staked state so any per-card lock badges clear out
     if (stakingContract && userAddress) refreshStakedNFTs();
     return;
   }
 
   notice.innerHTML = `<div class="timer-display locked"><i class="fas fa-lock"></i> Unlocks in ${fmtDuration(remainingSec)}</div>`;
 }
-// ── Renderer image fetch (testnet fallback - mirrors validator.html) ──────
+
+// ── Renderer image fetch (testnet fallback) ───────────────────
 function abiDecodeString(hex) {
   hex = hex.replace(/^0x/, '');
   const offset = parseInt(hex.slice(0, 64), 16) * 2;
@@ -149,7 +235,7 @@ async function fetchImageFromRenderer(id) {
   } catch { return ''; }
 }
 
-// ─── CURSOR + SCROLL (same as rest of site) ───────────────────
+// ─── CURSOR + SCROLL ──────────────────────────────────────────
 (function () {
   const cursor = document.querySelector('.cursor');
   const dot = document.querySelector('.cursor-dot');
@@ -182,7 +268,7 @@ window.addEventListener('scroll', () => {
   bar.style.width = ((window.pageYOffset / h) * 100) + '%';
 });
 
-// ─── NETWORK BADGE (top of page shows TESTNET in big red letters) ─
+// ─── NETWORK BADGE ────────────────────────────────────────────
 function mountNetworkBadge () {
   if (!IS_TESTNET) return;
   const badge = document.createElement('div');
@@ -195,15 +281,10 @@ function mountNetworkBadge () {
   document.body.prepend(badge);
 }
 
-// ─── READ-ONLY PROVIDER (works even before wallet connects) ───
-// Initially uses the public Base RPC from config.js. The api-keys
-// fetch in staking.html will swap this out for the Alchemy URL
-// (which has the key) once it resolves.
+// ─── READ-ONLY PROVIDER ───────────────────────────────────────
 readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl);
 let nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
 
-// Upgrade the read provider once api-keys returns the Alchemy RPC URL.
-// Called from staking.html. Safe to call multiple times — no-op if same URL.
 window.upgradeReadProvider = function(rpcUrl) {
   if (!rpcUrl || rpcUrl === NETWORK.rpcUrl) return;
   console.info('[staking] Upgraded read provider to Alchemy RPC');
@@ -264,7 +345,6 @@ async function connectWallet () {
     nftContract     = new ethers.Contract(NETWORK.NFT_ADDRESS,     NFT_ABI,     signer);
     stakingContract = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, signer);
 
-    // Update every connect button
     document.querySelectorAll('#connectBtn, #connectBannerBtn, .connect-btn').forEach(b => {
       if (b.id === 'connectBtn' || b.id === 'connectBannerBtn' || b.classList.contains('js-connect')) {
         b.innerHTML = `<i class="fas fa-user-skull"></i> ${short(userAddress)}`;
@@ -285,9 +365,9 @@ async function connectWallet () {
 
     notify(`✓ Connected to ${NETWORK.label}`, 'success');
 
-    // Attach live event listeners.
-    // Stake/Unstake DO require full refresh (wallet ↔ staked moves tokens).
-    // RewardClaimed/RoyaltyReceived only affect rewards numbers — skip the heavy wallet re-scan.
+    // ── Real-time event listeners ─────────────────────────────
+    // Stake/Unstake need full refresh (tokens move between wallet ↔ staked).
+    // RewardClaimed/RoyaltyReceived only touch numbers, skip heavy NFT scan.
     stakingContract.on('Staked',   (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
     stakingContract.on('Unstaked', (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
     stakingContract.on('RewardClaimed', (u) => {
@@ -307,14 +387,8 @@ async function connectWallet () {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(refreshRewards, 30000);
 
-    window.ethereum.on('accountsChanged', () => {
-      stopUnlockCountdown();
-      window.location.reload();
-    });
-    window.ethereum.on('chainChanged', () => {
-      stopUnlockCountdown();
-      window.location.reload();
-    });
+    window.ethereum.on('accountsChanged', () => { stopUnlockCountdown(); window.location.reload(); });
+    window.ethereum.on('chainChanged',    () => { stopUnlockCountdown(); window.location.reload(); });
 
   } catch (e) {
     console.error(e);
@@ -335,17 +409,13 @@ async function refreshEverything () {
   ]);
 }
 
-// Public stats — works without wallet.
-// Uses MetaMask's provider when available (way better eth_getLogs limits),
-// falls back to readProvider when no wallet is installed.
+// Public stats — works without wallet
 async function refreshPublicStats () {
   try {
-    // Pick the best provider available. MetaMask = best, then connected
-    // wallet's signer-bound contract, then plain read provider.
-    const provider = (window.ethereum)
+    const p = (window.ethereum)
       ? new ethers.BrowserProvider(window.ethereum)
       : readProvider;
-    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, provider);
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, p);
 
     const [total, received, distributed] = await Promise.all([
       stakingRead.totalStaked(),
@@ -353,13 +423,12 @@ async function refreshPublicStats () {
       stakingRead.totalRewardsDistributed(),
     ]);
 
-    const el = id => document.getElementById(id);
-    if (el('totalStakedGlobal')) el('totalStakedGlobal').textContent = Number(total).toLocaleString();
+    updateStat('totalStakedGlobal', Number(total).toLocaleString());
 
     const poolEth = parseFloat(ethers.formatEther(received - distributed));
-    if (el('totalRewardPool')) el('totalRewardPool').textContent = poolEth.toFixed(4) + ' Ξ';
+    updateStat('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
 
-    // Total stakers — same simple query that worked before, no chunking
+    // Total stakers — needs eth_getLogs; works with MetaMask, may fail on public RPC
     try {
       const filter = stakingRead.filters.Staked();
       const events = await stakingRead.queryFilter(filter);
@@ -370,10 +439,10 @@ async function refreshPublicStats () {
       );
 
       const activeCount = balances.filter(b => BigInt(b) > 0n).length;
-      if (el('totalStakers')) el('totalStakers').textContent = activeCount.toLocaleString();
+      updateStat('totalStakers', activeCount.toLocaleString());
     } catch (e) {
-      console.warn('[staking] totalStakers failed:', e.message);
-      if (el('totalStakers')) el('totalStakers').textContent = '—';
+      const el = document.getElementById('totalStakers');
+      if (el) el.textContent = '—';
     }
   } catch (e) {
     console.warn('[staking] refreshPublicStats failed:', e.message);
@@ -389,13 +458,13 @@ async function refreshStats () {
       stakingContract.totalStaked(),
       stakingContract.earned(userAddress),
     ]);
-    const el = id => document.getElementById(id);
-    el('nftsInWallet').textContent = bal.toString();
-    el('nftsStaked').textContent = staked.toString();
+
+    updateStat('nftsInWallet', bal.toString());
+    updateStat('nftsStaked',   staked.toString());
 
     const tot = Number(total), mine = Number(staked);
-    el('poolShare').textContent = tot > 0 ? ((mine / tot) * 100).toFixed(2) + '%' : '0%';
-    el('claimableEth').textContent = parseFloat(ethers.formatEther(earned)).toFixed(6);
+    updateStat('poolShare',    tot > 0 ? ((mine / tot) * 100).toFixed(2) + '%' : '0%');
+    updateStat('claimableEth', parseFloat(ethers.formatEther(earned)).toFixed(6));
   } catch (e) { console.error('refreshStats', e); }
 }
 
@@ -407,12 +476,32 @@ async function refreshRewards () {
       stakingContract.totalRewardsReceived(),
       stakingContract.totalRewardsDistributed(),
     ]);
-    const eth = parseFloat(ethers.formatEther(earned));
+
+    const eth   = parseFloat(ethers.formatEther(earned));
     const poolE = parseFloat(ethers.formatEther(poolTotal - poolDistrib));
-    document.getElementById('rewardsAmount').textContent = eth.toFixed(6) + ' ETH';
-    document.getElementById('rewardsUsd').textContent    = (eth * ethPriceUsd).toFixed(2);
-    document.getElementById('claimableEth').textContent  = eth.toFixed(6);
-    document.getElementById('claimBtn').disabled         = eth <= 0;
+
+    const prevRewards = _prevStatValues['_rewardsAmount'];
+    const newRewards  = eth.toFixed(6) + ' ETH';
+
+    // Update big rewards display (not a stat-card, handled separately)
+    const rewardsAmountEl = document.getElementById('rewardsAmount');
+    if (rewardsAmountEl) {
+      rewardsAmountEl.textContent = newRewards;
+      if (prevRewards !== undefined && prevRewards !== newRewards) {
+        flashRewardsPanel();
+      }
+    }
+    _prevStatValues['_rewardsAmount'] = newRewards;
+
+    const rewardsUsdEl = document.getElementById('rewardsUsd');
+    if (rewardsUsdEl) rewardsUsdEl.textContent = (eth * ethPriceUsd).toFixed(2);
+
+    // claimableEth lives in a stat-card — use updateStat
+    updateStat('claimableEth', eth.toFixed(6));
+
+    const claimBtn = document.getElementById('claimBtn');
+    if (claimBtn) claimBtn.disabled = eth <= 0;
+
     const poolEl = document.getElementById('poolBalance');
     if (poolEl) poolEl.textContent = poolE.toFixed(6) + ' ETH';
   } catch (e) { console.error(e); }
@@ -427,22 +516,17 @@ async function fetchEthPrice () {
 }
 
 // ─── NFT ENUMERATION ──────────────────────────────────────────
-// Returns array of {id, image} OR null if APIs aren't reliable.
-// Caller is responsible for verifying against on-chain balance and
-// falling back to bounded ownerOf scan if APIs are stale/missing.
 async function enumerateWalletNFTs() {
-  // Give the async Alchemy-key fetch up to 2s to resolve
   if (!window.ALCHEMY_KEY) {
     await new Promise(r => setTimeout(r, 2000));
   }
 
-  // Priority 1: Alchemy (only if a key is actually set) — PAGINATES via pageKey
   if (typeof window.ALCHEMY_KEY === 'string' && window.ALCHEMY_KEY.length > 0) {
     try {
       const all = [];
       let pageKey = null;
       let pageNum = 0;
-      const MAX_PAGES = 100; // safety cap (10,000 NFTs max)
+      const MAX_PAGES = 100;
 
       do {
         const params = new URLSearchParams({
@@ -478,14 +562,11 @@ async function enumerateWalletNFTs() {
     }
   }
 
-  // Priority 2: OpenSea (only attempt with a real API key)
   if (!IS_TESTNET && window.OPENSEA_KEY) {
     try {
       const url = `${NETWORK.openseaApiHost}/api/v2/chain/${NETWORK.openseaChain}` +
         `/account/${userAddress}/nfts?collection=${NETWORK.collectionSlug}&limit=50`;
-      const r = await fetch(url, {
-        headers: { 'x-api-key': window.OPENSEA_KEY }
-      });
+      const r = await fetch(url, { headers: { 'x-api-key': window.OPENSEA_KEY } });
       if (r.ok) {
         const d = await r.json();
         const arr = (d.nfts || []).map(n => ({
@@ -500,11 +581,9 @@ async function enumerateWalletNFTs() {
     }
   }
 
-  // Signal to caller that on-chain scan should be used
   return null;
 }
 
-// Helper - appends one card to grid and wires click handler
 function appendCard(grid, nft, mode, locked = false) {
   const tmp = document.createElement('div');
   tmp.innerHTML = renderCard(nft, mode, locked);
@@ -515,23 +594,17 @@ function appendCard(grid, nft, mode, locked = false) {
 
 async function refreshWalletNFTs() {
   const grid = document.getElementById('walletGrid');
-
-  // Only show "Summoning…" spinner on FIRST load (no cards yet).
-  // On subsequent refreshes, keep existing cards visible to avoid flicker.
   const isFirstLoad = walletNFTs.length === 0;
   if (isFirstLoad) {
     grid.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size:28px"></i><p>Summoning your Undeads…</p></div>';
   }
 
-  // Track previous selection so we can restore it after re-render
   const prevSelected = new Set(selectedWallet);
-
   walletNFTs = [];
   selectedWallet.clear();
   updateActionBars();
 
   try {
-    // ── ALWAYS read on-chain balance FIRST. This is the source of truth. ──
     const bal = Number(await nftReadContract.balanceOf(userAddress));
     console.info(`[staking] On-chain balance for ${userAddress}: ${bal} (${NETWORK.NFT_ADDRESS})`);
     document.getElementById('cnt-wallet').textContent = bal;
@@ -544,16 +617,13 @@ async function refreshWalletNFTs() {
       return;
     }
 
-    // ── Path A: Try APIs but ONLY trust them if they match on-chain balance ──
     const apiResult = await enumerateWalletNFTs();
     if (apiResult !== null && apiResult.length >= bal) {
-      // API has indexed the full set — use it (with images included, faster)
       console.info(`[staking] API returned ${apiResult.length} matching tokens, using API path`);
       walletNFTs = apiResult;
       grid.innerHTML = walletNFTs.map(n => renderCard(n, 'wallet')).join('');
       grid.querySelectorAll('.stake-nft-card').forEach(el => {
         el.addEventListener('click', () => toggleSelection(el, 'wallet'));
-        // Restore prior selection if it's still in the new list
         const id = Number(el.dataset.id);
         if (prevSelected.has(id) && walletNFTs.some(n => n.id === id)) {
           selectedWallet.add(id);
@@ -568,27 +638,23 @@ async function refreshWalletNFTs() {
       console.info(`[staking] API returned ${apiResult.length} but chain says ${bal} — falling through to on-chain scan`);
     }
 
-    grid.innerHTML = ''; // clear spinner - cards stream in below
+    grid.innerHTML = '';
 
-    // ── Probe: does this contract support ERC721Enumerable? ──────────────
     let supportsEnumerable = false;
     try {
       await nftReadContract.tokenOfOwnerByIndex(userAddress, 0);
       supportsEnumerable = true;
     } catch (_) {}
 
-    const BATCH = 50; // parallel eth_calls per round
+    const BATCH = 50;
 
     if (supportsEnumerable) {
-      // ── Path B: tokenOfOwnerByIndex - fast, no range limits ─────────
       for (let i = 0; i < bal; i += BATCH) {
         const size    = Math.min(BATCH, bal - i);
         const indices = Array.from({ length: size }, (_, k) => i + k);
-
         const results = await Promise.allSettled(
           indices.map(idx => nftReadContract.tokenOfOwnerByIndex(userAddress, idx))
         );
-
         for (const r of results) {
           if (r.status !== 'fulfilled') continue;
           const nft = { id: Number(r.value), image: '' };
@@ -602,28 +668,16 @@ async function refreshWalletNFTs() {
           });
         }
       }
-
     } else {
-      // ── Path C: Bounded ownerOf scan ─────────────────────────────────
-      // The NFT contract is plain ERC721 (not Enumerable), and public RPCs
-      // cap eth_getLogs to 10k blocks — so event scans don't work at scale.
-      // Instead, scan ownerOf(1)..ownerOf(totalSupply) in parallel batches.
-      // For a 6666-token collection this finishes in seconds.
       console.info('Contract is not ERC721Enumerable — using ownerOf scan.');
-
       let totalSupply;
-      try {
-        totalSupply = Number(await nftReadContract.totalSupply());
-      } catch {
-        totalSupply = 6666; // hardcoded ceiling matches MAX_SUPPLY in UndeadNFT.sol
-      }
-      if (!totalSupply || totalSupply > 50000) totalSupply = 6666; // sanity clamp
+      try { totalSupply = Number(await nftReadContract.totalSupply()); }
+      catch { totalSupply = 6666; }
+      if (!totalSupply || totalSupply > 50000) totalSupply = 6666;
 
       const userLower = userAddress.toLowerCase();
-      let foundCount = 0;
-      let scanned = 0;
+      let foundCount = 0, scanned = 0;
 
-      // Show a live progress message while scanning
       const progressEl = document.createElement('div');
       progressEl.className = 'empty-state';
       progressEl.style.gridColumn = '1/-1';
@@ -637,11 +691,8 @@ async function refreshWalletNFTs() {
       };
 
       console.info(`[staking] Starting ownerOf scan: 1..${totalSupply}, looking for ${userLower}`);
-      let rejectedCount = 0;
-      let firstReject = null;
-      let firstSuccess = null;
+      let rejectedCount = 0, firstReject = null, firstSuccess = null;
 
-      // Scan id=1..totalSupply in parallel batches
       for (let i = 1; i <= totalSupply; i += BATCH) {
         const ids = [];
         for (let j = i; j < i + BATCH && j <= totalSupply; j++) ids.push(j);
@@ -660,8 +711,6 @@ async function refreshWalletNFTs() {
           }
           if (!firstSuccess) firstSuccess = { id: ids[k], owner: r.value };
           if (r.value.toLowerCase() !== userLower) continue;
-
-          // Hit — this user owns this token. Stream the card in.
           if (foundCount === 0) progressEl.remove();
           foundCount++;
           const nft = { id: ids[k], image: '' };
@@ -674,25 +723,15 @@ async function refreshWalletNFTs() {
             if (el) el.src = img;
           });
         }
-
         updateProgress();
-
-        // Bail early if we've found everything (matches balanceOf)
         if (foundCount >= bal) break;
-
-        // Tiny pacing between batches to keep public RPC happy
-        if (i + BATCH <= totalSupply) {
-          await new Promise(r => setTimeout(r, 80));
-        }
+        if (i + BATCH <= totalSupply) await new Promise(r => setTimeout(r, 80));
       }
 
-      // Clean up progress element if still present (e.g. balance was 0)
       if (progressEl.parentNode) progressEl.remove();
-
-      // Diagnostic summary
-      console.info(`[staking] Scan complete: ${scanned} scanned · ${foundCount} owned · ${rejectedCount} rejected (likely unminted)`);
+      console.info(`[staking] Scan complete: ${scanned} scanned · ${foundCount} owned · ${rejectedCount} rejected`);
       if (firstSuccess) console.info(`[staking] First success: token #${firstSuccess.id} → ${firstSuccess.owner}`);
-      if (firstReject) console.info(`[staking] First rejection: token #${firstReject.id} → ${firstReject.reason}`);
+      if (firstReject)  console.info(`[staking] First rejection: token #${firstReject.id} → ${firstReject.reason}`);
       if (foundCount === 0 && rejectedCount === scanned) {
         console.error(`[staking] ALL ${scanned} ownerOf calls failed — RPC is rate-limiting or unreachable`);
       } else if (foundCount === 0 && rejectedCount < scanned) {
@@ -700,8 +739,6 @@ async function refreshWalletNFTs() {
       }
     }
 
-    // Final count update — ONLY overwrite if scan actually found tokens.
-    // Otherwise the on-chain balanceOf shown earlier is the source of truth.
     if (walletNFTs.length > 0) {
       document.getElementById('cnt-wallet').textContent = walletNFTs.length;
     }
@@ -728,8 +765,6 @@ async function refreshStakedNFTs () {
 
     const unlock = Number(await stakingContract.timeUntilUnstake(userAddress));
 
-    // Capture the absolute unlock time so the live ticker can tick down
-    // independently of refresh cycles
     if (stakedNFTs.length > 0 && unlock > 0) {
       unlockEndTime = Date.now() + (unlock * 1000);
       startUnlockCountdown();
@@ -749,10 +784,6 @@ async function refreshStakedNFTs () {
       return;
     }
 
-    // Fetch staked NFT images via the onchain renderer in batches of 5.
-    // Renderer is always free, no rate limits, no API key needed.
-    // (We used to hit Alchemy's getNFTMetadata API but it 429s on wallets
-    // with 100+ staked tokens because of the burst.)
     const CHUNK = 5;
     for (let i = 0; i < stakedNFTs.length; i += CHUNK) {
       await Promise.all(
@@ -760,9 +791,7 @@ async function refreshStakedNFTs () {
           try { n.image = await fetchImageFromRenderer(n.id); } catch (_) {}
         })
       );
-      if (i + CHUNK < stakedNFTs.length) {
-        await new Promise(r => setTimeout(r, 60));
-      }
+      if (i + CHUNK < stakedNFTs.length) await new Promise(r => setTimeout(r, 60));
     }
 
     grid.innerHTML = stakedNFTs.map(n => renderCard(n, 'staked', unlock > 0)).join('');
@@ -790,15 +819,14 @@ function renderCard (nft, mode, locked = false) {
 }
 
 function toggleSelection (el, mode) {
-  const id = Number(el.dataset.id);
+  const id  = Number(el.dataset.id);
   const set = mode === 'wallet' ? selectedWallet : selectedStaked;
   if (set.has(id)) { set.delete(id); el.classList.remove('selected'); }
-  else              { set.add(id);    el.classList.add('selected'); }
+  else             { set.add(id);    el.classList.add('selected'); }
   updateActionBars();
 }
 
 function updateActionBars () {
-  // ── Update count displays (both top and bottom)
   document.getElementById('walletSelectedCount').textContent = selectedWallet.size;
   document.getElementById('stakedSelectedCount').textContent = selectedStaked.size;
   const wTop  = document.getElementById('walletSelectedCountTop');
@@ -810,19 +838,16 @@ function updateActionBars () {
   if (wTotal) wTotal.textContent = walletNFTs.length;
   if (sTotal) sTotal.textContent = stakedNFTs.length;
 
-  // ── Wallet bars: visible whenever there are NFTs to stake
   const showWalletBar = walletNFTs.length > 0;
   document.getElementById('walletActionBar').style.display = showWalletBar ? 'flex' : 'none';
   const wHeader = document.getElementById('walletActionHeader');
   if (wHeader) wHeader.style.display = showWalletBar ? 'flex' : 'none';
 
-  // ── Staked bars: visible whenever there are staked NFTs
   const showStakedBar = stakedNFTs.length > 0;
   document.getElementById('stakedActionBar').style.display = showStakedBar ? 'flex' : 'none';
   const sHeader = document.getElementById('stakedActionHeader');
   if (sHeader) sHeader.style.display = showStakedBar ? 'flex' : 'none';
 
-  // ── Helper: sync Select All / Deselect All visibility for a pair (top + bottom)
   const syncSelectAll = (allSelectedNow, allBtnIds, desBtnIds, hasItems) => {
     allBtnIds.forEach(id => {
       const el = document.getElementById(id);
@@ -834,8 +859,6 @@ function updateActionBars () {
                                   : (selectedSetForId(id).size > 0 ? 'inline-flex' : 'none'));
     });
   };
-
-  // helper to figure out which selection set a deselect-all button refers to
   function selectedSetForId(id) {
     return id.includes('Wallet') ? selectedWallet : selectedStaked;
   }
@@ -852,7 +875,6 @@ function updateActionBars () {
     ['deselectAllStakedBtn', 'deselectAllStakedBtnTop'],
     stakedNFTs.length > 0);
 
-  // ── Stake button labels (both top and bottom)
   const updateStakeBtn = (id) => {
     const btn = document.getElementById(id);
     if (!btn) return;
@@ -861,8 +883,8 @@ function updateActionBars () {
       btn.disabled = true;
     } else {
       const willBatch = selectedWallet.size > MAX_BATCH_SIZE;
-      const batches = Math.ceil(selectedWallet.size / MAX_BATCH_SIZE);
-      btn.innerHTML = willBatch
+      const batches   = Math.ceil(selectedWallet.size / MAX_BATCH_SIZE);
+      btn.innerHTML   = willBatch
         ? `<i class="fas fa-bolt"></i> Stake ${selectedWallet.size} (${batches} txs)`
         : `<i class="fas fa-bolt"></i> Stake ${selectedWallet.size}`;
       btn.disabled = false;
@@ -871,7 +893,6 @@ function updateActionBars () {
   updateStakeBtn('stakeSelectedBtn');
   updateStakeBtn('stakeSelectedBtnTop');
 
-  // ── Unstake button labels (both top and bottom)
   const updateUnstakeBtn = (id) => {
     const btn = document.getElementById(id);
     if (!btn) return;
@@ -880,8 +901,8 @@ function updateActionBars () {
       btn.disabled = true;
     } else {
       const willBatch = selectedStaked.size > MAX_BATCH_SIZE;
-      const batches = Math.ceil(selectedStaked.size / MAX_BATCH_SIZE);
-      btn.innerHTML = willBatch
+      const batches   = Math.ceil(selectedStaked.size / MAX_BATCH_SIZE);
+      btn.innerHTML   = willBatch
         ? `<i class="fas fa-sign-out-alt"></i> Unstake ${selectedStaked.size} (${batches} txs)`
         : `<i class="fas fa-sign-out-alt"></i> Unstake ${selectedStaked.size}`;
       btn.disabled = false;
@@ -903,27 +924,21 @@ async function doStake (ids) {
       await tx.wait();
     }
 
-    // Chunk into batches of MAX_BATCH_SIZE to avoid gas spikes and indexer lag
     const totalBatches = Math.ceil(ids.length / MAX_BATCH_SIZE);
     let stakedSoFar = 0;
 
     for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
-      const batch = ids.slice(i, i + MAX_BATCH_SIZE);
+      const batch    = ids.slice(i, i + MAX_BATCH_SIZE);
       const batchNum = Math.floor(i / MAX_BATCH_SIZE) + 1;
 
-      if (totalBatches > 1) {
-        notify(`Staking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
-      } else {
-        notify(`Staking ${batch.length} Undead(s)…`, 'info');
-      }
+      if (totalBatches > 1) notify(`Staking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
+      else                  notify(`Staking ${batch.length} Undead(s)…`, 'info');
 
       const tx = await stakingContract.stake(batch);
       await tx.wait();
       stakedSoFar += batch.length;
 
-      if (totalBatches > 1) {
-        notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${stakedSoFar}/${ids.length} done)`, 'success');
-      }
+      if (totalBatches > 1) notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${stakedSoFar}/${ids.length} done)`, 'success');
     }
 
     notify(`✓ Staked ${ids.length} Undead(s) total`, 'success');
@@ -943,22 +958,17 @@ async function doUnstake (ids) {
     let unstakedSoFar = 0;
 
     for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
-      const batch = ids.slice(i, i + MAX_BATCH_SIZE);
+      const batch    = ids.slice(i, i + MAX_BATCH_SIZE);
       const batchNum = Math.floor(i / MAX_BATCH_SIZE) + 1;
 
-      if (totalBatches > 1) {
-        notify(`Unstaking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
-      } else {
-        notify(`Unstaking ${batch.length}…`, 'info');
-      }
+      if (totalBatches > 1) notify(`Unstaking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
+      else                  notify(`Unstaking ${batch.length}…`, 'info');
 
       const tx = await stakingContract.unstake(batch);
       await tx.wait();
       unstakedSoFar += batch.length;
 
-      if (totalBatches > 1) {
-        notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${unstakedSoFar}/${ids.length} done)`, 'success');
-      }
+      if (totalBatches > 1) notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${unstakedSoFar}/${ids.length} done)`, 'success');
     }
 
     notify(`✓ Unstaked ${ids.length} Undead(s) total`, 'success');
@@ -985,11 +995,6 @@ async function doClaim () {
 }
 
 // ─── DEMO ROYALTY (TESTNET ONLY) ──────────────────────────────
-// Sends a tiny amount of ETH to the staking contract. The
-// contract's receive() does the 50/50 split automatically, so
-// rewardPerTokenStored rises and all stakers see their earned()
-// increase. Exactly how mainnet royalties will work - just
-// triggered manually here instead of by OpenSea.
 async function sendDemoRoyalty () {
   if (!IS_TESTNET) return;
   if (!signer) { notify('Connect wallet first.', 'error'); return; }
@@ -1017,7 +1022,6 @@ async function sendDemoRoyalty () {
 document.addEventListener('DOMContentLoaded', () => {
   mountNetworkBadge();
 
-  // ─── Pre-launch UI: banner + dim buttons + modal close handlers ───
   if (!STAKING_ENABLED) {
     const banner = document.getElementById('preLaunchBanner');
     if (banner) banner.style.display = 'block';
@@ -1025,57 +1029,45 @@ document.addEventListener('DOMContentLoaded', () => {
     console.info('[staking] Pre-launch mode — staking actions disabled');
   }
 
-  // Modal close handlers (work regardless of pre-launch state)
   document.getElementById('prelaunchModalClose')?.addEventListener('click', hidePreLaunchModal);
   document.getElementById('prelaunchModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'prelaunchModal') hidePreLaunchModal();
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hidePreLaunchModal();
-  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePreLaunchModal(); });
 
   document.getElementById('connectBtn')       ?.addEventListener('click', connectWallet);
   document.getElementById('connectBannerBtn') ?.addEventListener('click', connectWallet);
   document.getElementById('claimBtn')         ?.addEventListener('click', doClaim);
   document.getElementById('demoRoyaltyBtn')   ?.addEventListener('click', sendDemoRoyalty);
 
-  // ── Helper: bind a click handler to multiple element IDs (top + bottom buttons)
   function bindMulti(ids, handler) {
     ids.forEach(id => document.getElementById(id)?.addEventListener('click', handler));
   }
 
-  // Select All — Wallet (top + bottom)
   bindMulti(['selectAllWalletBtn', 'selectAllWalletBtnTop'], () => {
     selectedWallet.clear();
     walletNFTs.forEach(n => selectedWallet.add(n.id));
     document.querySelectorAll('#walletGrid .stake-nft-card').forEach(el => el.classList.add('selected'));
     updateActionBars();
   });
-
-  // Deselect All — Wallet (top + bottom)
   bindMulti(['deselectAllWalletBtn', 'deselectAllWalletBtnTop'], () => {
     selectedWallet.clear();
     document.querySelectorAll('#walletGrid .stake-nft-card').forEach(el => el.classList.remove('selected'));
     updateActionBars();
   });
-
-  // Select All — Staked (top + bottom)
   bindMulti(['selectAllStakedBtn', 'selectAllStakedBtnTop'], () => {
     selectedStaked.clear();
     stakedNFTs.forEach(n => selectedStaked.add(n.id));
     document.querySelectorAll('#stakedGrid .stake-nft-card').forEach(el => el.classList.add('selected'));
     updateActionBars();
   });
-
-  // Deselect All — Staked (top + bottom)
   bindMulti(['deselectAllStakedBtn', 'deselectAllStakedBtnTop'], () => {
     selectedStaked.clear();
     document.querySelectorAll('#stakedGrid .stake-nft-card').forEach(el => el.classList.remove('selected'));
     updateActionBars();
   });
 
-  // Stake / Unstake — wire BOTH top and bottom buttons
-  bindMulti(['stakeSelectedBtn', 'stakeSelectedBtnTop'], () => doStake([...selectedWallet]));
+  bindMulti(['stakeSelectedBtn',   'stakeSelectedBtnTop'],   () => doStake([...selectedWallet]));
   bindMulti(['unstakeSelectedBtn', 'unstakeSelectedBtnTop'], () => doUnstake([...selectedStaked]));
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1087,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const mBtn = document.getElementById('mobileMenuBtn');
+  const mBtn  = document.getElementById('mobileMenuBtn');
   const links = document.querySelector('.nav-links');
   if (mBtn && links) {
     mBtn.addEventListener('click', () => {
@@ -1097,11 +1089,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Load public stats immediately — no wallet needed
+  // Load public stats (staggered entrance of stat cards)
   setTimeout(() => refreshPublicStats(), 800);
 
-  // Refresh public stats every 30s, but only when wallet is NOT connected.
-  // (When connected, refreshEverything handles it and we don't want to double-fetch.)
   setInterval(() => {
     if (!userAddress) refreshPublicStats();
   }, 30000);
