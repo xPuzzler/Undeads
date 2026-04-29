@@ -148,7 +148,24 @@ function mountNetworkBadge () {
 }
 
 // ─── READ-ONLY PROVIDER (works even before wallet connects) ───
-readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl);
+readProvider = new ethers.JsonRpcProvider(window.NETWORK.rpcUrl);
+
+// Upgrade the read provider to use Alchemy RPC once api-keys returns.
+// Called from staking.html after the api-keys fetch resolves.
+window.upgradeReadProvider = function(rpcUrl) {
+  if (!rpcUrl || rpcUrl === NETWORK.rpcUrl) return;
+  console.info('[staking] Upgraded read provider to Alchemy RPC');
+  readProvider = new ethers.JsonRpcProvider(rpcUrl);
+  // If you have a read-only NFT contract instance, recreate it here:
+  if (typeof nftReadContract !== 'undefined') {
+    nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
+  }
+  // If you have a read-only staking contract instance, recreate it here:
+  if (typeof stakingReadContract !== 'undefined') {
+    stakingReadContract = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
+  }
+  NETWORK.rpcUrl = rpcUrl;  // overwrite so anything else reading it gets the upgraded version
+};
 // Read-only contract for scanning - bypasses MetaMask rate limiter
 let nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
 

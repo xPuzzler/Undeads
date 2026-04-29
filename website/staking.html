@@ -535,6 +535,10 @@
       if (d.apiKeys?.alchemy) window.ALCHEMY_KEY = d.apiKeys.alchemy;
       if (d.apiKeys?.opensea) window.OPENSEA_KEY = Array.isArray(d.apiKeys.opensea)
         ? d.apiKeys.opensea[0] : d.apiKeys.opensea;
+      // Upgrade staking page's read provider to the Alchemy RPC URL
+      if (d.rpcUrl && typeof window.upgradeReadProvider === 'function') {
+        window.upgradeReadProvider(d.rpcUrl);
+      }
     })
     .catch(() => {});
 </script>
