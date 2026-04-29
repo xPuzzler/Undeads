@@ -681,10 +681,24 @@ async function previewImageGrid(data) {
 async function previewAnimatedGrid(data) {
   toast('Building animated preview… (this can take 10-30s)');
   try {
-    const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
+    // For GIFs: try real GIF builder (preserves looping, transparency)
+    if (data.mediaType === 'gif') {
+      try {
+        const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
+        const url = URL.createObjectURL(blob);
+        showPreviewImage(url);
+        toast(`GIF preview ready! (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+        return;
+      } catch (e) {
+        console.warn('[tools] GIF builder failed, falling back to video:', e.message);
+        toast('GIF builder unavailable — exporting as video instead', 'info');
+      }
+    }
+    // For WebP or GIF fallback: use canvas-based video recording
+    const blob = await buildAnimatedGridViaCanvas(data.nfts, data.rows, data.cols, data.mediaType);
     const url = URL.createObjectURL(blob);
-    showPreviewImage(url);
-    toast(`Animated preview ready! (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+    showPreviewVideo(url);
+    toast(`Preview ready! (${(blob.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
   } catch(e) { console.error(e); toast('Failed: ' + e.message, 'error'); }
 }
 
@@ -1095,11 +1109,26 @@ async function downloadGridPNG() {
       toast('Downloaded!', 'success');
       return;
     }
-    if (data.mediaType === 'gif' || data.mediaType === 'webp') {
+    if (data.mediaType === 'gif') {
       toast('Generating GIF… (10-30s)');
-      const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
-      downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.gif`);
-      toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
+      try {
+        const blob = await buildAnimatedGifGrid(data.nfts, data.rows, data.cols);
+        downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.gif`);
+        toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
+      } catch (e) {
+        console.warn('[tools] GIF failed, falling back to webm:', e.message);
+        toast('GIF unavailable — saving as WebM video instead', 'info');
+        const blob = await buildAnimatedGridViaCanvas(data.nfts, data.rows, data.cols, 'gif');
+        downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.webm`);
+        toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
+      }
+      return;
+    }
+    if (data.mediaType === 'webp') {
+      toast('Generating animated grid… (10-30s)');
+      const blob = await buildAnimatedGridViaCanvas(data.nfts, data.rows, data.cols, 'webp');
+      downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.webm`);
+      toast(`Saved as WebM video (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
       return;
     }
     if (data.mediaType === 'video') {
