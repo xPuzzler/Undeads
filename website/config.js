@@ -42,7 +42,7 @@ const NETWORKS = {
     // While false: wallet shows Undeads, but action buttons
     // are disabled and trigger the "not yet live" popup.
     // ──────────────────────────────────────────────────────────
-    stakingEnabled: false,
+    stakingEnabled: true,
   },
 };
 
