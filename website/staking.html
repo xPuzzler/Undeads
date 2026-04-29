@@ -88,6 +88,40 @@
     .action-bar p { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--muted-2); }
     .action-bar .btn-primary { padding: 14px 28px; font-size: 11px; }
 
+    /* Top action header — mirrors bottom bar but sits above the grid */
+    .action-header {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding: 14px 20px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+    }
+    .action-header .ah-info {
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'Geist Mono', monospace; font-size: 11px;
+      color: var(--muted-2);
+    }
+    .action-header .ah-info strong {
+      color: var(--accent); font-weight: 600;
+    }
+    .action-header .ah-buttons {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .action-header .btn-secondary,
+    .action-header .btn-primary {
+      padding: 10px 18px; font-size: 11px;
+    }
+    @media (max-width: 600px) {
+      .action-header {
+        padding: 12px 14px;
+      }
+      .action-header .ah-info {
+        font-size: 10px;
+      }
+    }
+
     .rewards-panel {
       max-width: 1400px; margin: 0 auto; padding: 0 40px 60px;
     }
@@ -429,6 +463,21 @@
 
   <!-- WALLET TAB -->
   <div class="tab-panel active" id="panel-wallet" style="display:none">
+
+    <!-- TOP ACTION HEADER — mirrors bottom bar -->
+    <div class="action-header" id="walletActionHeader" style="display:none">
+      <div class="ah-info">
+        <span><strong id="walletSelectedCountTop">0</strong> of <strong id="walletTotalCount">0</strong> selected</span>
+      </div>
+      <div class="ah-buttons">
+        <button class="btn-secondary" id="selectAllWalletBtnTop">Select All</button>
+        <button class="btn-secondary" id="deselectAllWalletBtnTop" style="display:none">Deselect All</button>
+        <button class="btn-primary" id="stakeSelectedBtnTop" disabled>
+          <i class="fas fa-bolt"></i> Stake Selected
+        </button>
+      </div>
+    </div>
+
     <div id="walletGrid" class="nft-stake-grid">
       <div class="empty-state">
         <div class="skull">💀</div>
@@ -437,8 +486,9 @@
     </div>
     <div class="action-bar" id="walletActionBar" style="display:none">
       <p><span id="walletSelectedCount">0</span> selected</p>
-      <div style="display:flex;gap:12px">
-        <button class="btn-secondary" id="stakeAllBtn" style="padding:12px 24px;font-size:11px">Stake All</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" id="selectAllWalletBtn" style="padding:12px 18px;font-size:11px">Select All</button>
+        <button class="btn-secondary" id="deselectAllWalletBtn" style="padding:12px 18px;font-size:11px;display:none">Deselect All</button>
         <button class="btn-primary" id="stakeSelectedBtn" style="padding:12px 24px;font-size:11px">
           <i class="fas fa-bolt"></i> Stake Selected
         </button>
@@ -449,6 +499,21 @@
   <!-- STAKED TAB -->
   <div class="tab-panel" id="panel-staked" style="display:none">
     <div id="lockNotice"></div>
+
+    <!-- TOP ACTION HEADER — mirrors bottom bar -->
+    <div class="action-header" id="stakedActionHeader" style="display:none">
+      <div class="ah-info">
+        <span><strong id="stakedSelectedCountTop">0</strong> of <strong id="stakedTotalCount">0</strong> selected</span>
+      </div>
+      <div class="ah-buttons">
+        <button class="btn-secondary" id="selectAllStakedBtnTop">Select All</button>
+        <button class="btn-secondary" id="deselectAllStakedBtnTop" style="display:none">Deselect All</button>
+        <button class="btn-primary" id="unstakeSelectedBtnTop" disabled>
+          <i class="fas fa-sign-out-alt"></i> Unstake Selected
+        </button>
+      </div>
+    </div>
+
     <div id="stakedGrid" class="nft-stake-grid">
       <div class="empty-state">
         <div class="skull">☠</div>
@@ -457,8 +522,9 @@
     </div>
     <div class="action-bar" id="stakedActionBar" style="display:none">
       <p><span id="stakedSelectedCount">0</span> selected</p>
-      <div style="display:flex;gap:12px">
-        <button class="btn-secondary" id="unstakeAllBtn" style="padding:12px 24px;font-size:11px">Unstake All</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" id="selectAllStakedBtn" style="padding:12px 18px;font-size:11px">Select All</button>
+        <button class="btn-secondary" id="deselectAllStakedBtn" style="padding:12px 18px;font-size:11px;display:none">Deselect All</button>
         <button class="btn-primary" id="unstakeSelectedBtn" style="padding:12px 24px;font-size:11px">
           <i class="fas fa-sign-out-alt"></i> Unstake Selected
         </button>

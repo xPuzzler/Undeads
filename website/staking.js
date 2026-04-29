@@ -40,11 +40,18 @@ const selectedWallet = new Set();
 const selectedStaked = new Set();
 let ethPriceUsd = 0;
 let pollTimer = null;
+let unlockTimer = null;       // setInterval handle for the live countdown
+let unlockEndTime = 0;        // unix ms when the lock expires (0 = no lock)
 
 // ─── PRE-LAUNCH FLAG ──────────────────────────────────────────
 // Read from config.js. When false: wallet/NFTs visible but
 // stake/unstake/claim blocked with the "not yet live" modal.
 const STAKING_ENABLED = !!(NETWORK && NETWORK.stakingEnabled);
+
+// Maximum tokenIds per stake/unstake transaction. Higher batches
+// risk gas spikes and indexer lag (OpenSea took ~1h to catch up
+// after a 200+ batch). 50 is the sweet spot.
+const MAX_BATCH_SIZE = 50;
 
 function showPreLaunchModal() {
   const m = document.getElementById('prelaunchModal');
@@ -76,6 +83,47 @@ function fmtDuration(s) {
   const m = Math.floor((s % 3600) / 60);
   const ss = Math.floor(s % 60);
   return `${h}h ${m}m ${ss}s`;
+}
+
+// ── Live countdown timer ─────────────────────────────────────
+// Ticks every second on its own — doesn't need refresh cycles.
+function startUnlockCountdown() {
+  stopUnlockCountdown();
+  tickUnlockCountdown(); // immediate first paint
+  unlockTimer = setInterval(tickUnlockCountdown, 1000);
+}
+
+function stopUnlockCountdown() {
+  if (unlockTimer) {
+    clearInterval(unlockTimer);
+    unlockTimer = null;
+  }
+}
+
+function tickUnlockCountdown() {
+  const notice = document.getElementById('lockNotice');
+  if (!notice) return;
+
+  if (!unlockEndTime || stakedNFTs.length === 0) {
+    notice.innerHTML = '';
+    stopUnlockCountdown();
+    return;
+  }
+
+  const remainingMs = unlockEndTime - Date.now();
+  const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
+
+  if (remainingSec <= 0) {
+    // Just unlocked — switch to the "Unlocked" badge and refresh state once
+    notice.innerHTML = `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked — unstake anytime</div>`;
+    stopUnlockCountdown();
+    unlockEndTime = 0;
+    // Re-fetch staked state so any per-card lock badges clear out
+    if (stakingContract && userAddress) refreshStakedNFTs();
+    return;
+  }
+
+  notice.innerHTML = `<div class="timer-display locked"><i class="fas fa-lock"></i> Unlocks in ${fmtDuration(remainingSec)}</div>`;
 }
 // ── Renderer image fetch (testnet fallback - mirrors validator.html) ──────
 function abiDecodeString(hex) {
@@ -148,9 +196,21 @@ function mountNetworkBadge () {
 }
 
 // ─── READ-ONLY PROVIDER (works even before wallet connects) ───
+// Initially uses the public Base RPC from config.js. The api-keys
+// fetch in staking.html will swap this out for the Alchemy URL
+// (which has the key) once it resolves.
 readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl);
-// Read-only contract for scanning - bypasses MetaMask rate limiter
 let nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
+
+// Upgrade the read provider once api-keys returns the Alchemy RPC URL.
+// Called from staking.html. Safe to call multiple times — no-op if same URL.
+window.upgradeReadProvider = function(rpcUrl) {
+  if (!rpcUrl || rpcUrl === NETWORK.rpcUrl) return;
+  console.info('[staking] Upgraded read provider to Alchemy RPC');
+  readProvider = new ethers.JsonRpcProvider(rpcUrl);
+  nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
+  NETWORK.rpcUrl = rpcUrl;
+};
 
 // ─── WALLET CONNECT ───────────────────────────────────────────
 async function connectWallet () {
@@ -233,8 +293,14 @@ async function connectWallet () {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(refreshRewards, 30000);
 
-    window.ethereum.on('accountsChanged', () => window.location.reload());
-    window.ethereum.on('chainChanged',    () => window.location.reload());
+    window.ethereum.on('accountsChanged', () => {
+      stopUnlockCountdown();
+      window.location.reload();
+    });
+    window.ethereum.on('chainChanged', () => {
+      stopUnlockCountdown();
+      window.location.reload();
+    });
 
   } catch (e) {
     console.error(e);
@@ -603,13 +669,21 @@ async function refreshStakedNFTs () {
     document.getElementById('cnt-staked').textContent = stakedNFTs.length;
 
     const unlock = Number(await stakingContract.timeUntilUnstake(userAddress));
-    const notice = document.getElementById('lockNotice');
+
+    // Capture the absolute unlock time so the live ticker can tick down
+    // independently of refresh cycles
     if (stakedNFTs.length > 0 && unlock > 0) {
-      notice.innerHTML = `<div class="timer-display locked"><i class="fas fa-lock"></i> Unlocks in ${fmtDuration(unlock)}</div>`;
-    } else if (stakedNFTs.length > 0) {
-      notice.innerHTML = `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked - unstake anytime</div>`;
+      unlockEndTime = Date.now() + (unlock * 1000);
+      startUnlockCountdown();
     } else {
-      notice.innerHTML = '';
+      unlockEndTime = 0;
+      stopUnlockCountdown();
+      const notice = document.getElementById('lockNotice');
+      if (notice) {
+        notice.innerHTML = stakedNFTs.length > 0
+          ? `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked — unstake anytime</div>`
+          : '';
+      }
     }
 
     if (stakedNFTs.length === 0) {
@@ -672,10 +746,97 @@ function toggleSelection (el, mode) {
 }
 
 function updateActionBars () {
+  // ── Update count displays (both top and bottom)
   document.getElementById('walletSelectedCount').textContent = selectedWallet.size;
   document.getElementById('stakedSelectedCount').textContent = selectedStaked.size;
-  document.getElementById('walletActionBar').style.display = selectedWallet.size ? 'flex' : 'none';
-  document.getElementById('stakedActionBar').style.display = selectedStaked.size ? 'flex' : 'none';
+  const wTop  = document.getElementById('walletSelectedCountTop');
+  const sTop  = document.getElementById('stakedSelectedCountTop');
+  const wTotal = document.getElementById('walletTotalCount');
+  const sTotal = document.getElementById('stakedTotalCount');
+  if (wTop)   wTop.textContent   = selectedWallet.size;
+  if (sTop)   sTop.textContent   = selectedStaked.size;
+  if (wTotal) wTotal.textContent = walletNFTs.length;
+  if (sTotal) sTotal.textContent = stakedNFTs.length;
+
+  // ── Wallet bars: visible whenever there are NFTs to stake
+  const showWalletBar = walletNFTs.length > 0;
+  document.getElementById('walletActionBar').style.display = showWalletBar ? 'flex' : 'none';
+  const wHeader = document.getElementById('walletActionHeader');
+  if (wHeader) wHeader.style.display = showWalletBar ? 'flex' : 'none';
+
+  // ── Staked bars: visible whenever there are staked NFTs
+  const showStakedBar = stakedNFTs.length > 0;
+  document.getElementById('stakedActionBar').style.display = showStakedBar ? 'flex' : 'none';
+  const sHeader = document.getElementById('stakedActionHeader');
+  if (sHeader) sHeader.style.display = showStakedBar ? 'flex' : 'none';
+
+  // ── Helper: sync Select All / Deselect All visibility for a pair (top + bottom)
+  const syncSelectAll = (allSelectedNow, allBtnIds, desBtnIds, hasItems) => {
+    allBtnIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (allSelectedNow || !hasItems) ? 'none' : 'inline-flex';
+    });
+    desBtnIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (allSelectedNow ? 'inline-flex'
+                                  : (selectedSetForId(id).size > 0 ? 'inline-flex' : 'none'));
+    });
+  };
+
+  // helper to figure out which selection set a deselect-all button refers to
+  function selectedSetForId(id) {
+    return id.includes('Wallet') ? selectedWallet : selectedStaked;
+  }
+
+  const walletAllSelected = selectedWallet.size === walletNFTs.length && walletNFTs.length > 0;
+  syncSelectAll(walletAllSelected,
+    ['selectAllWalletBtn', 'selectAllWalletBtnTop'],
+    ['deselectAllWalletBtn', 'deselectAllWalletBtnTop'],
+    walletNFTs.length > 0);
+
+  const stakedAllSelected = selectedStaked.size === stakedNFTs.length && stakedNFTs.length > 0;
+  syncSelectAll(stakedAllSelected,
+    ['selectAllStakedBtn', 'selectAllStakedBtnTop'],
+    ['deselectAllStakedBtn', 'deselectAllStakedBtnTop'],
+    stakedNFTs.length > 0);
+
+  // ── Stake button labels (both top and bottom)
+  const updateStakeBtn = (id) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (selectedWallet.size === 0) {
+      btn.innerHTML = `<i class="fas fa-bolt"></i> Stake Selected`;
+      btn.disabled = true;
+    } else {
+      const willBatch = selectedWallet.size > MAX_BATCH_SIZE;
+      const batches = Math.ceil(selectedWallet.size / MAX_BATCH_SIZE);
+      btn.innerHTML = willBatch
+        ? `<i class="fas fa-bolt"></i> Stake ${selectedWallet.size} (${batches} txs)`
+        : `<i class="fas fa-bolt"></i> Stake ${selectedWallet.size}`;
+      btn.disabled = false;
+    }
+  };
+  updateStakeBtn('stakeSelectedBtn');
+  updateStakeBtn('stakeSelectedBtnTop');
+
+  // ── Unstake button labels (both top and bottom)
+  const updateUnstakeBtn = (id) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (selectedStaked.size === 0) {
+      btn.innerHTML = `<i class="fas fa-sign-out-alt"></i> Unstake Selected`;
+      btn.disabled = true;
+    } else {
+      const willBatch = selectedStaked.size > MAX_BATCH_SIZE;
+      const batches = Math.ceil(selectedStaked.size / MAX_BATCH_SIZE);
+      btn.innerHTML = willBatch
+        ? `<i class="fas fa-sign-out-alt"></i> Unstake ${selectedStaked.size} (${batches} txs)`
+        : `<i class="fas fa-sign-out-alt"></i> Unstake ${selectedStaked.size}`;
+      btn.disabled = false;
+    }
+  };
+  updateUnstakeBtn('unstakeSelectedBtn');
+  updateUnstakeBtn('unstakeSelectedBtnTop');
 }
 
 // ─── ACTIONS: STAKE / UNSTAKE / CLAIM ─────────────────────────
@@ -689,10 +850,31 @@ async function doStake (ids) {
       const tx = await nftContract.setApprovalForAll(NETWORK.STAKING_ADDRESS, true);
       await tx.wait();
     }
-    notify(`Staking ${ids.length} Undead(s)…`, 'info');
-    const tx = await stakingContract.stake(ids);
-    await tx.wait();
-    notify(`✓ Staked ${ids.length} Undead(s)`, 'success');
+
+    // Chunk into batches of MAX_BATCH_SIZE to avoid gas spikes and indexer lag
+    const totalBatches = Math.ceil(ids.length / MAX_BATCH_SIZE);
+    let stakedSoFar = 0;
+
+    for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
+      const batch = ids.slice(i, i + MAX_BATCH_SIZE);
+      const batchNum = Math.floor(i / MAX_BATCH_SIZE) + 1;
+
+      if (totalBatches > 1) {
+        notify(`Staking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
+      } else {
+        notify(`Staking ${batch.length} Undead(s)…`, 'info');
+      }
+
+      const tx = await stakingContract.stake(batch);
+      await tx.wait();
+      stakedSoFar += batch.length;
+
+      if (totalBatches > 1) {
+        notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${stakedSoFar}/${ids.length} done)`, 'success');
+      }
+    }
+
+    notify(`✓ Staked ${ids.length} Undead(s) total`, 'success');
     selectedWallet.clear(); updateActionBars();
     await refreshEverything();
   } catch (e) {
@@ -705,10 +887,29 @@ async function doUnstake (ids) {
   if (!STAKING_ENABLED) { showPreLaunchModal(); return; }
   if (!ids.length) return;
   try {
-    notify(`Unstaking ${ids.length}…`, 'info');
-    const tx = await stakingContract.unstake(ids);
-    await tx.wait();
-    notify(`✓ Unstaked ${ids.length} Undead(s)`, 'success');
+    const totalBatches = Math.ceil(ids.length / MAX_BATCH_SIZE);
+    let unstakedSoFar = 0;
+
+    for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
+      const batch = ids.slice(i, i + MAX_BATCH_SIZE);
+      const batchNum = Math.floor(i / MAX_BATCH_SIZE) + 1;
+
+      if (totalBatches > 1) {
+        notify(`Unstaking batch ${batchNum}/${totalBatches} (${batch.length} Undeads)…`, 'info');
+      } else {
+        notify(`Unstaking ${batch.length}…`, 'info');
+      }
+
+      const tx = await stakingContract.unstake(batch);
+      await tx.wait();
+      unstakedSoFar += batch.length;
+
+      if (totalBatches > 1) {
+        notify(`✓ Batch ${batchNum}/${totalBatches} confirmed (${unstakedSoFar}/${ids.length} done)`, 'success');
+      }
+    }
+
+    notify(`✓ Unstaked ${ids.length} Undead(s) total`, 'success');
     selectedStaked.clear(); updateActionBars();
     await refreshEverything();
   } catch (e) {
@@ -784,11 +985,46 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('connectBtn')       ?.addEventListener('click', connectWallet);
   document.getElementById('connectBannerBtn') ?.addEventListener('click', connectWallet);
   document.getElementById('claimBtn')         ?.addEventListener('click', doClaim);
-  document.getElementById('stakeSelectedBtn') ?.addEventListener('click', () => doStake([...selectedWallet]));
-  document.getElementById('stakeAllBtn')      ?.addEventListener('click', () => doStake(walletNFTs.map(n => n.id)));
-  document.getElementById('unstakeSelectedBtn')?.addEventListener('click',() => doUnstake([...selectedStaked]));
-  document.getElementById('unstakeAllBtn')    ?.addEventListener('click', () => doUnstake(stakedNFTs.map(n => n.id)));
   document.getElementById('demoRoyaltyBtn')   ?.addEventListener('click', sendDemoRoyalty);
+
+  // ── Helper: bind a click handler to multiple element IDs (top + bottom buttons)
+  function bindMulti(ids, handler) {
+    ids.forEach(id => document.getElementById(id)?.addEventListener('click', handler));
+  }
+
+  // Select All — Wallet (top + bottom)
+  bindMulti(['selectAllWalletBtn', 'selectAllWalletBtnTop'], () => {
+    selectedWallet.clear();
+    walletNFTs.forEach(n => selectedWallet.add(n.id));
+    document.querySelectorAll('#walletGrid .stake-nft-card').forEach(el => el.classList.add('selected'));
+    updateActionBars();
+  });
+
+  // Deselect All — Wallet (top + bottom)
+  bindMulti(['deselectAllWalletBtn', 'deselectAllWalletBtnTop'], () => {
+    selectedWallet.clear();
+    document.querySelectorAll('#walletGrid .stake-nft-card').forEach(el => el.classList.remove('selected'));
+    updateActionBars();
+  });
+
+  // Select All — Staked (top + bottom)
+  bindMulti(['selectAllStakedBtn', 'selectAllStakedBtnTop'], () => {
+    selectedStaked.clear();
+    stakedNFTs.forEach(n => selectedStaked.add(n.id));
+    document.querySelectorAll('#stakedGrid .stake-nft-card').forEach(el => el.classList.add('selected'));
+    updateActionBars();
+  });
+
+  // Deselect All — Staked (top + bottom)
+  bindMulti(['deselectAllStakedBtn', 'deselectAllStakedBtnTop'], () => {
+    selectedStaked.clear();
+    document.querySelectorAll('#stakedGrid .stake-nft-card').forEach(el => el.classList.remove('selected'));
+    updateActionBars();
+  });
+
+  // Stake / Unstake — wire BOTH top and bottom buttons
+  bindMulti(['stakeSelectedBtn', 'stakeSelectedBtnTop'], () => doStake([...selectedWallet]));
+  bindMulti(['unstakeSelectedBtn', 'unstakeSelectedBtnTop'], () => doUnstake([...selectedStaked]));
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
