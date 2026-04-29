@@ -33,6 +33,10 @@ async function initializeAPIKeys() {
       CONFIG.OPENSEA_API_KEY = Array.isArray(d.apiKeys.opensea) ? d.apiKeys.opensea[0] : d.apiKeys.opensea;
       CONFIG.ALCHEMY_API_KEY = d.apiKeys.alchemy;
     }
+    if (d.rpcUrl) {
+      NET.rpcUrl = d.rpcUrl;
+      console.log('[script] RPC upgraded to Alchemy:', d.rpcUrl.split('/v2/')[0]);
+    }
     console.log('✓ API keys loaded');
     return true;
   } catch (e) {
@@ -401,9 +405,14 @@ async function loadFeaturedUndeadsFromRenderer() {
 
   // Use mainnet renderer if set; otherwise fall back to Sepolia for previews.
   const useFallback = !NET.rendererAddress && window.FEATURED_FALLBACK;
-  const renderer     = useFallback ? window.FEATURED_FALLBACK.rendererAddress : NET.rendererAddress;
-  const rpcUrl       = useFallback ? window.FEATURED_FALLBACK.rpcUrl          : NET.rpcUrl;
-  const nftContract  = useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS     : NET.NFT_ADDRESS;
+  const renderer    = useFallback ? window.FEATURED_FALLBACK.rendererAddress : NET.rendererAddress;
+  const nftContract = useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS     : NET.NFT_ADDRESS;
+
+  // Read rpcUrl as a getter so it always reflects the latest value —
+  // initializeAPIKeys() upgrades NET.rpcUrl to Alchemy before this
+  // function does any real work, so by the time RPC calls fire the
+  // key is already in place. No hardcoding needed anywhere.
+  const getRpcUrl = () => useFallback ? window.FEATURED_FALLBACK.rpcUrl : NET.rpcUrl;
 
   if (!renderer) {
     scroller.innerHTML = '<div class="sales-loading">Featured preview unavailable.</div>';
@@ -415,7 +424,7 @@ async function loadFeaturedUndeadsFromRenderer() {
   // Get total supply so we know how many tokens exist
   let totalSupply = 0;
   try {
-    const raw = await rpcCallTo(rpcUrl, 'eth_call', [{ to: nftContract, data: '0x18160ddd' }, 'latest']);
+    const raw = await rpcCallTo(getRpcUrl(), 'eth_call', [{ to: nftContract, data: '0x18160ddd' }, 'latest']);
     totalSupply = parseInt(raw, 16);
   } catch { totalSupply = 0; }
 
@@ -456,7 +465,7 @@ async function loadFeaturedUndeadsFromRenderer() {
     const results = await Promise.allSettled(
       batchIds.map(async id => {
         const data = '0xc87b56dd' + u256(id);
-        const raw  = await rpcCallTo(rpcUrl, 'eth_call', [{ to: renderer, data }, 'latest']);
+        const raw  = await rpcCallTo(getRpcUrl(), 'eth_call', [{ to: renderer, data }, 'latest']);
         const uri  = abiDecodeString(raw);
         const b64  = uri.replace(/^data:application\/json;base64,/, '');
         const json = JSON.parse(atob(b64));
