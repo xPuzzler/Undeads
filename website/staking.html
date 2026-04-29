@@ -23,7 +23,9 @@
     .stake-hero .subtitle { font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3vw, 32px); font-style: italic; color: var(--accent); margin-bottom: 20px; }
     .stake-hero p { max-width: 580px; margin: 0 auto; color: var(--muted-2); font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.8; }
 
-    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    .stats-bar { max-width: 1400px; margin: 0 auto 16px; padding: 0 40px; display: grid; gap: 12px; }
+    .stats-bar.stats-public   { grid-template-columns: repeat(3, 1fr); }
+    .stats-bar.stats-personal { grid-template-columns: repeat(4, 1fr); margin-bottom: 40px; }
     .stats-bar .stat-card { padding: 20px 12px; }
     .stats-bar .stat-val { font-size: clamp(20px, 3vw, 38px); }
     .stats-bar .stat-lbl { font-size: 8px; }
@@ -158,16 +160,19 @@
     }
 
     @media (max-width: 1024px) {
-      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 768px) {
       .stake-hero, .stats-bar, .tabs-nav, .tab-panel, .rewards-panel, .how-it-works { padding-left: 16px; padding-right: 16px; }
-      .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stats-bar.stats-public   { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .nft-stake-grid { grid-template-columns: repeat(2, 1fr); }
       .how-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stats-bar { gap: 8px; }
+      .stats-bar.stats-public   { grid-template-columns: 1fr; }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); }
       .stats-bar .stat-card { padding: 16px 10px; }
       .stats-bar .stat-val { font-size: clamp(18px, 6vw, 28px); }
       .stats-bar .stat-lbl { font-size: 7.5px; letter-spacing: .1em; }
@@ -401,8 +406,24 @@
     </div>
   </div>
 
-  <!-- STATS BAR -->
-  <div class="stats-bar">
+  <!-- PUBLIC STATS — visible to everyone, no wallet needed -->
+  <div class="stats-bar stats-public">
+    <div class="stat-card">
+      <div class="stat-val accent" id="totalStakedGlobal">-</div>
+      <div class="stat-lbl">Total Staked NFTs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="totalStakers">-</div>
+      <div class="stat-lbl">Total Stakers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val accent" id="totalRewardPool">-</div>
+      <div class="stat-lbl">Total Reward Pool</div>
+    </div>
+  </div>
+
+  <!-- PERSONAL STATS — only when wallet is connected -->
+  <div class="stats-bar stats-personal" id="personalStats" style="display:none">
     <div class="stat-card">
       <div class="stat-val" id="nftsInWallet">-</div>
       <div class="stat-lbl">NFTs in Wallet</div>
@@ -418,14 +439,6 @@
     <div class="stat-card">
       <div class="stat-val" id="poolShare">-</div>
       <div class="stat-lbl">Your Pool Share</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val accent" id="totalStakedGlobal">-</div>
-      <div class="stat-lbl">Total Staked NFTs</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="totalStakers">-</div>
-      <div class="stat-lbl">Total Stakers</div>
     </div>
   </div>
 

@@ -276,6 +276,8 @@ async function connectWallet () {
     document.getElementById('rewardsPanel').style.display  = 'block';
     document.getElementById('tabsNav').style.display       = 'flex';
     document.getElementById('panel-wallet').style.display  = 'block';
+    const personal = document.getElementById('personalStats');
+    if (personal) personal.style.display = 'grid';
     if (IS_TESTNET) {
       const demo = document.getElementById('demoRoyaltyCard');
       if (demo) demo.style.display = 'block';
@@ -283,11 +285,23 @@ async function connectWallet () {
 
     notify(`✓ Connected to ${NETWORK.label}`, 'success');
 
-    // Attach live event listeners
-    stakingContract.on('Staked',        (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
-    stakingContract.on('Unstaked',      (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
-    stakingContract.on('RewardClaimed', (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
-    stakingContract.on('RoyaltyReceived', () => refreshEverything());
+    // Attach live event listeners.
+    // Stake/Unstake DO require full refresh (wallet ↔ staked moves tokens).
+    // RewardClaimed/RoyaltyReceived only affect rewards numbers — skip the heavy wallet re-scan.
+    stakingContract.on('Staked',   (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
+    stakingContract.on('Unstaked', (u) => u.toLowerCase() === userAddress.toLowerCase() && refreshEverything());
+    stakingContract.on('RewardClaimed', (u) => {
+      if (u.toLowerCase() === userAddress.toLowerCase()) {
+        refreshStats();
+        refreshRewards();
+        refreshPublicStats();
+      }
+    });
+    stakingContract.on('RoyaltyReceived', () => {
+      refreshStats();
+      refreshRewards();
+      refreshPublicStats();
+    });
 
     await refreshEverything();
     if (pollTimer) clearInterval(pollTimer);
@@ -312,6 +326,7 @@ async function connectWallet () {
 async function refreshEverything () {
   if (!userAddress) return;
   await Promise.all([
+    refreshPublicStats(),
     refreshStats(),
     refreshRewards(),
     refreshWalletNFTs(),
@@ -320,6 +335,52 @@ async function refreshEverything () {
   ]);
 }
 
+// Public stats — works without wallet.
+// Uses MetaMask's provider when available (way better eth_getLogs limits),
+// falls back to readProvider when no wallet is installed.
+async function refreshPublicStats () {
+  try {
+    // Pick the best provider available. MetaMask = best, then connected
+    // wallet's signer-bound contract, then plain read provider.
+    const provider = (window.ethereum)
+      ? new ethers.BrowserProvider(window.ethereum)
+      : readProvider;
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, provider);
+
+    const [total, received, distributed] = await Promise.all([
+      stakingRead.totalStaked(),
+      stakingRead.totalRewardsReceived(),
+      stakingRead.totalRewardsDistributed(),
+    ]);
+
+    const el = id => document.getElementById(id);
+    if (el('totalStakedGlobal')) el('totalStakedGlobal').textContent = Number(total).toLocaleString();
+
+    const poolEth = parseFloat(ethers.formatEther(received - distributed));
+    if (el('totalRewardPool')) el('totalRewardPool').textContent = poolEth.toFixed(4) + ' Ξ';
+
+    // Total stakers — same simple query that worked before, no chunking
+    try {
+      const filter = stakingRead.filters.Staked();
+      const events = await stakingRead.queryFilter(filter);
+      const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
+
+      const balances = await Promise.all(
+        uniqueAddresses.map(addr => stakingRead.stakedBalance(addr).catch(() => 0n))
+      );
+
+      const activeCount = balances.filter(b => BigInt(b) > 0n).length;
+      if (el('totalStakers')) el('totalStakers').textContent = activeCount.toLocaleString();
+    } catch (e) {
+      console.warn('[staking] totalStakers failed:', e.message);
+      if (el('totalStakers')) el('totalStakers').textContent = '—';
+    }
+  } catch (e) {
+    console.warn('[staking] refreshPublicStats failed:', e.message);
+  }
+}
+
+// Personal stats — only after wallet connect
 async function refreshStats () {
   try {
     const [bal, staked, total, earned] = await Promise.all([
@@ -335,27 +396,6 @@ async function refreshStats () {
     const tot = Number(total), mine = Number(staked);
     el('poolShare').textContent = tot > 0 ? ((mine / tot) * 100).toFixed(2) + '%' : '0%';
     el('claimableEth').textContent = parseFloat(ethers.formatEther(earned)).toFixed(6);
-
-    // Global stats
-    el('totalStakedGlobal').textContent = tot.toLocaleString();
-
-    // Count active stakers — addresses with stakedBalance > 0
-    try {
-      const filter = stakingContract.filters.Staked();
-      const events = await stakingContract.queryFilter(filter);
-      const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
-
-      // Check current balance for each address that ever staked
-      const balances = await Promise.all(
-        uniqueAddresses.map(addr =>
-          stakingContract.stakedBalance(addr).catch(() => 0n)
-        )
-      );
-
-      const activeCount = balances.filter(b => BigInt(b) > 0n).length;
-      el('totalStakers').textContent = activeCount.toLocaleString();
-    } catch { el('totalStakers').textContent = '—'; }
-
   } catch (e) { console.error('refreshStats', e); }
 }
 
@@ -475,7 +515,17 @@ function appendCard(grid, nft, mode, locked = false) {
 
 async function refreshWalletNFTs() {
   const grid = document.getElementById('walletGrid');
-  grid.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size:28px"></i><p>Summoning your Undeads…</p></div>';
+
+  // Only show "Summoning…" spinner on FIRST load (no cards yet).
+  // On subsequent refreshes, keep existing cards visible to avoid flicker.
+  const isFirstLoad = walletNFTs.length === 0;
+  if (isFirstLoad) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size:28px"></i><p>Summoning your Undeads…</p></div>';
+  }
+
+  // Track previous selection so we can restore it after re-render
+  const prevSelected = new Set(selectedWallet);
+
   walletNFTs = [];
   selectedWallet.clear();
   updateActionBars();
@@ -501,8 +551,16 @@ async function refreshWalletNFTs() {
       console.info(`[staking] API returned ${apiResult.length} matching tokens, using API path`);
       walletNFTs = apiResult;
       grid.innerHTML = walletNFTs.map(n => renderCard(n, 'wallet')).join('');
-      grid.querySelectorAll('.stake-nft-card').forEach(el =>
-        el.addEventListener('click', () => toggleSelection(el, 'wallet')));
+      grid.querySelectorAll('.stake-nft-card').forEach(el => {
+        el.addEventListener('click', () => toggleSelection(el, 'wallet'));
+        // Restore prior selection if it's still in the new list
+        const id = Number(el.dataset.id);
+        if (prevSelected.has(id) && walletNFTs.some(n => n.id === id)) {
+          selectedWallet.add(id);
+          el.classList.add('selected');
+        }
+      });
+      updateActionBars();
       return;
     }
 
@@ -691,25 +749,19 @@ async function refreshStakedNFTs () {
       return;
     }
 
-    // Fetch staked NFT images - Alchemy if key present, renderer otherwise
-    if (typeof window.ALCHEMY_KEY === 'string' && window.ALCHEMY_KEY.length > 0) {
-      await Promise.all(stakedNFTs.map(async n => {
-        try {
-          const r = await fetch(`${NETWORK.alchemyHost}/nft/v3/${window.ALCHEMY_KEY}/getNFTMetadata` +
-            `?contractAddress=${NETWORK.NFT_ADDRESS}&tokenId=${n.id}`);
-          const d = await r.json();
-          n.image = d.image?.cachedUrl || d.image?.originalUrl || '';
-        } catch (_) {}
-      }));
-    } else {
-      // Fallback: renderer contract (always works on testnet, no API key needed)
-      const CHUNK = 6;
-      for (let i = 0; i < stakedNFTs.length; i += CHUNK) {
-        await Promise.all(
-          stakedNFTs.slice(i, i + CHUNK).map(async n => {
-            n.image = await fetchImageFromRenderer(n.id);
-          })
-        );
+    // Fetch staked NFT images via the onchain renderer in batches of 5.
+    // Renderer is always free, no rate limits, no API key needed.
+    // (We used to hit Alchemy's getNFTMetadata API but it 429s on wallets
+    // with 100+ staked tokens because of the burst.)
+    const CHUNK = 5;
+    for (let i = 0; i < stakedNFTs.length; i += CHUNK) {
+      await Promise.all(
+        stakedNFTs.slice(i, i + CHUNK).map(async n => {
+          try { n.image = await fetchImageFromRenderer(n.id); } catch (_) {}
+        })
+      );
+      if (i + CHUNK < stakedNFTs.length) {
+        await new Promise(r => setTimeout(r, 60));
       }
     }
 
@@ -1044,6 +1096,15 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
     });
   }
+
+  // Load public stats immediately — no wallet needed
+  setTimeout(() => refreshPublicStats(), 800);
+
+  // Refresh public stats every 30s, but only when wallet is NOT connected.
+  // (When connected, refreshEverything handles it and we don't want to double-fetch.)
+  setInterval(() => {
+    if (!userAddress) refreshPublicStats();
+  }, 30000);
 
   if (window.ethereum) {
     window.ethereum.request({ method: 'eth_accounts' }).then(a => {
