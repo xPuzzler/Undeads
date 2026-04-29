@@ -200,8 +200,7 @@ function mountNetworkBadge () {
 // fetch in staking.html will swap this out for the Alchemy URL
 // (which has the key) once it resolves.
 readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl);
-let nftReadContract     = new ethers.Contract(NETWORK.NFT_ADDRESS,     NFT_ABI,     readProvider);
-let stakingReadContract = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
+let nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
 
 // Upgrade the read provider once api-keys returns the Alchemy RPC URL.
 // Called from staking.html. Safe to call multiple times — no-op if same URL.
@@ -209,11 +208,8 @@ window.upgradeReadProvider = function(rpcUrl) {
   if (!rpcUrl || rpcUrl === NETWORK.rpcUrl) return;
   console.info('[staking] Upgraded read provider to Alchemy RPC');
   readProvider = new ethers.JsonRpcProvider(rpcUrl);
-  nftReadContract     = new ethers.Contract(NETWORK.NFT_ADDRESS,     NFT_ABI,     readProvider);
-  stakingReadContract = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
+  nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
   NETWORK.rpcUrl = rpcUrl;
-  // Re-fetch public stats with the better RPC
-  refreshPublicStats();
 };
 
 // ─── WALLET CONNECT ───────────────────────────────────────────
@@ -280,8 +276,6 @@ async function connectWallet () {
     document.getElementById('rewardsPanel').style.display  = 'block';
     document.getElementById('tabsNav').style.display       = 'flex';
     document.getElementById('panel-wallet').style.display  = 'block';
-    const personalStats = document.getElementById('personalStatsSection');
-    if (personalStats) personalStats.style.display = 'block';
     if (IS_TESTNET) {
       const demo = document.getElementById('demoRoyaltyCard');
       if (demo) demo.style.display = 'block';
@@ -318,96 +312,12 @@ async function connectWallet () {
 async function refreshEverything () {
   if (!userAddress) return;
   await Promise.all([
-    refreshPublicStats(),       // keep public stats live for connected user too
     refreshStats(),
     refreshRewards(),
     refreshWalletNFTs(),
     refreshStakedNFTs(),
     fetchEthPrice(),
   ]);
-}
-
-// ─── PUBLIC STATS — always visible, works without wallet connect ─
-// Reads through the always-available stakingReadContract so anyone
-// visiting the page sees live numbers.
-async function refreshPublicStats () {
-  // Safe textContent setter — silently no-ops if element doesn't exist.
-  // Keeps the function from crashing if the HTML edit was incomplete.
-  const setText = (id, value) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-    else console.warn(`[staking] Element #${id} not found in DOM`);
-  };
-
-  try {
-    const [total, poolReceived, poolDistrib] = await Promise.all([
-      stakingReadContract.totalStaked(),
-      stakingReadContract.totalRewardsReceived(),
-      stakingReadContract.totalRewardsDistributed(),
-    ]);
-
-    setText('totalStakedGlobal', Number(total).toLocaleString());
-
-    // Reward pool = total received - total already distributed (un-claimed)
-    const poolEth = parseFloat(ethers.formatEther(poolReceived - poolDistrib));
-    setText('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
-
-    // Total stakers — chunked log query to dodge Alchemy free tier's
-    // 10-block range limit AND public Base RPC's even stricter limits.
-    // We grab all `Staked` events from contract deploy block to current,
-    // 500 blocks at a time, then dedupe and check current balance.
-    try {
-      const STAKING_DEPLOY_BLOCK = 45258665;  // BasedUndeads staking deployment block on Base
-      const CHUNK = 500;                       // safe under all tier limits
-
-      const currentBlock = await readProvider.getBlockNumber();
-      const filter = stakingReadContract.filters.Staked();
-      const allEvents = [];
-
-      // Run in parallel batches of 5 chunks at a time to avoid spamming
-      const chunks = [];
-      for (let from = STAKING_DEPLOY_BLOCK; from <= currentBlock; from += CHUNK) {
-        const to = Math.min(from + CHUNK - 1, currentBlock);
-        chunks.push({ from, to });
-      }
-
-      const PARALLEL = 5;
-      for (let i = 0; i < chunks.length; i += PARALLEL) {
-        const batch = chunks.slice(i, i + PARALLEL);
-        const results = await Promise.all(
-          batch.map(c =>
-            stakingReadContract.queryFilter(filter, c.from, c.to).catch(() => [])
-          )
-        );
-        results.forEach(r => allEvents.push(...r));
-      }
-
-      // Dedupe by address
-      const uniqueAddresses = [...new Set(allEvents.map(e => e.args[0].toLowerCase()))];
-
-      // Of those, count how many still have a positive staked balance
-      const balances = await Promise.all(
-        uniqueAddresses.map(addr =>
-          stakingReadContract.stakedBalance(addr).catch(() => 0n)
-        )
-      );
-      const activeCount = balances.filter(b => BigInt(b) > 0n).length;
-      setText('totalStakers', activeCount.toLocaleString());
-
-      // Cache result so we don't re-scan on every refresh
-      window.__cachedStakerCount = { count: activeCount, scannedTo: currentBlock, ts: Date.now() };
-
-    } catch (e) {
-      console.warn('[staking] totalStakers fetch failed:', e.message);
-      setText('totalStakers', '—');
-    }
-
-  } catch (e) {
-    console.warn('[staking] refreshPublicStats failed:', e.message);
-    setText('totalStakedGlobal', '—');
-    setText('totalStakers', '—');
-    setText('totalRewardPool', '—');
-  }
 }
 
 async function refreshStats () {
@@ -425,6 +335,27 @@ async function refreshStats () {
     const tot = Number(total), mine = Number(staked);
     el('poolShare').textContent = tot > 0 ? ((mine / tot) * 100).toFixed(2) + '%' : '0%';
     el('claimableEth').textContent = parseFloat(ethers.formatEther(earned)).toFixed(6);
+
+    // Global stats
+    el('totalStakedGlobal').textContent = tot.toLocaleString();
+
+    // Count active stakers — addresses with stakedBalance > 0
+    try {
+      const filter = stakingContract.filters.Staked();
+      const events = await stakingContract.queryFilter(filter);
+      const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
+
+      // Check current balance for each address that ever staked
+      const balances = await Promise.all(
+        uniqueAddresses.map(addr =>
+          stakingContract.stakedBalance(addr).catch(() => 0n)
+        )
+      );
+
+      const activeCount = balances.filter(b => BigInt(b) > 0n).length;
+      el('totalStakers').textContent = activeCount.toLocaleString();
+    } catch { el('totalStakers').textContent = '—'; }
+
   } catch (e) { console.error('refreshStats', e); }
 }
 
@@ -760,26 +691,25 @@ async function refreshStakedNFTs () {
       return;
     }
 
-    // Fetch staked NFT images. Strategy:
-    //   1. Render cards immediately with placeholder
-    //   2. Stream real images in via the onchain renderer (always free,
-    //      always works, no rate limits). 5 parallel requests at a time
-    //      to avoid overwhelming the RPC.
-    // We don't use Alchemy here because it gets rate-limited (429) on
-    // wallets with many staked tokens. The renderer is faster anyway
-    // since it's just direct chain calls through our existing provider.
-    const CHUNK = 5;
-    for (let i = 0; i < stakedNFTs.length; i += CHUNK) {
-      await Promise.all(
-        stakedNFTs.slice(i, i + CHUNK).map(async n => {
-          try {
+    // Fetch staked NFT images - Alchemy if key present, renderer otherwise
+    if (typeof window.ALCHEMY_KEY === 'string' && window.ALCHEMY_KEY.length > 0) {
+      await Promise.all(stakedNFTs.map(async n => {
+        try {
+          const r = await fetch(`${NETWORK.alchemyHost}/nft/v3/${window.ALCHEMY_KEY}/getNFTMetadata` +
+            `?contractAddress=${NETWORK.NFT_ADDRESS}&tokenId=${n.id}`);
+          const d = await r.json();
+          n.image = d.image?.cachedUrl || d.image?.originalUrl || '';
+        } catch (_) {}
+      }));
+    } else {
+      // Fallback: renderer contract (always works on testnet, no API key needed)
+      const CHUNK = 6;
+      for (let i = 0; i < stakedNFTs.length; i += CHUNK) {
+        await Promise.all(
+          stakedNFTs.slice(i, i + CHUNK).map(async n => {
             n.image = await fetchImageFromRenderer(n.id);
-          } catch (_) {}
-        })
-      );
-      // Tiny pause between chunks to keep RPC happy
-      if (i + CHUNK < stakedNFTs.length) {
-        await new Promise(r => setTimeout(r, 60));
+          })
+        );
       }
     }
 
@@ -1114,14 +1044,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
     });
   }
-
-  // ── PUBLIC STATS — load immediately, no wallet required
-  // Wait briefly for the api-keys fetch to upgrade the RPC, then load.
-  // (If it doesn't upgrade in time, public Base RPC will work too.)
-  setTimeout(() => refreshPublicStats(), 500);
-
-  // Refresh public stats every 30 seconds so the page stays "live"
-  setInterval(() => refreshPublicStats(), 30000);
 
   if (window.ethereum) {
     window.ethereum.request({ method: 'eth_accounts' }).then(a => {
