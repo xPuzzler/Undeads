@@ -23,15 +23,72 @@
     .stake-hero .subtitle { font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3vw, 32px); font-style: italic; color: var(--accent); margin-bottom: 20px; }
     .stake-hero p { max-width: 580px; margin: 0 auto; color: var(--muted-2); font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.8; }
 
-    .stats-bar { max-width: 1400px; margin: 0 auto 40px; padding: 0 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-    .stats-bar .stat-card { padding: 20px 12px; }
-    .stats-bar .stat-val { font-size: clamp(20px, 3vw, 38px); }
-    .stats-bar .stat-lbl { font-size: 8px; }
-    .stats-bar .stat-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 24px; padding: 28px 24px; text-align: center; transition: all .3s; }
-    .stats-bar .stat-card:hover { border-color: rgba(0,255,136,0.25); }
-    .stats-bar .stat-val { font-family: 'Instrument Serif', serif; font-size: 38px; line-height: 1; margin-bottom: 8px; letter-spacing: -0.02em; }
-    .stats-bar .stat-val.accent { color: var(--accent); }
-    .stats-bar .stat-lbl { font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+    /* Stats sections (public + personal) */
+    .stats-section {
+      max-width: 1400px;
+      margin: 0 auto 32px;
+      padding: 0 40px;
+    }
+    .stats-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stats-label .live-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+      animation: pulse 1.8s infinite;
+    }
+
+    .stats-bar {
+      display: grid;
+      gap: 14px;
+    }
+    /* Public stats — 3 columns */
+    .stats-bar.stats-public {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    /* Personal stats — 4 columns */
+    .stats-bar.stats-personal {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .stats-bar .stat-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 28px 24px;
+      text-align: center;
+      transition: all .3s;
+    }
+    .stats-bar .stat-card:hover {
+      border-color: rgba(0,255,136,0.25);
+    }
+    .stats-bar .stat-val {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(28px, 3.5vw, 42px);
+      line-height: 1;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .stats-bar .stat-val.accent {
+      color: var(--accent);
+    }
+    .stats-bar .stat-lbl {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
 
     .connect-banner { max-width: 1400px; margin: 0 auto 40px; padding: 48px 40px; background: var(--glass); border: 1px dashed var(--glass-border); border-radius: 28px; text-align: center; }
     .connect-banner p { font-family: 'Geist Mono', monospace; color: var(--muted-2); margin-bottom: 20px; font-size: 13px; }
@@ -158,19 +215,24 @@
     }
 
     @media (max-width: 1024px) {
-      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 768px) {
-      .stake-hero, .stats-bar, .tabs-nav, .tab-panel, .rewards-panel, .how-it-works { padding-left: 16px; padding-right: 16px; }
-      .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stake-hero, .stats-section, .tabs-nav, .tab-panel, .rewards-panel, .how-it-works {
+        padding-left: 16px; padding-right: 16px;
+      }
+      .stats-bar { gap: 10px; }
+      .stats-bar.stats-public { grid-template-columns: repeat(3, 1fr); }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); }
       .nft-stake-grid { grid-template-columns: repeat(2, 1fr); }
       .how-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-      .stats-bar .stat-card { padding: 16px 10px; }
-      .stats-bar .stat-val { font-size: clamp(18px, 6vw, 28px); }
-      .stats-bar .stat-lbl { font-size: 7.5px; letter-spacing: .1em; }
+      .stats-bar.stats-public { grid-template-columns: 1fr; gap: 8px; }
+      .stats-bar.stats-personal { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stats-bar .stat-card { padding: 18px 12px; }
+      .stats-bar .stat-val { font-size: clamp(22px, 7vw, 32px); }
+      .stats-bar .stat-lbl { font-size: 8.5px; letter-spacing: .15em; }
     }
 
     /* ────── STAKING NOT-YET-LIVE STYLES ────── */
@@ -401,31 +463,45 @@
     </div>
   </div>
 
-  <!-- STATS BAR -->
-  <div class="stats-bar">
-    <div class="stat-card">
-      <div class="stat-val" id="nftsInWallet">-</div>
-      <div class="stat-lbl">NFTs in Wallet</div>
+  <!-- ═════════════ PUBLIC STATS — always visible ═════════════ -->
+  <div class="stats-section">
+    <p class="stats-label">Collection Stats <span class="live-dot"></span></p>
+    <div class="stats-bar stats-public">
+      <div class="stat-card">
+        <div class="stat-val accent" id="totalStakedGlobal">-</div>
+        <div class="stat-lbl">Total Staked NFTs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="totalStakers">-</div>
+        <div class="stat-lbl">Total Stakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val accent" id="totalRewardPool">-</div>
+        <div class="stat-lbl">Total Reward Pool</div>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-val" id="nftsStaked">-</div>
-      <div class="stat-lbl">Your Staked</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val accent" id="claimableEth">-</div>
-      <div class="stat-lbl">Claimable ETH</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="poolShare">-</div>
-      <div class="stat-lbl">Your Pool Share</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val accent" id="totalStakedGlobal">-</div>
-      <div class="stat-lbl">Total Staked NFTs</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="totalStakers">-</div>
-      <div class="stat-lbl">Total Stakers</div>
+  </div>
+
+  <!-- ═════════════ PERSONAL STATS — visible after connect ═════════════ -->
+  <div class="stats-section" id="personalStatsSection" style="display:none">
+    <p class="stats-label">Your Stats</p>
+    <div class="stats-bar stats-personal">
+      <div class="stat-card">
+        <div class="stat-val" id="nftsInWallet">-</div>
+        <div class="stat-lbl">NFTs in Wallet</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="nftsStaked">-</div>
+        <div class="stat-lbl">Your Staked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val accent" id="claimableEth">-</div>
+        <div class="stat-lbl">Claimable ETH</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="poolShare">-</div>
+        <div class="stat-lbl">Your Pool Share</div>
+      </div>
     </div>
   </div>
 
