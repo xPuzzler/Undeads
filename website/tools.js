@@ -190,6 +190,67 @@ function detectMediaType(url, contentType = '') {
   return 'image';
 }
 
+// Cache for HEAD-request media type results
+const HEAD_TYPE_CACHE = new Map();
+
+// Sniffs Content-Type via HEAD request when URL has no extension.
+// Returns 'image'|'gif'|'webp'|'video' or null if can't be determined.
+async function sniffMediaTypeViaHead(url) {
+  if (!url) return null;
+  if (HEAD_TYPE_CACHE.has(url)) return HEAD_TYPE_CACHE.get(url);
+
+  let result = null;
+  try {
+    const r = await fetch(url, { method: 'HEAD', mode: 'cors' });
+    if (r.ok) {
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('gif'))           result = 'gif';
+      else if (ct.includes('webp'))     result = 'webp';
+      else if (ct.startsWith('video/')) result = 'video';
+      else if (ct.startsWith('image/')) result = 'image';
+    }
+  } catch(_) {}
+
+  HEAD_TYPE_CACHE.set(url, result);
+  return result;
+}
+
+// Runs HEAD requests on every NFT whose mediaType wasn't determinable
+// from URL/contentType. Mutates the array to upgrade types in place.
+async function upgradeMediaTypes(nfts) {
+  // Only check NFTs flagged as 'image' — they're the ambiguous ones
+  const candidates = nfts.filter(n => {
+    if (n.mediaType !== 'image') return false;
+    // Skip NFTs whose URLs already look like .png/.jpg — only sniff CDN URLs
+    const url = n.animation || n.rawImage || n.image || '';
+    if (url.match(/\.(png|jpg|jpeg)(\?|#|$)/i)) return false;
+    return true;
+  });
+  if (!candidates.length) return;
+
+  console.info(`[tools] Sniffing ${candidates.length} ambiguous NFTs via HEAD…`);
+
+  // Process in parallel batches to avoid overwhelming the network
+  const BATCH = 10;
+  let upgrades = 0;
+  for (let i = 0; i < candidates.length; i += BATCH) {
+    const batch = candidates.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (nft) => {
+      // Try animation URL first (if any), then image URL
+      const url = nft.animation || nft.rawImage || nft.image;
+      const sniffed = await sniffMediaTypeViaHead(url);
+      if (sniffed && sniffed !== 'image') {
+        nft.mediaType = sniffed;
+        upgrades++;
+      }
+    }));
+  }
+
+  if (upgrades > 0) {
+    console.info(`[tools] Upgraded ${upgrades} NFTs to animated/video types`);
+  }
+}
+
 function normalizeTokenId(id) {
   if (!id) return '';
   if (typeof id === 'string' && id.startsWith('0x')) return parseInt(id, 16).toString();
@@ -276,11 +337,26 @@ async function onFetchNFTs() {
 
   try {
     walletNFTs = await fetchOpenSeaWallet(addr, chain);
+
+    // Render initial grid immediately (don't make user wait)
     processNFTsByCollection(walletNFTs);
     displayCollectionSelector();
     currentDisplayedNFTs = walletNFTs;
     renderWalletGrid(walletNFTs);
     document.getElementById('nftCount').textContent = walletNFTs.length + ' NFTs';
+
+    // In background: HEAD-sniff ambiguous types, then re-render with badges
+    upgradeMediaTypes(walletNFTs).then(() => {
+      // Only re-render if currentDisplayedNFTs is still walletNFTs (user
+      // hasn't filtered to a collection in the meantime)
+      if (currentDisplayedNFTs === walletNFTs) renderWalletGrid(walletNFTs);
+      const newBreakdown = {};
+      walletNFTs.forEach(n => {
+        const t = n.mediaType || 'unknown';
+        newBreakdown[t] = (newBreakdown[t] || 0) + 1;
+      });
+      console.info('[tools] Final media type breakdown after sniff:', newBreakdown);
+    });
     // Debug: log media type breakdown
     const breakdown = {};
     walletNFTs.forEach(n => {
@@ -572,8 +648,8 @@ function getGridDims() {
 
 function getNFTsForGrid(useCache = false) {
   const mode = document.querySelector('input[name="selectionMode"]:checked')?.value || 'manual';
-  const { rows, cols } = getGridDims();
-  const needed = rows * cols;
+  let { rows, cols } = getGridDims();
+  let needed = rows * cols;
 
   let chosenNfts;
 
@@ -606,6 +682,17 @@ function getNFTsForGrid(useCache = false) {
   if (types.size > 1) {
     toast(`Mixed types selected (${[...types].join(', ')}). Pick all images, all GIFs, or all videos.`, 'error');
     return null;
+  }
+
+  // If user selected MORE than the grid can hold, grow the grid to fit them all
+  if (selectedForGrid.length > needed) {
+    const newCols = Math.ceil(Math.sqrt(selectedForGrid.length));
+    const newRows = Math.ceil(selectedForGrid.length / newCols);
+    rows = newRows;
+    cols = newCols;
+    needed = rows * cols;
+    console.info(`[tools] Grid auto-resized to ${rows}×${cols} to fit ${selectedForGrid.length} selected NFTs`);
+    toast(`Grid resized to ${rows}×${cols} to fit all ${selectedForGrid.length} selections`, 'info');
   }
 
   chosenNfts = selectedForGrid.slice(0, needed);
@@ -836,6 +923,16 @@ async function buildAnimatedGifGrid(nfts, rows, cols) {
       }
     })
   );
+
+  // Stats
+  const totalSlots = decodedSlots.length;
+  const validSlots = decodedSlots.filter(Boolean).length;
+  const animatedSlots = decodedSlots.filter(s => s && s.frames.length > 1).length;
+  const failedSlots = totalSlots - validSlots;
+  console.info(`[tools] GIF grid: ${animatedSlots} animated · ${validSlots - animatedSlots} static fallback · ${failedSlots} failed`);
+  if (failedSlots > 0) {
+    toast(`${failedSlots} of ${totalSlots} couldn't be decoded — those cells will be blank`, 'info');
+  }
 
   // Find the longest clip — that's our timeline
   const maxDuration = Math.max(...decodedSlots.filter(Boolean).map(s => s.totalDurationMs), 1000);
