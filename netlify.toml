@@ -1,6 +1,6 @@
 # ========================================================
 #  BasedUndeads — Netlify Configuration
-#  Multi-page site with clean URLs
+#  Multi-page site with clean URLs + hardened security
 # ========================================================
 
 [build]
@@ -11,6 +11,20 @@
   publish   = "website"
   port      = 8888
   framework = "#static"
+
+# ============================================================
+#  REDIRECTS
+#  - Force HTTPS + canonical apex domain
+#  - Clean URLs (no .html in address bar)
+# ============================================================
+
+# Force www → apex (so www.basedundeads.xyz redirects to basedundeads.xyz)
+# 301! with the bang means: always do it, even if a www file exists
+[[redirects]]
+  from   = "https://www.basedundeads.xyz/*"
+  to     = "https://basedundeads.xyz/:splat"
+  status = 301
+  force  = true
 
 # -------- Clean URLs (no .html in browser bar) --------
 [[redirects]]
@@ -39,15 +53,78 @@
   status = 200
 
 [[redirects]]
+  from   = "/validate"
+  to     = "/validate.html"
+  status = 200
+
+[[redirects]]
   from   = "/overview"
   to     = "/overview.html"
   status = 200
 
-# -------- Security headers --------
+[[redirects]]
+  from   = "/staking-guide"
+  to     = "/staking-guide.html"
+  status = 200
+
+[[redirects]]
+  from   = "/guide"
+  to     = "/staking-guide.html"
+  status = 200
+
+[[redirects]]
+  from   = "/deployment"
+  to     = "/deployment-tracker.html"
+  status = 200
+
+# ============================================================
+#  GLOBAL SECURITY HEADERS
+#  Applied to every response site-wide.
+# ============================================================
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options        = "SAMEORIGIN"
+    # ── HTTPS enforcement (1 year, all subdomains, preload-ready) ──
+    # Once a browser sees this, it refuses to connect over HTTP for 1 year.
+    # `preload` qualifies for hstspreload.org submission (forever fix).
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+    # ── Clickjacking protection (you can embed your own iframes, no one else can) ──
+    X-Frame-Options = "SAMEORIGIN"
+
+    # ── Block MIME-type sniffing attacks ──
     X-Content-Type-Options = "nosniff"
-    Referrer-Policy        = "strict-origin-when-cross-origin"
-    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+    # ── Don't leak full URLs to third-party sites in Referer header ──
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # ── Block sensors you'll never use (extra hardening) ──
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+    # ── Protect against opener attacks when users click external links ──
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+
+# ============================================================
+#  CACHE HEADERS
+#  Long cache for static assets, no cache for HTML
+#  (so updates ship immediately, but images/scripts are fast)
+# ============================================================
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/abis/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
