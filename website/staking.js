@@ -428,6 +428,16 @@ async function refreshPublicStats () {
     const poolEth = parseFloat(ethers.formatEther(received - distributed));
     updateStat('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
 
+    // Secondary sales count — populate rewards panel info line
+    try {
+      const royaltyEvents = await stakingRead.queryFilter(stakingRead.filters.RoyaltyReceived());
+      const salesCount = royaltyEvents.length;
+      const salesCountEl = document.getElementById('rewardsSalesCount');
+      const salesInfoEl  = document.getElementById('rewardsSalesInfo');
+      if (salesCountEl) salesCountEl.textContent = salesCount.toLocaleString();
+      if (salesInfoEl)  salesInfoEl.style.display = salesCount > 0 ? 'inline' : 'none';
+    } catch (_) {}
+
     // Total stakers — needs eth_getLogs; works with MetaMask, may fail on public RPC
     try {
       const filter = stakingRead.filters.Staked();
@@ -995,6 +1005,153 @@ async function doClaim () {
   }
 }
 
+// ─── LEADERBOARD ─────────────────────────────────────────────
+let _lbCache = null;          // { rows, ts } — avoid hammering RPC
+let _lbFetching = false;
+
+async function refreshLeaderboard(force = false) {
+  const table  = document.getElementById('leaderboardTable');
+  const btn    = document.getElementById('lbRefreshBtn');
+  if (!table) return;
+
+  // Throttle: re-use cache if fetched < 60 s ago and not forced
+  if (!force && _lbCache && (Date.now() - _lbCache.ts) < 60_000) {
+    renderLeaderboard(_lbCache.rows);
+    return;
+  }
+  if (_lbFetching) return;
+  _lbFetching = true;
+
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+
+  table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5"><i class="fas fa-spinner fa-spin"></i></div><p style="margin-top:12px">Fetching staker data…</p></div>`;
+
+  try {
+    const p = (window.ethereum)
+      ? new ethers.BrowserProvider(window.ethereum)
+      : readProvider;
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, p);
+
+    // 1. Collect all unique addresses that ever staked
+    let uniqueAddrs = [];
+    try {
+      const events = await stakingRead.queryFilter(stakingRead.filters.Staked());
+      const seen = new Set();
+      for (const e of events) {
+        const addr = (e.args?.[0] || '').toLowerCase();
+        if (addr && !seen.has(addr)) { seen.add(addr); uniqueAddrs.push(addr); }
+      }
+    } catch (e) {
+      console.warn('[leaderboard] queryFilter failed:', e.message);
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>Could not load event logs.<br><small style="opacity:.6">RPC may not support eth_getLogs.</small></p></div>`;
+      return;
+    }
+
+    if (uniqueAddrs.length === 0) {
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No stakers yet — be the first!</p></div>`;
+      return;
+    }
+
+    // 2. Batch-fetch stakedBalance for every address
+    const CHUNK = 20;
+    const balances = [];
+    for (let i = 0; i < uniqueAddrs.length; i += CHUNK) {
+      const slice = uniqueAddrs.slice(i, i + CHUNK);
+      const results = await Promise.allSettled(
+        slice.map(addr => stakingRead.stakedBalance(addr))
+      );
+      results.forEach((r, idx) => {
+        balances.push({
+          addr: slice[idx],
+          staked: r.status === 'fulfilled' ? Number(r.value) : 0,
+        });
+      });
+      if (i + CHUNK < uniqueAddrs.length) await new Promise(r => setTimeout(r, 50));
+    }
+
+    // 3. Filter out wallets that have unstaked everything, sort descending
+    const active = balances
+      .filter(b => b.staked > 0)
+      .sort((a, b) => b.staked - a.staked);
+
+    if (active.length === 0) {
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No active stakers right now.</p></div>`;
+      _lbCache = { rows: active, ts: Date.now() };
+      return;
+    }
+
+    // 4. Compute total staked for share %
+    const total = active.reduce((s, b) => s + b.staked, 0);
+    const rows  = active.map((b, i) => ({
+      rank:   i + 1,
+      addr:   b.addr,
+      staked: b.staked,
+      share:  total > 0 ? (b.staked / total) * 100 : 0,
+    }));
+
+    _lbCache = { rows, ts: Date.now() };
+    renderLeaderboard(rows);
+
+  } catch (e) {
+    console.error('[leaderboard]', e);
+    table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>Error: ${e.message.slice(0, 120)}</p></div>`;
+  } finally {
+    _lbFetching = false;
+    if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+  }
+}
+
+function renderLeaderboard(rows) {
+  const table   = document.getElementById('leaderboardTable');
+  if (!table) return;
+
+  const RANK_ICON = { 1: '👑', 2: '💀', 3: '☠' };
+  const meAddr    = (userAddress || '').toLowerCase();
+  const explorer  = (NETWORK.explorerBase || '').replace(/\/$/, '');
+
+  const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
+
+  const thead = `
+    <div class="lb-thead">
+      <span>#</span>
+      <span>Wallet</span>
+      <span>Staked</span>
+      <span>Pool Share</span>
+      <span>Share Bar</span>
+    </div>`;
+
+  const rowsHtml = rows.map((r, idx) => {
+    const rankClass = r.rank <= 3 ? `rank-${r.rank}` : '';
+    const icon      = RANK_ICON[r.rank] || r.rank;
+    const isMe      = r.addr === meAddr;
+    const addrLink  = explorer
+      ? `<a href="${explorer}/address/${r.addr}" target="_blank" rel="noopener">${shortAddr(r.addr)}</a>`
+      : shortAddr(r.addr);
+    const youBadge  = isMe ? `<span class="you-badge">You</span>` : '';
+    const barWidth  = Math.max(2, Math.min(100, r.share)).toFixed(1);
+
+    return `
+      <div class="lb-row animating" data-rank="${r.rank}" style="animation-delay:${idx * 40}ms">
+        <div class="lb-rank ${rankClass}">${icon}</div>
+        <div class="lb-addr">${addrLink}${youBadge}</div>
+        <div class="lb-count ${r.rank === 1 ? 'top' : ''}">${r.staked.toLocaleString()}</div>
+        <div class="lb-share">${r.share.toFixed(2)}%</div>
+        <div class="lb-share-bar-wrap">
+          <div class="lb-share-bar">
+            <div class="lb-share-bar-fill" style="width:${barWidth}%"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  table.innerHTML = thead + rowsHtml;
+
+  // Remove animation class after it fires so hover styles work cleanly
+  table.querySelectorAll('.lb-row.animating').forEach(el => {
+    el.addEventListener('animationend', () => el.classList.remove('animating'), { once: true });
+  });
+}
+
 // ─── DEMO ROYALTY (TESTNET ONLY) ──────────────────────────────
 async function sendDemoRoyalty () {
   if (!IS_TESTNET) return;
@@ -1036,7 +1193,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePreLaunchModal(); });
 
+  document.getElementById('lbRefreshBtn')     ?.addEventListener('click', () => refreshLeaderboard(true));
   document.getElementById('connectBtn')       ?.addEventListener('click', connectWallet);
+  document.getElementById('stakeMoreBtn')     ?.addEventListener('click', () => {
+    // Switch to the Wallet tab and scroll to it
+    const walletTab = document.querySelector('.tab-btn[data-tab="wallet"]');
+    if (walletTab) {
+      walletTab.click();
+      document.getElementById('tabsNav')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
   document.getElementById('connectBannerBtn') ?.addEventListener('click', connectWallet);
   document.getElementById('claimBtn')         ?.addEventListener('click', doClaim);
   document.getElementById('demoRoyaltyBtn')   ?.addEventListener('click', sendDemoRoyalty);
@@ -1092,6 +1258,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load public stats (staggered entrance of stat cards)
   setTimeout(() => refreshPublicStats(), 800);
+
+  // Load leaderboard (slightly delayed so public stats render first)
+  setTimeout(() => refreshLeaderboard(), 1800);
+
+  // Refresh leaderboard every 2 minutes
+  setInterval(() => refreshLeaderboard(), 120_000);
 
   setInterval(() => {
     if (!userAddress) refreshPublicStats();

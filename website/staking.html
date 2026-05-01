@@ -246,6 +246,154 @@
     .staking-locked .btn-secondary,
     .staking-locked #claimBtn { opacity: 0.5; }
 
+    /* ────── LEADERBOARD ────── */
+    .leaderboard-section { max-width: 1400px; margin: 80px auto 0; padding: 0 40px 48px; }
+    .leaderboard-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .leaderboard-header .lb-title-group { display: flex; flex-direction: column; gap: 4px; }
+    .leaderboard-header .lb-eyebrow {
+      font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: .25em;
+      text-transform: uppercase; color: var(--accent);
+    }
+    .leaderboard-header h2 {
+      font-family: 'Instrument Serif', serif; font-size: clamp(24px, 4vw, 40px);
+      line-height: 1; letter-spacing: -.02em;
+    }
+    .leaderboard-header h2 em { font-style: italic; color: var(--accent); }
+    .lb-refresh-btn {
+      font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: .12em;
+      text-transform: uppercase; padding: 10px 20px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      color: var(--muted-2); border-radius: 100px; cursor: none; transition: all .3s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .lb-refresh-btn:hover { border-color: rgba(0,255,136,0.35); color: var(--accent); }
+    .lb-refresh-btn.spinning i { animation: lbSpin .7s linear infinite; }
+    @keyframes lbSpin { to { transform: rotate(360deg); } }
+
+    .leaderboard-table {
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 24px; overflow: hidden;
+      max-height: 520px; overflow-y: auto;
+      /* Custom scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(200,164,80,0.25) transparent;
+    }
+    .leaderboard-table::-webkit-scrollbar { width: 5px; }
+    .leaderboard-table::-webkit-scrollbar-track { background: transparent; }
+    .leaderboard-table::-webkit-scrollbar-thumb { background: rgba(200,164,80,0.25); border-radius: 10px; }
+    .leaderboard-table::-webkit-scrollbar-thumb:hover { background: rgba(200,164,80,0.5); }
+    /* Keep the header pinned while scrolling */
+    .lb-thead {
+      position: sticky; top: 0; z-index: 2;
+      background: rgba(10,5,5,0.97); backdrop-filter: blur(8px);
+    }
+    .lb-thead {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 120px 100px;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.02);
+    }
+    .lb-thead span {
+      font-family: 'Geist Mono', monospace; font-size: 8.5px;
+      letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+    }
+    .lb-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 120px 100px;
+      padding: 14px 24px; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background .2s;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row:hover { background: rgba(255,255,255,0.03); }
+
+    /* Top 3 gold / silver / bronze tint */
+    .lb-row[data-rank="1"] { background: rgba(200,164,80,0.05); }
+    .lb-row[data-rank="1"]:hover { background: rgba(200,164,80,0.09); }
+    .lb-row[data-rank="2"] { background: rgba(180,180,180,0.04); }
+    .lb-row[data-rank="3"] { background: rgba(180,100,40,0.04); }
+
+    .lb-rank {
+      font-family: 'Creepster', cursive; font-size: 20px; line-height: 1;
+    }
+    .lb-rank.rank-1 { color: #c8a450; text-shadow: 0 0 16px rgba(200,164,80,0.5); font-size: 24px; }
+    .lb-rank.rank-2 { color: #b0b8c4; }
+    .lb-rank.rank-3 { color: #b46428; }
+
+    .lb-addr {
+      font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--fg);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .lb-addr .you-badge {
+      font-size: 8px; letter-spacing: .15em; text-transform: uppercase;
+      background: rgba(0,255,136,0.12); color: var(--accent);
+      border: 1px solid rgba(0,255,136,0.25); border-radius: 100px;
+      padding: 2px 8px;
+    }
+    .lb-addr a {
+      color: inherit; text-decoration: none; transition: color .2s;
+    }
+    .lb-addr a:hover { color: var(--accent); }
+
+    .lb-count {
+      font-family: 'Instrument Serif', serif; font-size: 20px; line-height: 1;
+    }
+    .lb-count.top { color: var(--accent); }
+
+    .lb-share {
+      font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted-2);
+    }
+    .lb-share-bar-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .lb-share-bar {
+      flex: 1; height: 4px; background: rgba(255,255,255,0.08);
+      border-radius: 4px; overflow: hidden; min-width: 40px;
+    }
+    .lb-share-bar-fill {
+      height: 100%; background: var(--accent); border-radius: 4px;
+      transition: width .8s cubic-bezier(.2,.8,.3,1);
+    }
+    .lb-row[data-rank="1"] .lb-share-bar-fill { background: #c8a450; }
+    .lb-row[data-rank="2"] .lb-share-bar-fill { background: #b0b8c4; }
+    .lb-row[data-rank="3"] .lb-share-bar-fill { background: #b46428; }
+
+    .lb-empty {
+      text-align: center; padding: 60px 24px;
+      font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--muted);
+    }
+    .lb-empty .lb-skull { font-size: 40px; margin-bottom: 12px; opacity: .3; }
+
+    @keyframes lbRowIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .lb-row.animating {
+      animation: lbRowIn .35s ease both;
+    }
+
+    @media (max-width: 768px) {
+      .leaderboard-section { padding: 0 16px 48px; }
+      .lb-thead { grid-template-columns: 36px 1fr 80px 70px; }
+      .lb-thead span:last-child { display: none; }
+      .lb-row  { grid-template-columns: 36px 1fr 80px 70px; }
+      .lb-row > *:last-child { display: none; }
+      .lb-addr { font-size: 11px; }
+      .lb-count { font-size: 17px; }
+    }
+    @media (max-width: 480px) {
+      .lb-thead { grid-template-columns: 32px 1fr 60px; padding: 10px 14px; }
+      .lb-thead span:nth-child(4),
+      .lb-thead span:nth-child(5) { display: none; }
+      .lb-row  { grid-template-columns: 32px 1fr 60px; padding: 12px 14px; }
+      .lb-row > *:nth-child(4),
+      .lb-row > *:nth-child(5) { display: none; }
+    }
+
     /* ────── PRE-LAUNCH MODAL ────── */
     .prelaunch-modal-overlay {
       position: fixed; inset: 0; background: rgba(5,2,2,0.85); backdrop-filter: blur(8px);
@@ -391,12 +539,17 @@
   <!-- REWARDS PANEL -->
   <div class="rewards-panel" id="rewardsPanel" style="display:none">
     <div class="rewards-card">
-      <h3>Claimable Rewards</h3>
       <div class="rewards-amount" id="rewardsAmount">0.000000 ETH</div>
-      <div class="rewards-usd">≈ $<span id="rewardsUsd">0.00</span> USD</div>
+      <div class="rewards-usd">
+        ≈ $<span id="rewardsUsd">0.00</span> USD
+        <span id="rewardsSalesInfo" style="display:none"> · accrued from <span id="rewardsSalesCount">—</span> secondary sales</span>
+      </div>
       <div class="rewards-actions">
         <button class="btn-primary" id="claimBtn" disabled>
-          <i class="fas fa-hand-holding-usd"></i> Claim Rewards
+          <i class="fas fa-bolt"></i> Claim Rewards
+        </button>
+        <button class="btn-secondary" id="stakeMoreBtn">
+          <i class="fas fa-plus"></i> Stake More
         </button>
       </div>
     </div>
@@ -491,6 +644,26 @@
       </a>
     </div>
   </div>
+
+  <!-- LEADERBOARD -->
+  <section class="leaderboard-section" id="leaderboardSection">
+    <div class="leaderboard-header">
+      <div class="lb-title-group">
+        <span class="lb-eyebrow">Live Rankings</span>
+        <h2>Staker <em>Leaderboard</em></h2>
+      </div>
+      <button class="lb-refresh-btn" id="lbRefreshBtn">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+
+    <div class="leaderboard-table" id="leaderboardTable">
+      <div class="lb-empty">
+        <div class="lb-skull">💀</div>
+        <p>Loading staker rankings…</p>
+      </div>
+    </div>
+  </section>
 
   <!-- HOW IT WORKS -->
   <section class="how-it-works">
