@@ -471,6 +471,7 @@ async function refreshStats () {
 async function refreshRewards () {
   if (!stakingContract || !userAddress) return;
   try {
+    if (!ethPriceUsd) await fetchEthPrice();
     const [earned, poolTotal, poolDistrib] = await Promise.all([
       stakingContract.earned(userAddress),
       stakingContract.totalRewardsReceived(),
