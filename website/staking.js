@@ -428,16 +428,6 @@ async function refreshPublicStats () {
     const poolEth = parseFloat(ethers.formatEther(received - distributed));
     updateStat('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
 
-    // Secondary sales count — populate rewards panel info line
-    try {
-      const royaltyEvents = await stakingRead.queryFilter(stakingRead.filters.RoyaltyReceived());
-      const salesCount = royaltyEvents.length;
-      const salesCountEl = document.getElementById('rewardsSalesCount');
-      const salesInfoEl  = document.getElementById('rewardsSalesInfo');
-      if (salesCountEl) salesCountEl.textContent = salesCount.toLocaleString();
-      if (salesInfoEl)  salesInfoEl.style.display = salesCount > 0 ? 'inline' : 'none';
-    } catch (_) {}
-
     // Total stakers — needs eth_getLogs; works with MetaMask, may fail on public RPC
     try {
       const filter = stakingRead.filters.Staked();
@@ -515,6 +505,22 @@ async function refreshRewards () {
 
     const poolEl = document.getElementById('poolBalance');
     if (poolEl) poolEl.textContent = poolE.toFixed(6) + ' ETH';
+
+    // Per-user sales count: only royalty events since this user's first stake
+    try {
+      const [stakedEvents, royaltyEvents] = await Promise.all([
+        stakingContract.queryFilter(stakingContract.filters.Staked(userAddress)),
+        stakingContract.queryFilter(stakingContract.filters.RoyaltyReceived()),
+      ]);
+      const salesCountEl = document.getElementById('rewardsSalesCount');
+      const salesInfoEl  = document.getElementById('rewardsSalesInfo');
+      if (stakedEvents.length > 0 && salesCountEl && salesInfoEl) {
+        const firstStakeBlock = stakedEvents[0].blockNumber;
+        const personalSales = royaltyEvents.filter(e => e.blockNumber >= firstStakeBlock).length;
+        salesCountEl.textContent = personalSales.toLocaleString();
+        salesInfoEl.style.display = personalSales > 0 ? 'inline' : 'none';
+      }
+    } catch (_) {}
   } catch (e) { console.error(e); }
 }
 
