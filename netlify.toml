@@ -87,7 +87,7 @@
     # ── HTTPS enforcement (1 year, all subdomains, preload-ready) ──
     # Once a browser sees this, it refuses to connect over HTTP for 1 year.
     # `preload` qualifies for hstspreload.org submission (forever fix).
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
     # ── Clickjacking protection (you can embed your own iframes, no one else can) ──
     X-Frame-Options = "SAMEORIGIN"
