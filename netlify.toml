@@ -14,19 +14,14 @@
 
 # ============================================================
 #  REDIRECTS
-#  - Force HTTPS + canonical apex domain
-#  - Clean URLs (no .html in address bar)
 # ============================================================
 
-# Force www → apex (so www.basedundeads.xyz redirects to basedundeads.xyz)
-# 301! with the bang means: always do it, even if a www file exists
 [[redirects]]
   from   = "https://www.basedundeads.xyz/*"
   to     = "https://basedundeads.xyz/:splat"
   status = 301
   force  = true
 
-# -------- Clean URLs (no .html in browser bar) --------
 [[redirects]]
   from   = "/stake"
   to     = "/staking.html"
@@ -79,35 +74,20 @@
 
 # ============================================================
 #  GLOBAL SECURITY HEADERS
-#  Applied to every response site-wide.
 # ============================================================
 [[headers]]
   for = "/*"
   [headers.values]
-    # ── HTTPS enforcement (1 year, all subdomains, preload-ready) ──
-    # Once a browser sees this, it refuses to connect over HTTP for 1 year.
-    # `preload` qualifies for hstspreload.org submission (forever fix).
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-
-    # ── Clickjacking protection (you can embed your own iframes, no one else can) ──
-    X-Frame-Options = "SAMEORIGIN"
-
-    # ── Block MIME-type sniffing attacks ──
-    X-Content-Type-Options = "nosniff"
-
-    # ── Don't leak full URLs to third-party sites in Referer header ──
-    Referrer-Policy = "strict-origin-when-cross-origin"
-
-    # ── Block sensors you'll never use (extra hardening) ──
-    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
-
-    # ── Protect against opener attacks when users click external links ──
+    X-Frame-Options            = "SAMEORIGIN"
+    X-Content-Type-Options     = "nosniff"
+    Referrer-Policy            = "strict-origin-when-cross-origin"
+    Permissions-Policy         = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Content-Security-Policy    = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'"
 
 # ============================================================
 #  CACHE HEADERS
-#  Long cache for static assets, no cache for HTML
-#  (so updates ship immediately, but images/scripts are fast)
 # ============================================================
 [[headers]]
   for = "/*.html"
