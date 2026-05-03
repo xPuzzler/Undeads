@@ -109,7 +109,25 @@
     .tab-panel { max-width: 1400px; margin: 0 auto; padding: 20px 40px 40px; display: none; }
     .tab-panel.active { display: block; }
 
+    .nft-scroll-wrap {
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-radius: 20px;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,255,136,0.2) transparent;
+    }
+    .nft-scroll-wrap::-webkit-scrollbar { width: 5px; }
+    .nft-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
+    .nft-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.2); border-radius: 10px; }
+    .nft-scroll-wrap::-webkit-scrollbar-thumb:hover { background: rgba(0,255,136,0.4); }
+
     .nft-stake-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+
+    @media (max-width: 768px) {
+      .nft-scroll-wrap { max-height: 420px; }
+    }
     .stake-nft-card {
       background: var(--glass); border: 2px solid var(--glass-border); border-radius: 20px;
       overflow: hidden; cursor: none; transition: all .3s; position: relative;
@@ -579,12 +597,14 @@
       </div>
     </div>
 
+    <div class="nft-scroll-wrap">
     <div id="walletGrid" class="nft-stake-grid">
       <div class="empty-state">
         <div class="skull">💀</div>
         <p>Connect your wallet to view your Undeads</p>
       </div>
     </div>
+    </div><!-- end nft-scroll-wrap -->
     <div class="action-bar" id="walletActionBar" style="display:none">
       <p><span id="walletSelectedCount">0</span> selected</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -614,12 +634,14 @@
       </div>
     </div>
 
+    <div class="nft-scroll-wrap">
     <div id="stakedGrid" class="nft-stake-grid">
       <div class="empty-state">
         <div class="skull">☠</div>
         <p>No NFTs staked yet</p>
       </div>
     </div>
+    </div><!-- end nft-scroll-wrap -->
     <div class="action-bar" id="stakedActionBar" style="display:none">
       <p><span id="stakedSelectedCount">0</span> selected</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
