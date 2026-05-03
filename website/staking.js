@@ -435,9 +435,13 @@ async function refreshPublicStats () {
 
     // Total stakers — event queries need MetaMask, not Alchemy free tier
     try {
-      const eventProvider2 = (window.ethereum && userAddress)
-        ? new ethers.BrowserProvider(window.ethereum)
-        : readProvider;
+      let eventProvider2;
+      if (window.ethereum) {
+        try { eventProvider2 = new ethers.BrowserProvider(window.ethereum); }
+        catch (_) { eventProvider2 = readProvider; }
+      } else {
+        eventProvider2 = readProvider;
+      }
       const stakingEvents = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider2);
       const filter = stakingEvents.filters.Staked();
       const events = await stakingEvents.queryFilter(filter);
@@ -1042,10 +1046,19 @@ async function refreshLeaderboard(force = false) {
   table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5"><i class="fas fa-spinner fa-spin"></i></div><p style="margin-top:12px">Fetching staker data…</p></div>`;
 
   try {
-    // Event queries MUST go through MetaMask — Alchemy free tier blocks eth_getLogs
-    const eventProvider = (window.ethereum && userAddress)
-      ? new ethers.BrowserProvider(window.ethereum)
-      : readProvider;
+    // Use MetaMask provider for event queries even without a connected account
+    // — window.ethereum is injected on mobile MetaMask before connection
+    // — readProvider (Alchemy free) blocks eth_getLogs beyond 10 blocks
+    let eventProvider;
+    if (window.ethereum) {
+      try {
+        eventProvider = new ethers.BrowserProvider(window.ethereum);
+      } catch (_) {
+        eventProvider = readProvider;
+      }
+    } else {
+      eventProvider = readProvider;
+    }
     const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider);
 
     // 1. Collect all unique addresses that ever staked
