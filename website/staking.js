@@ -284,6 +284,9 @@ function mountNetworkBadge () {
 // ─── READ-ONLY PROVIDER ───────────────────────────────────────
 readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl);
 let nftReadContract = new ethers.Contract(NETWORK.NFT_ADDRESS, NFT_ABI, readProvider);
+// Dedicated provider for eth_getLogs — public Base RPC has no block range limits
+// and works without wallet connection on all browsers including MetaMask mobile
+const logsProvider = new ethers.JsonRpcProvider('https://mainnet.base.org');
 
 window.upgradeReadProvider = function(rpcUrl) {
   if (!rpcUrl || rpcUrl === NETWORK.rpcUrl) return;
@@ -435,14 +438,7 @@ async function refreshPublicStats () {
 
     // Total stakers — event queries need MetaMask, not Alchemy free tier
     try {
-      let eventProvider2;
-      if (window.ethereum) {
-        try { eventProvider2 = new ethers.BrowserProvider(window.ethereum); }
-        catch (_) { eventProvider2 = readProvider; }
-      } else {
-        eventProvider2 = readProvider;
-      }
-      const stakingEvents = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider2);
+      const stakingEvents = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, logsProvider);
       const filter = stakingEvents.filters.Staked();
       const events = await stakingEvents.queryFilter(filter);
       const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
@@ -1049,17 +1045,7 @@ async function refreshLeaderboard(force = false) {
     // Use MetaMask provider for event queries even without a connected account
     // — window.ethereum is injected on mobile MetaMask before connection
     // — readProvider (Alchemy free) blocks eth_getLogs beyond 10 blocks
-    let eventProvider;
-    if (window.ethereum) {
-      try {
-        eventProvider = new ethers.BrowserProvider(window.ethereum);
-      } catch (_) {
-        eventProvider = readProvider;
-      }
-    } else {
-      eventProvider = readProvider;
-    }
-    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider);
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, logsProvider);
 
     // 1. Collect all unique addresses that ever staked
     let uniqueAddrs = [];
