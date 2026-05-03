@@ -328,9 +328,13 @@ async function connectWallet () {
           return;
         }
       }
+      // Give mobile MetaMask time to settle after chain switch
+      await new Promise(r => setTimeout(r, 500));
       provider = new ethers.BrowserProvider(window.ethereum);
     }
 
+    // Small delay for mobile MetaMask to be ready
+    await new Promise(r => setTimeout(r, 200));
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
 
@@ -392,6 +396,8 @@ async function connectWallet () {
 
   } catch (e) {
     console.error(e);
+    // On mobile MetaMask, user rejection looks different — don't show error for that
+    if (e.code === 4001 || e.code === 'ACTION_REJECTED') return;
     notify('Connection failed: ' + (e.shortMessage || e.message), 'error');
   }
 }
@@ -412,10 +418,9 @@ async function refreshEverything () {
 // Public stats — works without wallet
 async function refreshPublicStats () {
   try {
-    const p = (window.ethereum)
-      ? new ethers.BrowserProvider(window.ethereum)
-      : readProvider;
-    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, p);
+    // Always use readProvider for public stats — BrowserProvider on mobile
+    // MetaMask fails silently before the user has approved the connection
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
 
     const [total, received, distributed] = await Promise.all([
       stakingRead.totalStaked(),
@@ -1033,10 +1038,7 @@ async function refreshLeaderboard(force = false) {
   table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5"><i class="fas fa-spinner fa-spin"></i></div><p style="margin-top:12px">Fetching staker data…</p></div>`;
 
   try {
-    const p = (window.ethereum)
-      ? new ethers.BrowserProvider(window.ethereum)
-      : readProvider;
-    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, p);
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
 
     // 1. Collect all unique addresses that ever staked
     let uniqueAddrs = [];
@@ -1277,7 +1279,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (window.ethereum) {
     window.ethereum.request({ method: 'eth_accounts' }).then(a => {
-      if (a.length) connectWallet();
-    });
+      if (a.length) {
+        // Delay on mobile so MetaMask finishes injecting before we connect
+        setTimeout(connectWallet, 300);
+      }
+    }).catch(() => {});
   }
 });
