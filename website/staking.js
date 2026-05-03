@@ -433,10 +433,14 @@ async function refreshPublicStats () {
     const poolEth = parseFloat(ethers.formatEther(received - distributed));
     updateStat('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
 
-    // Total stakers — needs eth_getLogs; works with MetaMask, may fail on public RPC
+    // Total stakers — event queries need MetaMask, not Alchemy free tier
     try {
-      const filter = stakingRead.filters.Staked();
-      const events = await stakingRead.queryFilter(filter);
+      const eventProvider2 = (window.ethereum && userAddress)
+        ? new ethers.BrowserProvider(window.ethereum)
+        : readProvider;
+      const stakingEvents = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider2);
+      const filter = stakingEvents.filters.Staked();
+      const events = await stakingEvents.queryFilter(filter);
       const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
 
       const balances = await Promise.all(
@@ -516,7 +520,7 @@ async function refreshRewards () {
       const [stakedEvents, royaltyEvents] = await Promise.all([
         stakingContract.queryFilter(stakingContract.filters.Staked(userAddress)),
         stakingContract.queryFilter(stakingContract.filters.RoyaltyReceived()),
-      ]);
+      ]).catch(() => [[], []]);
       const salesCountEl = document.getElementById('rewardsSalesCount');
       const salesInfoEl  = document.getElementById('rewardsSalesInfo');
       if (stakedEvents.length > 0 && salesCountEl && salesInfoEl) {
@@ -1038,7 +1042,11 @@ async function refreshLeaderboard(force = false) {
   table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5"><i class="fas fa-spinner fa-spin"></i></div><p style="margin-top:12px">Fetching staker data…</p></div>`;
 
   try {
-    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, readProvider);
+    // Event queries MUST go through MetaMask — Alchemy free tier blocks eth_getLogs
+    const eventProvider = (window.ethereum && userAddress)
+      ? new ethers.BrowserProvider(window.ethereum)
+      : readProvider;
+    const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, eventProvider);
 
     // 1. Collect all unique addresses that ever staked
     let uniqueAddrs = [];
