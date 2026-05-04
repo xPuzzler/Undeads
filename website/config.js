@@ -16,7 +16,7 @@ const NETWORKS = {
     label:              'Base',
     chainId:            8453,
     chainIdHex:         '0x2105',
-    rpcUrl:             'https://base.llamarpc.com',
+    rpcUrl:             'https://base-mainnet.g.alchemy.com/v2/zRlDmWXD-OkVUdXuiY8sBppRtbWt9FDx',
     explorerBase:       'https://basescan.org',
     nativeSymbol:       'ETH',
 

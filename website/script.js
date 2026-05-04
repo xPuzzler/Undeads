@@ -22,52 +22,6 @@ const CONFIG = {
 };
 
 // ===========================================================
-// RENDERER IMAGE CACHE
-// Every token is fetched from the renderer exactly once.
-// All three sections (featured, floor, sales) share this cache.
-// ===========================================================
-const _imgCache   = {};  // tokenId → image data-url
-const _imgPending = {};  // dedup: parallel requests share one RPC call
-
-async function getRendererImage(tokenId) {
-  const id = Number(tokenId);
-  if (_imgCache[id])   return _imgCache[id];
-  if (_imgPending[id]) return _imgPending[id];
-
-  _imgPending[id] = (async () => {
-    const useFallback = !NET.rendererAddress && window.FEATURED_FALLBACK;
-    const renderer = useFallback ? window.FEATURED_FALLBACK.rendererAddress : NET.rendererAddress;
-    const rpcUrl   = useFallback ? window.FEATURED_FALLBACK.rpcUrl          : NET.rpcUrl;
-    if (!renderer || !rpcUrl) throw new Error('no renderer');
-
-    const data = '0xc87b56dd' + u256(id);
-    const raw  = await rpcCallTo(rpcUrl, 'eth_call', [{ to: renderer, data }, 'latest']);
-    const uri  = abiDecodeString(raw);
-    const b64  = uri.replace(/^data:application\/json;base64,/, '');
-    const json = JSON.parse(atob(b64));
-    _imgCache[id] = json.image || '';
-    delete _imgPending[id];
-    return _imgCache[id];
-  })();
-
-  return _imgPending[id];
-}
-
-// Call after innerHTML is set. Finds every img[data-token] and
-// replaces its src with the renderer image, one at a time (150ms gap).
-async function injectRendererImages(container) {
-  const imgs = Array.from(container.querySelectorAll('img[data-token]'));
-  for (const img of imgs) {
-    const tid = img.dataset.token;
-    if (!tid) continue;
-    getRendererImage(tid)
-      .then(src => { if (src && img.isConnected) img.src = src; })
-      .catch(() => {});
-    await new Promise(r => setTimeout(r, 150));
-  }
-}
-
-// ===========================================================
 // 1. API KEY LOADER
 // ===========================================================
 async function initializeAPIKeys() {
@@ -230,7 +184,7 @@ function renderSaleCard(ev) {
 
   return `
     <a href="${openseaUrl}" target="_blank" class="sale-card">
-      <img src="https://placehold.co/220x220/0a0a0a/00ff88/png?text=%23${tokenId}" alt="${name}" data-token="${tokenId}" loading="lazy">
+      <img src="${img}" alt="${name}" loading="lazy" onerror="this.src='https://placehold.co/220x220/0a0a0a/00ff88/png?text=%23${tokenId}'">
       <span class="sale-card-badge">SOLD</span>
       <div class="sale-card-body">
         <div class="sale-card-id">#${tokenId}</div>
@@ -279,7 +233,6 @@ async function renderSalesForRange(days) {
         scroller.innerHTML = '<div class="sales-loading" style="width:100%">No sales in the last 24 hours yet.</div>';
       } else {
         scroller.innerHTML = events.slice(0, 30).map(renderSaleCard).join('');
-        injectRendererImages(scroller);
       }
     }
   } else if (days === 7) {
@@ -349,8 +302,18 @@ async function loadFloorListings() {
         </a>`;
     }).join('');
 
-    // Load images from the on-chain renderer
-    injectRendererImages(grid);
+    // Lazily fetch real images
+    for (const item of withPrices) {
+      fetch(`${CONFIG.OPENSEA_API_HOST}/api/v2/chain/${CONFIG.CHAIN_SLUG}/contract/${CONFIG.CONTRACT}/nfts/${item.tokenId}`, {
+        headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY }
+      }).then(r => r.json()).then(d => {
+        const imgUrl = d.nft?.image_url || d.nft?.display_image_url;
+        if (imgUrl) {
+          const img = grid.querySelector(`img[data-token="${item.tokenId}"]`);
+          if (img) img.src = proxyImage(imgUrl);
+        }
+      }).catch(() => {});
+    }
   } catch (e) {
     grid.innerHTML = '<div class="sales-loading" style="grid-column:1/-1">Could not load listings.</div>';
   }
@@ -484,8 +447,8 @@ async function loadFeaturedUndeadsFromRenderer() {
 
   const collected = [];
   let firstPaintDone = false;
-  const BATCH = 20;         // controls first-paint trigger point only
-  const BATCH_DELAY = 0;   // sequential loop below handles pacing
+  const BATCH = 30;          // ↓ from 20 — public RPC can't handle 20 concurrent
+  const BATCH_DELAY = 250;  // pause between batches so we don't get 429'd
 
   function paintScroller(nfts) {
     const half = Math.floor(nfts.length / 2);
@@ -499,23 +462,25 @@ async function loadFeaturedUndeadsFromRenderer() {
   for (let b = 0; b < ids.length; b += BATCH) {
     const batchIds = ids.slice(b, b + BATCH);
 
-    for (const id of batchIds) {
-      try {
+    const results = await Promise.allSettled(
+      batchIds.map(async id => {
         const data = '0xc87b56dd' + u256(id);
         const raw  = await rpcCallTo(getRpcUrl(), 'eth_call', [{ to: renderer, data }, 'latest']);
         const uri  = abiDecodeString(raw);
         const b64  = uri.replace(/^data:application\/json;base64,/, '');
         const json = JSON.parse(atob(b64));
-        _imgCache[id] = json.image || ''; // populate shared cache
-        collected.push({
+        return {
           identifier: id,
-          name:       json.name,
-          image_url:  json.image,
-          attributes: json.attributes || []
-        });
-      } catch { /* skip token on error, keep going */ }
-      await new Promise(r => setTimeout(r, 100)); // 100ms between calls = ~10 req/s
-    }
+          name: json.name,
+          image_url: json.image,
+          attributes: json.attributes || []   // ← keep traits so the modal doesn't refetch
+        };
+      })
+    );
+
+    results.forEach(r => {
+      if (r.status === 'fulfilled') collected.push(r.value);
+    });
 
     // First paint: show scroller as soon as the first batch lands
     if (!firstPaintDone && collected.length > 0) {
