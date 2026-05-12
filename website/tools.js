@@ -71,10 +71,19 @@ async function fetchUndeadImageOnchain(tokenId) {
   if (RENDERER_CACHE.has(cacheKey)) return RENDERER_CACHE.get(cacheKey);
 
   try {
-    const provider = new ethers.JsonRpcProvider(window.NETWORK.rpcUrl);
-    // tokenURI(uint256) selector = 0xc87b56dd
-    const data = '0xc87b56dd' + BigInt(tokenId).toString(16).padStart(64, '0');
-    const raw = await provider.call({ to: window.NETWORK.rendererAddress, data });
+    const calldata = '0xc87b56dd' + BigInt(tokenId).toString(16).padStart(64, '0');
+    const rpcResp = await fetch(window.NETWORK.rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'eth_call',
+        params: [{ to: window.NETWORK.rendererAddress, data: calldata }, 'latest'],
+        id: 1
+      })
+    });
+    const rpcJson = await rpcResp.json();
+    if (rpcJson.error || !rpcJson.result || rpcJson.result === '0x') throw new Error('RPC error');
+    const raw = rpcJson.result;
 
     // Decode the ABI-encoded string return value
     const hex = raw.replace(/^0x/, '');
@@ -346,21 +355,27 @@ async function fetchStakedNFTs(addr) {
     const tokenIds = decoded[0].map(id => id.toString());
     if (!tokenIds.length) return [];
     toast(`Found ${tokenIds.length} staked NFT(s) — fetching images…`);
-    const stakedNFTs = await Promise.all(tokenIds.map(async (id) => {
-      const image = await fetchUndeadImageOnchain(id);
-      return {
-        id,
-        name: `Undead #${id}`,
-        image: image || `https://placehold.co/300x300/140808/c8a450?text=%23${id}`,
-        rawImage: image || '',
-        animation: '',
-        mediaType: 'image',
-        collection: 'Based Undeads (Staked)',
-        contract: (window.NETWORK.NFT_ADDRESS || '').toLowerCase(),
-        source: 'staking',
-        staked: true
-      };
-    }));
+    const stakedNFTs = [];
+    for (let i = 0; i < tokenIds.length; i += 5) {
+      const batch = tokenIds.slice(i, i + 5);
+      const results = await Promise.all(batch.map(async (id) => {
+        const image = await fetchUndeadImageOnchain(id);
+        return {
+          id,
+          name: `Undead #${id}`,
+          image: image || `https://placehold.co/300x300/140808/c8a450?text=%23${id}`,
+          rawImage: image || '',
+          animation: '',
+          mediaType: 'image',
+          collection: 'Based Undeads (Staked)',
+          contract: (window.NETWORK.NFT_ADDRESS || '').toLowerCase(),
+          source: 'staking',
+          staked: true
+        };
+      }));
+      stakedNFTs.push(...results);
+      if (i + 5 < tokenIds.length) await sleep(300);
+    }
     return stakedNFTs;
   } catch(e) {
     console.error('[tools] fetchStakedNFTs error:', e);
