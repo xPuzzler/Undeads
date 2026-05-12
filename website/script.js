@@ -302,18 +302,22 @@ async function loadFloorListings() {
         </a>`;
     }).join('');
 
-    // Lazily fetch real images
-    for (const item of withPrices) {
-      fetch(`${CONFIG.OPENSEA_API_HOST}/api/v2/chain/${CONFIG.CHAIN_SLUG}/contract/${CONFIG.CONTRACT}/nfts/${item.tokenId}`, {
-        headers: { 'accept': 'application/json', 'x-api-key': CONFIG.OPENSEA_API_KEY }
-      }).then(r => r.json()).then(d => {
-        const imgUrl = d.nft?.image_url || d.nft?.display_image_url;
-        if (imgUrl) {
-          const img = grid.querySelector(`img[data-token="${item.tokenId}"]`);
-          if (img) img.src = proxyImage(imgUrl);
-        }
-      }).catch(() => {});
-    }
+    // Fetch images directly from onchain renderer — throttled, no API key needed
+    (async () => {
+      for (const item of withPrices) {
+        try {
+          const data = '0xc87b56dd' + u256(item.tokenId);
+          const raw = await rpcCallTo(NET.rpcUrl, 'eth_call', [{ to: NET.rendererAddress, data }, 'latest']);
+          const uri = abiDecodeString(raw);
+          const json = JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, '')));
+          if (json.image) {
+            const img = grid.querySelector(`img[data-token="${item.tokenId}"]`);
+            if (img) img.src = json.image;
+          }
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 200));
+      }
+    })();
   } catch (e) {
     grid.innerHTML = '<div class="sales-loading" style="grid-column:1/-1">Could not load listings.</div>';
   }
@@ -373,7 +377,7 @@ async function rpcCallTo(url, method, params) {
     if (res.status === 429) {
       // Honor Retry-After if the server sent one, else exponential backoff
       const ra = parseInt(res.headers.get('retry-after')) || 0;
-      const wait = ra > 0 ? ra * 1000 : 500 * Math.pow(2, attempt);
+      const wait = ra > 0 ? ra * 1000 : 1200 * Math.pow(2, attempt);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -442,13 +446,13 @@ async function loadFeaturedUndeadsFromRenderer() {
   // Cap total tokens fetched. Scroller shows ~80 max, about/staking grids use 9 each.
   // Loading 150 random tokens covers all displays with variety + room for retries.
   // Bump this to 500+ once you're on Alchemy/private RPC; on public RPC it kills you.
-  const MAX_LOAD = 250;
+  const MAX_LOAD = 80;
   const ids = allIds.slice(0, Math.min(MAX_LOAD, totalSupply));
 
   const collected = [];
   let firstPaintDone = false;
-  const BATCH = 30;          // ↓ from 20 — public RPC can't handle 20 concurrent
-  const BATCH_DELAY = 250;  // pause between batches so we don't get 429'd
+  const BATCH = 8;           // 8 concurrent calls keeps Alchemy happy on free tier
+  const BATCH_DELAY = 600;  // pause between batches so we don't get 429'd
 
   function paintScroller(nfts) {
     const half = Math.floor(nfts.length / 2);
