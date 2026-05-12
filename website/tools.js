@@ -275,7 +275,14 @@ async function onFetchNFTs() {
   setNFTGridLoading();
 
   try {
-    walletNFTs = await fetchOpenSeaWallet(addr, chain);
+    const [walletFetched, stakedFetched] = await Promise.all([
+      fetchOpenSeaWallet(addr, chain),
+      fetchStakedNFTs(addr)
+    ]);
+    // Merge: deduplicate by contract+id so staked tokens don't double-appear
+    const seenIds = new Set(walletFetched.map(n => (n.contract||'').toLowerCase()+'_'+n.id));
+    const newStaked = stakedFetched.filter(n => !seenIds.has((n.contract||'').toLowerCase()+'_'+n.id));
+    walletNFTs = [...walletFetched, ...newStaked];
     processNFTsByCollection(walletNFTs);
     displayCollectionSelector();
     currentDisplayedNFTs = walletNFTs;
@@ -315,6 +322,50 @@ async function resolveENS(name) {
     if (r.ok) { const d = await r.json(); if (d.address) return d.address; }
   } catch(_) {}
   return null;
+}
+
+/* Fetch staked NFTs directly from the staking contract */
+async function fetchStakedNFTs(addr) {
+  if (!window.NETWORK?.STAKING_ADDRESS || !window.NETWORK?.rpcUrl) return [];
+  if (typeof ethers === 'undefined') return [];
+  try {
+    const iface = new ethers.Interface(['function getStakedTokens(address) view returns (uint256[])']);
+    const calldata = iface.encodeFunctionData('getStakedTokens', [addr]);
+    const rpcResp = await fetch(window.NETWORK.rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', method: 'eth_call',
+        params: [{ to: window.NETWORK.STAKING_ADDRESS, data: calldata }, 'latest'],
+        id: 1
+      })
+    });
+    const rpcJson = await rpcResp.json();
+    if (rpcJson.error) throw new Error(rpcJson.error.message);
+    const decoded = iface.decodeFunctionResult('getStakedTokens', rpcJson.result);
+    const tokenIds = decoded[0].map(id => id.toString());
+    if (!tokenIds.length) return [];
+    toast(`Found ${tokenIds.length} staked NFT(s) — fetching images…`);
+    const stakedNFTs = await Promise.all(tokenIds.map(async (id) => {
+      const image = await fetchUndeadImageOnchain(id);
+      return {
+        id,
+        name: `Undead #${id}`,
+        image: image || `https://placehold.co/300x300/140808/c8a450?text=%23${id}`,
+        rawImage: image || '',
+        animation: '',
+        mediaType: 'image',
+        collection: 'Based Undeads (Staked)',
+        contract: (window.NETWORK.NFT_ADDRESS || '').toLowerCase(),
+        source: 'staking',
+        staked: true
+      };
+    }));
+    return stakedNFTs;
+  } catch(e) {
+    console.error('[tools] fetchStakedNFTs error:', e);
+    return [];
+  }
 }
 
 /* OpenSea wallet fetch - mirrors script.js loadWalletCollections */
@@ -489,8 +540,13 @@ function renderWalletGrid(nfts) {
          padding:3px 8px;border-radius:100px;font-family:'Geist Mono',monospace;font-size:9px;
          color:#c8a450;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(200,164,80,.3);">
          ${nft.mediaType}</span>` : '';
+    const stakedBadge = nft.staked
+      ? `<span style="position:absolute;top:6px;right:6px;background:rgba(139,26,26,.9);
+         padding:3px 8px;border-radius:100px;font-family:'Geist Mono',monospace;font-size:9px;
+         color:#ff8888;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(139,26,26,.6);">
+         ⚰ Staked</span>` : '';
     card.innerHTML = `
-      ${typeBadge}
+      ${typeBadge}${stakedBadge}
       <img src="${nft.image || 'https://placehold.co/300x300/140808/c8a450?text=%23'+nft.id}"
            alt="${nft.name}" loading="lazy"
            onerror="this.onerror=null;this.src='https://placehold.co/300x300/140808/c8a450?text=%23${nft.id}'"/>
