@@ -123,23 +123,37 @@ const _TOPICS = {
   RoyaltyReceived: '0x725846d8fc0c7badc4b32254062afa7128344a531bfb7cc3c0cfcf6a6e218713',
 };
 
+// Etherscan V2 unified endpoint. Basescan V1 was deprecated 2025; same API
+// key now works across all chains via chainid=8453 for Base.
+// Docs: https://docs.etherscan.io/v2-migration
+const _ETHERSCAN_V2 = 'https://api.etherscan.io/v2/api';
+const _CHAIN_ID     = 8453;
+
 async function _basescanGetLogs(topic0, apiKey) {
   const STAKING = window.BU_CONFIG.contracts.staking;
   const keyParam = apiKey ? `&apikey=${apiKey}` : '';
   let allLogs = [];
   for (let page = 1; page <= 10; page++) {
-    const url = `https://api.basescan.org/api?module=logs&action=getLogs` +
+    const url = `${_ETHERSCAN_V2}?chainid=${_CHAIN_ID}&module=logs&action=getLogs` +
       `&address=${STAKING}&topic0=${topic0}` +
       `&fromBlock=0&toBlock=latest&offset=1000&page=${page}${keyParam}`;
-    let d;
+    console.info('[act-es] GET page', page, '→', url.replace(/apikey=[^&]+/, 'apikey=***'));
+    let d, text;
     try {
       const r = await fetch(url);
-      const text = await r.text();
+      text = await r.text();
       try { d = JSON.parse(text); }
-      catch { throw new Error('Basescan response not JSON: ' + text.slice(0, 60)); }
-    } catch(e) { throw e; }
+      catch { throw new Error('Etherscan response not JSON: ' + text.slice(0, 120)); }
+    } catch(e) { console.error('[act-es] fetch error:', e.message); throw e; }
+    console.info('[act-es] response status=', d.status, 'message=', d.message,
+      'result is', Array.isArray(d.result) ? `array len=${d.result.length}` : typeof d.result);
     if (d.status === '0' && (d.message === 'No records found' || d.result?.length === 0)) break;
-    if (d.status !== '1') throw new Error(`Basescan: ${d.message || JSON.stringify(d)}`);
+    if (d.status !== '1') {
+      // Surface the FULL detail string. Common causes: deprecated V1, missing/invalid key, rate limit.
+      const detail = typeof d.result === 'string' ? d.result : (d.message || 'no detail');
+      console.error('[act-es] non-OK body:', text.slice(0, 300));
+      throw new Error(`Etherscan ${d.message || 'error'}: ${detail}`.slice(0, 220));
+    }
     const batch = d.result || [];
     allLogs = allLogs.concat(batch);
     if (batch.length < 1000) break;
@@ -172,98 +186,272 @@ function _decodeUint256(hexData) {
   } catch { return 0n; }
 }
 
+// Direct JSON-RPC eth_getLogs against Alchemy. Bypasses ethers' JsonRpcProvider
+// batcher (which raises "could not coalesce error" when one batched sub-call
+// fails). Chunked at 9500 blocks to stay under Alchemy's 10k-block free-tier
+// limit. Returns raw log objects (same shape as Etherscan: {topics, data, blockNumber, transactionHash}).
+async function _alchemyGetLogs(topic0, fromBlock, toBlock) {
+  const STAKING = window.BU_CONFIG.contracts.staking;
+  // Prefer the private Alchemy key from /.netlify/functions/api-keys if it has
+  // been published as window.ALCHEMY_KEY; otherwise fall through to the public
+  // rpcUrl in config.js (which is already an Alchemy endpoint).
+  const rpc = (typeof window.ALCHEMY_KEY === 'string' && window.ALCHEMY_KEY)
+    ? `https://base-mainnet.g.alchemy.com/v2/${window.ALCHEMY_KEY}`
+    : window.BU_CONFIG.activeNetwork.rpcUrl;
+  const STEP = 9_500;
+  const out = [];
+  let chunks = 0, errors = 0;
+  for (let f = fromBlock; f <= toBlock; f += STEP) {
+    const t = Math.min(f + STEP - 1, toBlock);
+    const body = {
+      jsonrpc: '2.0', id: chunks + 1, method: 'eth_getLogs',
+      params: [{ address: STAKING, topics: [topic0],
+                 fromBlock: '0x' + f.toString(16), toBlock: '0x' + t.toString(16) }],
+    };
+    try {
+      const r = await fetch(rpc, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (d.error) {
+        console.warn(`[act-alc] chunk ${f}-${t} error:`, JSON.stringify(d.error).slice(0, 240));
+        errors++; continue;
+      }
+      const arr = Array.isArray(d.result) ? d.result : [];
+      out.push(...arr);
+    } catch(e) {
+      console.warn(`[act-alc] chunk ${f}-${t} fetch failed:`, e.message);
+      errors++;
+    }
+    chunks++;
+    if (chunks % 25 === 0) await new Promise(r => setTimeout(r, 30));
+  }
+  console.info(`[act-alc] topic ${topic0.slice(0,10)}…: ${chunks} chunks, ${errors} errors, ${out.length} logs`);
+  return out;
+}
+
+async function _initFromAlchemy() {
+  const provider = await _getLogsProvider();
+  const latest = await provider.getBlockNumber();
+  const from   = Math.max(0, latest - FULL_LOOKBACK_BLOCKS);
+  console.info('[act-alc] direct Alchemy scan', from, '→', latest);
+  const [stakedLogs, unstakedLogs, claimedLogs, royaltyLogs] = await Promise.all([
+    _alchemyGetLogs(_TOPICS.Staked,          from, latest),
+    _alchemyGetLogs(_TOPICS.Unstaked,        from, latest),
+    _alchemyGetLogs(_TOPICS.RewardClaimed,   from, latest),
+    _alchemyGetLogs(_TOPICS.RoyaltyReceived, from, latest),
+  ]);
+  console.info(`[act-alc] total: staked=${stakedLogs.length} unstaked=${unstakedLogs.length} claimed=${claimedLogs.length} royalty=${royaltyLogs.length}`);
+  _populateFromRawLogs(stakedLogs, unstakedLogs, claimedLogs, royaltyLogs);
+  LAST_SCANNED_BLOCK = latest;
+}
+
+function _populateFromRawLogs(stakedLogs, unstakedLogs, claimedLogs, royaltyLogs) {
+  // STAKER_MAP from staked/unstaked
+  for (const log of stakedLogs) {
+    const user = _topicToAddr(log.topics?.[1]); if (!user) continue;
+    const ids = _decodeUint256Array(log.data);
+    try { const a = ethers.getAddress(user); STAKER_MAP.set(a, (STAKER_MAP.get(a)||0) + ids.length); } catch {}
+  }
+  for (const log of unstakedLogs) {
+    const user = _topicToAddr(log.topics?.[1]); if (!user) continue;
+    const ids = _decodeUint256Array(log.data);
+    try {
+      const a = ethers.getAddress(user);
+      const next = (STAKER_MAP.get(a)||0) - ids.length;
+      if (next <= 0) STAKER_MAP.delete(a); else STAKER_MAP.set(a, next);
+    } catch {}
+  }
+  // Merged activity list, newest first
+  const all = [];
+  for (const log of stakedLogs) all.push({ kind:'stake',   user:_topicToAddr(log.topics?.[1]), tokenIds:_decodeUint256Array(log.data), amount:null, blockNumber:parseInt(log.blockNumber,16), txHash:log.transactionHash });
+  for (const log of unstakedLogs) all.push({ kind:'unstake', user:_topicToAddr(log.topics?.[1]), tokenIds:_decodeUint256Array(log.data), amount:null, blockNumber:parseInt(log.blockNumber,16), txHash:log.transactionHash });
+  for (const log of claimedLogs)  all.push({ kind:'claim',   user:_topicToAddr(log.topics?.[1]), tokenIds:[], amount:_decodeUint256(log.data), blockNumber:parseInt(log.blockNumber,16), txHash:log.transactionHash });
+  for (const log of royaltyLogs)  all.push({ kind:'royalty', user:null, tokenIds:[], amount:null, blockNumber:parseInt(log.blockNumber,16), txHash:log.transactionHash });
+  all.sort((a, b) => b.blockNumber - a.blockNumber);
+  const maxRows = (window.BU_CONFIG.activity?.maxRows ?? 30) * 4;
+  ACTIVITY.push(...all.slice(0, maxRows));
+  console.info(`[act] populated: ${STAKER_MAP.size} stakers, ${ACTIVITY.length} events`);
+}
+
 async function _initFromBasescan(apiKey) {
-  console.info('[data] Basescan: querying per-topic...');
+  console.info('[act-es] querying per-topic, key=', apiKey ? 'present' : 'MISSING');
   const [stakedLogs, unstakedLogs, claimedLogs, royaltyLogs] = await Promise.all([
     _basescanGetLogs(_TOPICS.Staked,          apiKey),
     _basescanGetLogs(_TOPICS.Unstaked,        apiKey),
     _basescanGetLogs(_TOPICS.RewardClaimed,   apiKey),
     _basescanGetLogs(_TOPICS.RoyaltyReceived, apiKey),
   ]);
-  console.info(`[data] Basescan: staked=${stakedLogs.length} unstaked=${unstakedLogs.length} claimed=${claimedLogs.length} royalty=${royaltyLogs.length}`);
-
-  for (const log of stakedLogs) {
-    const user = _topicToAddr(log.topics?.[1]);
-    if (!user) continue;
-    const ids = _decodeUint256Array(log.data);
-    try {
-      const addr = ethers.getAddress(user);
-      STAKER_MAP.set(addr, (STAKER_MAP.get(addr) || 0) + ids.length);
-    } catch {}
-  }
-  for (const log of unstakedLogs) {
-    const user = _topicToAddr(log.topics?.[1]);
-    if (!user) continue;
-    const ids = _decodeUint256Array(log.data);
-    try {
-      const addr = ethers.getAddress(user);
-      const next = (STAKER_MAP.get(addr) || 0) - ids.length;
-      if (next <= 0) STAKER_MAP.delete(addr); else STAKER_MAP.set(addr, next);
-    } catch {}
-  }
-
-  const allEvents = [];
-  for (const log of stakedLogs) {
-    const user = _topicToAddr(log.topics?.[1]);
-    const ids = _decodeUint256Array(log.data);
-    allEvents.push({ kind: 'stake', user: user||null, tokenIds: ids, amount: null, blockNumber: parseInt(log.blockNumber,16), txHash: log.transactionHash });
-  }
-  for (const log of unstakedLogs) {
-    const user = _topicToAddr(log.topics?.[1]);
-    const ids = _decodeUint256Array(log.data);
-    allEvents.push({ kind: 'unstake', user: user||null, tokenIds: ids, amount: null, blockNumber: parseInt(log.blockNumber,16), txHash: log.transactionHash });
-  }
-  for (const log of claimedLogs) {
-    const user = _topicToAddr(log.topics?.[1]);
-    const amount = _decodeUint256(log.data);
-    allEvents.push({ kind: 'claim', user: user||null, tokenIds: [], amount, blockNumber: parseInt(log.blockNumber,16), txHash: log.transactionHash });
-  }
-  for (const log of royaltyLogs) {
-    allEvents.push({ kind: 'royalty', user: null, tokenIds: [], amount: null, blockNumber: parseInt(log.blockNumber,16), txHash: log.transactionHash });
-  }
-
-  allEvents.sort((a, b) => b.blockNumber - a.blockNumber);
-  const maxRows = (window.BU_CONFIG.activity?.maxRows ?? 30) * 4;
-  ACTIVITY.push(...allEvents.slice(0, maxRows));
-  console.info(`[data] Basescan done: ${STAKER_MAP.size} stakers, ${ACTIVITY.length} events`);
+  console.info(`[act-es] total: staked=${stakedLogs.length} unstaked=${unstakedLogs.length} claimed=${claimedLogs.length} royalty=${royaltyLogs.length}`);
+  _populateFromRawLogs(stakedLogs, unstakedLogs, claimedLogs, royaltyLogs);
 }
 
-async function initActivity(onProgress) {
-  // Wait up to 3 s for the api-keys fetch in staking.html to set BASESCAN_KEY.
-  // Without this wait the key is always '' when we first read it, causing NOTOK.
-  let apiKey = window.BASESCAN_KEY || null;
-  if (!apiKey) {
-    for (let i = 0; i < 30; i++) {
-      await new Promise(r => setTimeout(r, 100));
-      if (window.BASESCAN_KEY) { apiKey = window.BASESCAN_KEY; break; }
+// Recent-window activity scan.
+// Why this approach: as of late 2025, free-tier Etherscan V2 dropped Base
+// ("Free API access is not supported for this chain") and free-tier Alchemy
+// caps eth_getLogs at a 10-block range. Both _initFromBasescan and
+// _initFromAlchemy (above) are kept for reference / future paid-key use,
+// but on free infra they fail loudly and pollute the console. Instead we
+// scan forward from the staking-contract deploy block in small chunks via
+// _getLogsProvider() (which probes public RPC fallbacks like
+// base.publicnode.com). Progress is persisted to localStorage so reloads
+// resume where the previous scan left off rather than starting from scratch.
+const STAKING_DEPLOY_BLOCK     = 45258665;  // BasedUndeads staking contract on Base
+const ACTIVITY_CHUNK_BLOCKS    = 500;       // safe on free public RPCs
+const ACTIVITY_CHUNK_DELAY_MS  = 300;       // slow sweep, easy on the RPC
+const ACTIVITY_POLL_MS         = 30_000;    // poll for new blocks once caught up
+const ACTIVITY_CHUNK_RETRIES   = 2;         // retries before skipping a chunk
+const ACTIVITY_MAX_STORED      = 500;       // cap persisted events (~5KB JSON)
+const ACTIVITY_LS_KEY          = 'bu_activity_v1';
+
+// ── localStorage helpers (private-mode browsers throw; swallow silently) ──
+function _lsGet(key) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }
+  catch { return null; }
+}
+function _lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch { /* quota / private mode / serialize error → ignore */ }
+}
+
+// Serialized form: { lastScannedBlock, events: [{kind,user,tokenIds,amountStr,blockNumber,txHash}, ...] }
+// BigInt amounts are stored as strings; rehydrated to BigInt on load.
+function _activityHydrate() {
+  const data = _lsGet(ACTIVITY_LS_KEY);
+  if (!data || !Array.isArray(data.events)) return 0;
+  ACTIVITY.length = 0;
+  STAKER_MAP.clear();
+  // Events are newest-first in storage; walk oldest-first to rebuild STAKER_MAP correctly.
+  const ordered = data.events.slice().sort((a, b) => a.blockNumber - b.blockNumber);
+  for (const e of ordered) {
+    const amount = e.amountStr ? BigInt(e.amountStr) : null;
+    if (e.kind === 'stake'   && e.user) _bumpStaker(e.user,  (e.tokenIds||[]).length);
+    if (e.kind === 'unstake' && e.user) _bumpStaker(e.user, -(e.tokenIds||[]).length);
+    ACTIVITY.unshift({ kind:e.kind, user:e.user, tokenIds:e.tokenIds||[], amount, blockNumber:e.blockNumber, txHash:e.txHash });
+  }
+  LAST_SCANNED_BLOCK = Number(data.lastScannedBlock) || 0;
+  return ACTIVITY.length;
+}
+
+function _activityPersist() {
+  // Cap stored events to most recent N to bound localStorage usage.
+  const trimmed = ACTIVITY.slice(0, ACTIVITY_MAX_STORED).map(e => ({
+    kind:        e.kind,
+    user:        e.user,
+    tokenIds:    e.tokenIds || [],
+    amountStr:   (e.amount != null) ? e.amount.toString() : null,
+    blockNumber: e.blockNumber,
+    txHash:      e.txHash,
+  }));
+  _lsSet(ACTIVITY_LS_KEY, { lastScannedBlock: LAST_SCANNED_BLOCK, events: trimmed });
+}
+
+// Scan a single block range. Returns true on success, false on failure.
+// Only fetches Staked / Unstaked / RewardClaimed (no Royalty, per UI spec).
+async function _scanActivityRange(c, from, to) {
+  try {
+    const [stakedEv, unstakedEv, claimedEv] = await Promise.all([
+      c.queryFilter(c.filters.Staked(),        from, to),
+      c.queryFilter(c.filters.Unstaked(),      from, to),
+      c.queryFilter(c.filters.RewardClaimed(), from, to),
+    ]);
+    const all = [
+      ...stakedEv  .map(e => ({ kind:'stake',   ev:e })),
+      ...unstakedEv.map(e => ({ kind:'unstake', ev:e })),
+      ...claimedEv .map(e => ({ kind:'claim',   ev:e })),
+    ];
+    all.sort((a,b) => a.ev.blockNumber - b.ev.blockNumber || (a.ev.index ?? a.ev.transactionIndex ?? 0) - (b.ev.index ?? b.ev.transactionIndex ?? 0));
+    for (const item of all) {
+      const e = item.ev, args = e.args || {};
+      const tokenIds = args.tokenIds ? args.tokenIds.map(n => Number(n)) : [];
+      const user = args.user || null;
+      if (item.kind === 'stake'   && user) _bumpStaker(user,  tokenIds.length);
+      if (item.kind === 'unstake' && user) _bumpStaker(user, -tokenIds.length);
+      ACTIVITY.unshift({ kind:item.kind, user, tokenIds, amount:args.amount ?? null, blockNumber:e.blockNumber, txHash:e.transactionHash });
     }
+    return true;
+  } catch {
+    return false;
   }
-  try {
-    await _initFromBasescan(apiKey);
-    if (onProgress) onProgress();
-  } catch(e) {
-    console.warn('[data] Basescan failed:', e.message, '— falling back to RPC scan');
-    try {
-      const provider = await _getLogsProvider();
-      const latest = await provider.getBlockNumber();
-      const from = Math.max(0, latest - FULL_LOOKBACK_BLOCKS);
-      await _scanFromTo(from, latest, onProgress);
-      LAST_SCANNED_BLOCK = latest;
-    } catch(e2) { console.warn('[data] RPC fallback also failed:', e2.message); }
-    return;
-  }
-  try {
-    const provider = await _getLogsProvider();
-    LAST_SCANNED_BLOCK = await provider.getBlockNumber();
-  } catch(_) {}
 }
 
-async function refreshActivity() {
-  const provider = await _getLogsProvider();
-  const latest = await provider.getBlockNumber();
-  if (latest <= LAST_SCANNED_BLOCK) return;
-  await _scanFromTo(LAST_SCANNED_BLOCK+1, latest); LAST_SCANNED_BLOCK = latest;
+// Background sweep loop. Walks forward from LAST_SCANNED_BLOCK (or the
+// staking deploy block on first run) to chain head, then idles and polls.
+// Runs forever; safe to call once. Re-entrancy guarded by _activityLoopRunning.
+// If onProgress is supplied, it is invoked after every chunk that produced
+// at least one new event, throttled to avoid spamming the UI.
+let _activityLoopRunning = false;
+async function _activityLoop(onProgress) {
+  if (_activityLoopRunning) return;
+  _activityLoopRunning = true;
+  try {
+    while (true) {
+      let provider, latest;
+      try { provider = await _getLogsProvider(); }
+      catch { await _sleep(ACTIVITY_POLL_MS); continue; }
+      try { latest = await provider.getBlockNumber(); }
+      catch { await _sleep(ACTIVITY_POLL_MS); continue; }
+
+      const c = new ethers.Contract(window.BU_CONFIG.contracts.staking, window.BU.ABI.staking, provider);
+      let cursor = LAST_SCANNED_BLOCK > 0 ? LAST_SCANNED_BLOCK + 1 : STAKING_DEPLOY_BLOCK;
+
+      // Catch-up sweep: scan forward in chunks to chain head.
+      let lastNotifyTs = 0;
+      while (cursor <= latest) {
+        const to = Math.min(cursor + ACTIVITY_CHUNK_BLOCKS - 1, latest);
+        const beforeLen = ACTIVITY.length;
+        let ok = false;
+        for (let attempt = 0; attempt <= ACTIVITY_CHUNK_RETRIES && !ok; attempt++) {
+          if (attempt > 0) await _sleep(500 * Math.pow(2, attempt));
+          ok = await _scanActivityRange(c, cursor, to);
+        }
+        // Whether ok or skipped, advance cursor so a permanently-bad chunk
+        // doesn't stall the loop forever. Lossy chunks are an acceptable
+        // tradeoff for keeping the feed live.
+        LAST_SCANNED_BLOCK = to;
+        // Trim in-memory list so it doesn't grow unbounded over long sweeps.
+        const maxRows = (window.BU_CONFIG.activity?.maxRows ?? 30) * 4;
+        if (ACTIVITY.length > maxRows) ACTIVITY.length = maxRows;
+        _activityPersist();
+        // Notify the UI when this chunk produced new events, throttled to
+        // once every 2 s so a fast historical sweep doesn't spam re-renders.
+        if (onProgress && ACTIVITY.length !== beforeLen) {
+          const now = Date.now();
+          if (now - lastNotifyTs > 2000) {
+            lastNotifyTs = now;
+            try { onProgress(); } catch {}
+          }
+        }
+        cursor = to + 1;
+        await _sleep(ACTIVITY_CHUNK_DELAY_MS);
+      }
+
+      // Caught up. Final notify so the UI reflects the latest state, then idle.
+      if (onProgress) { try { onProgress(); } catch {} }
+      await _sleep(ACTIVITY_POLL_MS);
+    }
+  } finally {
+    _activityLoopRunning = false;
+  }
 }
+
+// Public entrypoint. Synchronously hydrates from localStorage (so the UI
+// renders cached events on reload), then kicks off the background sweep.
+// Returns once hydration is done; the sweep continues in the background.
+// onProgress is called: (1) immediately after hydration, and (2) by the
+// background loop after each chunk that produced new events.
+async function initActivity(onProgress) {
+  _activityHydrate();
+  if (onProgress) { try { onProgress(); } catch {} }
+  // Fire-and-forget the background loop.
+  _activityLoop(onProgress);
+}
+
+// No-op kept for backwards compatibility with page-staking.js's periodic
+// refresh interval. The background loop in _activityLoop already polls for
+// new blocks every ACTIVITY_POLL_MS, so an explicit refresh is unnecessary.
+async function refreshActivity() { /* handled by background _activityLoop */ }
 
 function getLeaderboard(maxRows) {
   const list=[]; for (const [addr,count] of STAKER_MAP.entries()) list.push({address:addr,active:count});
@@ -417,9 +605,15 @@ async function unstakeTokens(ids) { const c=window.BU.writeStaking(); if(!c) thr
 async function stakeAndClaim(ids) { const c=window.BU.writeStaking(); if(!c) throw new Error("Connect wallet first"); return c.stakeAndClaim(ids); }
 async function claimRewards() { const c=window.BU.writeStaking(); if(!c) throw new Error("Connect wallet first"); return c.claim(); }
 
+// Public alias so page-staking.js can hydrate ACTIVITY from localStorage
+// at DOMContentLoaded — before the slow stakePage() awaits complete and
+// initActivity() actually runs.
+function hydrateActivityFromStorage() { _activityHydrate(); }
+
 window.BUData = {
   getPoolStats, getNFTSupply,
-  initActivity, refreshActivity, getLeaderboard, getActivity,
+  initActivity, refreshActivity, hydrateActivityFromStorage,
+  getLeaderboard, getActivity,
   getUserState, getUserOwnedTokens, clearOwnedCache, calcPoolShare,
   isStakingApproved, approveStaking,
   stakeTokens, unstakeTokens, stakeAndClaim, claimRewards,

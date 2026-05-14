@@ -8,6 +8,16 @@ const OS = {
 };
 const NFT_CONTRACT = (window.BU_CONFIG?.contracts?.nft || "").toLowerCase();
 
+// ── Floor listing display targets ───────────────────────────────
+// Paginate the v2 endpoint until we collect at least this many unique tokenIds,
+// then render up to FLOOR_RENDER_MAX after dedup+price-sort.
+// (Previous build hard-capped at 1 page → after dedup only 2 unique tokens were
+// reaching the grid, hence the "only 2 listings" bug.)
+const FLOOR_TARGET_UNIQUE = 18;
+const FLOOR_RENDER_MAX    = 15;
+const FLOOR_MAX_PAGES     = 8;
+const FLOOR_PAGE_LIMIT    = 50; // v2 max per page
+
 async function loadOpenSeaKey() {
   try {
     const r = await fetch("/.netlify/functions/api-keys", { cache: "no-store" });
@@ -85,37 +95,76 @@ async function loadCollectionStats() {
   } catch(e) { console.warn("[opensea stats]",e.message); }
 }
 
-async function loadFloorListings() {
-  const grid=document.getElementById("floorGrid"); if (!grid) return;
-  try {
-    const r=await fetch(`${OS.apiHost}/api/v2/listings/collection/${OS.collectionSlug}/all?limit=20`,{headers:_headers()});
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d=await r.json(), listings=d.listings||[];
-    if (listings.length===0) { grid.innerHTML=`<div class="sales-loading" style="grid-column:1/-1">No active listings.</div>`; return; }
-    // Deduplicate: one entry per tokenId, keeping the cheapest listing.
-    // OpenSea returns multiple listings per token (re-lists, competing orders).
-    const priceMap = new Map();
+// ── Fetch raw listings, paginating until we have enough unique tokens ──
+// v2 returns up to FLOOR_PAGE_LIMIT (50) listings per page. A single token can
+// appear many times (relist, competing orders), so without pagination we end
+// up with only a handful of unique tokens after dedup.
+async function _fetchFloorListings() {
+  const priceMap = new Map(); // tokenId -> cheapest priceEth
+  let cursor = null;
+  for (let page = 0; page < FLOOR_MAX_PAGES; page++) {
+    const qs = new URLSearchParams({ limit: String(FLOOR_PAGE_LIMIT) });
+    if (cursor) qs.set("next", cursor);
+    const url = `${OS.apiHost}/api/v2/listings/collection/${OS.collectionSlug}/all?${qs}`;
+    let d;
+    try {
+      const r = await fetch(url, { headers: _headers() });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      d = await r.json();
+    } catch(e) {
+      if (page === 0) throw e; // first page failure is fatal, later page just stops the walk
+      console.warn("[opensea listings] page", page, "failed:", e.message);
+      break;
+    }
+    const listings = d.listings || [];
     for (const l of listings) {
       const offer = l.protocol_data?.parameters?.offer?.[0];
       const tokenId = offer?.identifierOrCriteria;
       if (!tokenId) continue;
       const consideration = l.protocol_data?.parameters?.consideration || [];
       let totalWei = 0n;
-      for (const c of consideration) { try { totalWei += BigInt(c.startAmount); } catch(e) {} }
+      for (const c of consideration) { try { totalWei += BigInt(c.startAmount); } catch(_) {} }
       const priceEth = Number(totalWei) / 1e18;
-      // Keep cheapest listing per token
-      if (!priceMap.has(tokenId) || priceEth < priceMap.get(tokenId).priceEth) {
-        priceMap.set(tokenId, { tokenId, priceEth });
-      }
+      if (priceEth <= 0) continue;
+      const existing = priceMap.get(tokenId);
+      if (!existing || priceEth < existing.priceEth) priceMap.set(tokenId, { tokenId, priceEth });
     }
-    const withPrices = [...priceMap.values()]
-      .filter(x => x.priceEth > 0)
-      .sort((a, b) => a.priceEth - b.priceEth)
-      .slice(0, 15);
+    cursor = d.next || null;
+    if (priceMap.size >= FLOOR_TARGET_UNIQUE) break;
+    if (!cursor) break;
+    await new Promise(res => setTimeout(res, 180)); // gentle throttle
+  }
+  return [...priceMap.values()].sort((a, b) => a.priceEth - b.priceEth);
+}
+
+// Inject a "See More →" anchor right after the grid (idempotent).
+function _ensureSeeMoreLink(grid) {
+  if (!grid || !grid.parentElement) return;
+  if (grid.parentElement.querySelector(".floor-see-more")) return;
+  const a = document.createElement("a");
+  a.className = "floor-see-more";
+  a.href = OS.collectionUrl;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = "See More \u2192";
+  grid.parentElement.appendChild(a);
+}
+
+async function loadFloorListings() {
+  const grid=document.getElementById("floorGrid"); if (!grid) return;
+  try {
+    const allListings = await _fetchFloorListings();
+    if (allListings.length === 0) {
+      grid.innerHTML = `<div class="sales-loading" style="grid-column:1/-1">No active listings.</div>`;
+      _ensureSeeMoreLink(grid);
+      return;
+    }
+    const withPrices = allListings.slice(0, FLOOR_RENDER_MAX);
     grid.innerHTML=withPrices.map(item=>{
       const url=NFT_CONTRACT?`${OS.webBase}/${NFT_CONTRACT}/${item.tokenId}`:OS.collectionUrl;
       return `<a href="${url}" target="_blank" rel="noopener" class="floor-item" data-token="${item.tokenId}"><div class="floor-item-image"><img src="${_placeholder(item.tokenId).replace(/'/g,"%27")}" alt="Undead #${item.tokenId}" data-token="${item.tokenId}" loading="lazy"></div><div class="floor-item-arrow">↗</div><div class="floor-item-body"><div class="floor-item-id">#${item.tokenId}</div><div class="floor-item-price">${item.priceEth.toFixed(4)} Ξ</div></div></a>`;
     }).join("");
+    _ensureSeeMoreLink(grid);
     if (window.BUImages?.get) {
       withPrices.forEach(async item => {
         try { const src=await window.BUImages.get(item.tokenId); if (!src) return; const img=grid.querySelector(`img[data-token="${item.tokenId}"]`); if (img) img.src=src; } catch {}
@@ -124,6 +173,7 @@ async function loadFloorListings() {
   } catch(e) {
     console.warn("[opensea listings]",e.message);
     grid.innerHTML=`<div class="sales-loading" style="grid-column:1/-1">Listings unavailable. <a href="${OS.collectionUrl}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">View on OpenSea →</a></div>`;
+    _ensureSeeMoreLink(grid);
   }
 }
 

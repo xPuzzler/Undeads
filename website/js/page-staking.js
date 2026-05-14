@@ -6,6 +6,53 @@ let _timers = [];
 let _gridsKey = '';         // last rendered owned|staked fingerprint
 let _gridScanRunning = false; // concurrency guard
 
+// Run-once flag so the early hydrate doesn't re-render after initLBAndActivity()
+// has already populated things from a fresh fetch.
+let _quickHydrated = false;
+
+// Render leaderboard + activity from localStorage as soon as the DOM is
+// fully parsed. This fires BEFORE the slow awaits in stakePage() complete
+// (and well before initLBAndActivity()), so the user sees the previous scan
+// within a single frame of the page load instead of seeing "Loading..."
+// placeholders for 1-2 seconds.
+//
+// Why DOMContentLoaded rather than queueMicrotask: the activity renderer
+// (window.renderActivityFeed) is defined by a <script> tag that appears
+// AFTER page-staking.js in staking.html. The microtask checkpoint after
+// page-staking.js fires before that later script tag parses, so a microtask
+// would see renderActivityFeed === undefined. DOMContentLoaded fires after
+// every script tag has parsed.
+function _quickHydrate() {
+  if (_quickHydrated) return;
+  _quickHydrated = true;
+  // Leaderboard.
+  try {
+    const stored = _lbLsLoad();
+    if (stored && Array.isArray(stored.rows) && stored.rows.length > 0
+        && typeof _renderLeaderboard === 'function') {
+      _lbCache = { rows: stored.rows, ts: Number(stored.ts) || 0 };
+      _renderLeaderboard(stored.rows);
+    }
+  } catch {}
+  // Activity. data.js exposes the hydration helper via BUData; if absent we
+  // wait for the regular initActivity() call to take care of it.
+  try {
+    if (window.BUData?.hydrateActivityFromStorage) {
+      window.BUData.hydrateActivityFromStorage();
+    }
+    if (typeof window.renderActivityFeed === 'function') {
+      window.renderActivityFeed();
+    }
+  } catch {}
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _quickHydrate, { once: true });
+} else {
+  // Document already parsed (scripts at end of body); run on next tick so the
+  // inline <script> below page-staking.js has finished defining renderActivityFeed.
+  setTimeout(_quickHydrate, 0);
+}
+
 (async function stakePage() {
   if (typeof ethers === "undefined") { console.error("ethers failed to load"); return; }
   window.BUUI.renderNetworkPill(); window.BUUI.renderNavSocials(); window.BUUI.bindMobileNav(); window.BUUI.renderFooterAddresses();
@@ -136,44 +183,94 @@ async function doUnstake(ids) {
 }
 bindStakeActions();
 
-// ─── Leaderboard, standalone, no activity ───────────────────────────────
+// ─── Leaderboard + Activity ──────────────────────────────────────────────
 let _lbCache = null, _lbFetching = false;
+const LB_LS_KEY        = 'bu_lb_cache_v1';
+const LB_REFRESH_MS    = 3_600_000;   // 1 hour between auto-refreshes
+const LB_RENDER_TTL_MS = 60_000;      // re-use in-memory cache for this long
 
-async function initLBAndActivity() {
-  setTimeout(() => refreshLeaderboard(), 800);
-  _timers.push(setInterval(() => refreshLeaderboard(), 120_000));
+function _lbLsLoad() {
+  try { const v = localStorage.getItem(LB_LS_KEY); return v ? JSON.parse(v) : null; }
+  catch { return null; }
+}
+function _lbLsSave(cache) {
+  try { localStorage.setItem(LB_LS_KEY, JSON.stringify(cache)); }
+  catch { /* quota / private mode → ignore */ }
 }
 
-async function _fetchStakerAddresses() {
-  const STAKED_TOPIC = '0x134b166c6094cc1ccbf1e3353ce5c3cd9fd29869051bdb999895854d77cc5ef6';
-  const STAKING = window.BU_CONFIG.contracts.staking;
-
-  // Wait up to 3 s for BASESCAN_KEY from the async fetch in staking.html
-  let apiKey = window.BASESCAN_KEY || '';
-  if (!apiKey) {
-    for (let i = 0; i < 30; i++) {
-      await new Promise(r => setTimeout(r, 100));
-      if (window.BASESCAN_KEY) { apiKey = window.BASESCAN_KEY; break; }
-    }
+async function initLBAndActivity() {
+  // Hydrate leaderboard from localStorage so the table renders instantly
+  // on reload while the fresh scan runs in the background.
+  const stored = _lbLsLoad();
+  if (stored && Array.isArray(stored.rows) && stored.rows.length > 0) {
+    _lbCache = { rows: stored.rows, ts: Number(stored.ts) || 0 };
+    _renderLeaderboard(stored.rows);
   }
 
-  const keyParam = apiKey ? `&apikey=${apiKey}` : '';
-  const url = `https://api.basescan.org/api?module=logs&action=getLogs` +
-    `&address=${STAKING}&topic0=${STAKED_TOPIC}` +
-    `&fromBlock=0&toBlock=latest&offset=1000&page=1${keyParam}`;
+  setTimeout(() => refreshLeaderboard(), 800);
+  _timers.push(setInterval(() => refreshLeaderboard(), LB_REFRESH_MS));
 
-  const r = await fetch(url);
-  const text = await r.text();
-  let d;
-  try { d = JSON.parse(text); } catch { throw new Error('Basescan not JSON: ' + text.slice(0, 80)); }
-  if (!Array.isArray(d.result)) throw new Error('Basescan: ' + (d.message || 'no result array'));
+  // initActivity() hydrates from localStorage synchronously and then kicks
+  // off a background sweep loop in data.js. The loop polls for new blocks
+  // every ACTIVITY_POLL_MS, so no extra refresh interval is needed here.
+  // The progress callback re-renders the activity panel: once immediately
+  // after hydration so cached events appear on reload without delay, and
+  // again any time the background sweep emits a chunk-complete signal.
+  if (window.BUData?.initActivity) {
+    const onProgress = () => {
+      if (typeof window.renderActivityFeed === 'function') {
+        try { window.renderActivityFeed(); } catch {}
+      }
+    };
+    setTimeout(() => {
+      window.BUData.initActivity(onProgress).catch(e => console.warn('[activity] init failed:', e.message));
+    }, 600);
+  }
+}
 
-  const seen = new Set();
-  d.result.forEach(log => {
-    if (log.topics?.[1]) seen.add(('0x' + log.topics[1].slice(26)).toLowerCase());
-  });
-  console.info('[lb] Basescan:', d.result.length, 'Staked logs →', seen.size, 'unique addresses');
-  return [...seen];
+// Enumerate active stakers by scanning the on-chain tokenStaker(id) mapping.
+// Why this approach: as of late 2025, free-tier Etherscan V2 dropped Base
+// coverage ("Free API access is not supported for this chain") and free-tier
+// Alchemy caps eth_getLogs at a 10-block range. Both legacy log paths
+// (Basescan v1, Alchemy direct eth_getLogs) now fail on free plans, so the
+// leaderboard is rebuilt from contract state instead of from event history.
+// tokenStaker(uint256) returns the current staker of each token id
+// (address(0) when unstaked). A simple eth_call is cheap and unrestricted on
+// every plan tier.
+async function _fetchStakerBalancesViaTokenStaker() {
+  const provider = window.BU.getReadProvider();
+  const staking  = new ethers.Contract(window.BU_CONFIG.contracts.staking, window.BU.ABI.staking, provider);
+  const totalSupply = window.BU_CONFIG?.collection?.totalSupply || 6666;
+
+  // Short-circuit when nothing is staked. Saves ~133 batch round-trips.
+  let totalStaked = 0;
+  try { totalStaked = Number(await staking.totalStaked()); } catch {}
+  if (totalStaked === 0) return [];
+
+  const counts = new Map();      // addr (lowercase) → active count
+  const ZERO   = '0x0000000000000000000000000000000000000000';
+  const BATCH  = 50;             // parallel eth_call fan-out
+  const GAP_MS = 60;             // breathing room for free-tier RPCs
+
+  for (let i = 1; i <= totalSupply; i += BATCH) {
+    const ids = [];
+    for (let j = i; j < i + BATCH && j <= totalSupply; j++) ids.push(j);
+    const res = await Promise.allSettled(ids.map(id => staking.tokenStaker(id)));
+    for (const r of res) {
+      if (r.status !== 'fulfilled') continue;
+      const a = (r.value || '').toLowerCase();
+      if (!a || a === ZERO) continue;
+      counts.set(a, (counts.get(a) || 0) + 1);
+    }
+    // Early exit: once we have totalStaked tokens accounted for, stop scanning.
+    let accounted = 0; for (const v of counts.values()) accounted += v;
+    if (accounted >= totalStaked) break;
+    if (i + BATCH <= totalSupply) await new Promise(r => setTimeout(r, GAP_MS));
+  }
+
+  const out = [];
+  for (const [addr, staked] of counts.entries()) out.push({ addr, staked });
+  return out;
 }
 
 async function refreshLeaderboard(force = false) {
@@ -181,48 +278,46 @@ async function refreshLeaderboard(force = false) {
   const btn   = document.getElementById('lbRefreshBtn');
   if (!table) return;
 
-  if (!force && _lbCache && (Date.now() - _lbCache.ts) < 60_000) {
+  if (!force && _lbCache && (Date.now() - _lbCache.ts) < LB_RENDER_TTL_MS) {
     _renderLeaderboard(_lbCache.rows); return;
   }
   if (_lbFetching) return;
   _lbFetching = true;
   if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
-  table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5">⌛</div><p style="margin-top:12px">Fetching staker data…</p></div>`;
+  // Only show the "Fetching..." placeholder when the table is empty.
+  // If we already rendered cached rows, leave them visible so the user
+  // sees the previous scan while the fresh scan runs in the background.
+  const hasVisibleRows = !!table.querySelector('.lb-row');
+  if (!hasVisibleRows) {
+    table.innerHTML = `<div class="lb-empty"><div class="lb-skull" style="font-size:28px;opacity:.5">⌛</div><p style="margin-top:12px">Fetching staker data…</p></div>`;
+  }
 
   try {
-    const uniqueAddrs = await _fetchStakerAddresses();
-    if (uniqueAddrs.length === 0) {
-      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No stakers yet, be the first!</p></div>`;
-      return;
-    }
-
-    const provider = window.BU.getReadProvider();
-    const staking  = new ethers.Contract(window.BU_CONFIG.contracts.staking, window.BU.ABI.staking, provider);
-    const CHUNK = 20;
-    const balances = [];
-    for (let i = 0; i < uniqueAddrs.length; i += CHUNK) {
-      const slice = uniqueAddrs.slice(i, i + CHUNK);
-      const results = await Promise.allSettled(slice.map(addr => staking.stakedBalance(addr)));
-      results.forEach((res, idx) => {
-        balances.push({ addr: slice[idx], staked: res.status === 'fulfilled' ? Number(res.value) : 0 });
-      });
-      if (i + CHUNK < uniqueAddrs.length) await new Promise(r => setTimeout(r, 50));
-    }
-
+    const balances = await _fetchStakerBalancesViaTokenStaker();
     const active = balances.filter(b => b.staked > 0).sort((a, b) => b.staked - a.staked);
     if (active.length === 0) {
-      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No active stakers right now.</p></div>`;
-      _lbCache = { rows: [], ts: Date.now() }; return;
+      // Only overwrite the table when we have nothing cached to show.
+      if (!hasVisibleRows) {
+        table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No active stakers right now.</p></div>`;
+      }
+      _lbCache = { rows: [], ts: Date.now() };
+      _lbLsSave(_lbCache);
+      return;
     }
 
     const total = active.reduce((s, b) => s + b.staked, 0);
     const rows  = active.map((b, i) => ({ rank: i+1, addr: b.addr, staked: b.staked, share: total > 0 ? (b.staked/total)*100 : 0 }));
     _lbCache = { rows, ts: Date.now() };
+    _lbLsSave(_lbCache);
     _renderLeaderboard(rows);
 
   } catch(e) {
-    console.error('[leaderboard]', e.message);
-    table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>Error: ${e.message.slice(0,120)}</p></div>`;
+    console.warn('[leaderboard]', e.shortMessage || e.message);
+    // Don't replace cached rows with an error message; leave the previous
+    // scan visible. Only show the error when nothing was rendered before.
+    if (!hasVisibleRows) {
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>Couldn't load leaderboard right now. Try again in a moment.</p></div>`;
+    }
   } finally {
     _lbFetching = false;
     if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }

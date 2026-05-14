@@ -67,21 +67,25 @@
 
   /* ── Activity feed ── */
   .activity-section{padding:48px 0}
-  .activity-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:14px;background:rgba(16,20,26,.5)}
+  .activity-list{max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:14px;background:rgba(16,20,26,.5)}
   .activity-list::-webkit-scrollbar{width:4px}
   .activity-list::-webkit-scrollbar-thumb{background:rgba(78,217,138,.22);border-radius:2px}
-  .act-row{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;transition:background .2s}
+  .act-thead{display:grid;grid-template-columns:1fr 120px 140px;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+  .act-thead span:nth-child(2){text-align:center}
+  .act-thead span:nth-child(3){text-align:right}
+  .act-row{display:grid;grid-template-columns:1fr 120px 140px;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:12px;align-items:center;transition:background .2s}
   .act-row:last-child{border-bottom:none}
   .act-row:hover{background:rgba(78,217,138,.03)}
-  .act-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-  .act-icon.stake{background:rgba(78,217,138,.12);color:var(--accent)}
-  .act-icon.unstake{background:rgba(255,100,100,.12);color:#ff6b6b}
-  .act-icon.claim{background:rgba(200,164,80,.12);color:var(--gold)}
-  .act-icon.royalty{background:rgba(78,217,138,.12);color:var(--accent)}
-  .act-body{flex:1;min-width:0}
-  .act-body .act-addr{color:var(--accent);font-weight:500}
-  .act-body .act-detail{color:var(--muted);font-size:10px;margin-top:2px}
-  .act-time{color:var(--muted);font-size:10px;flex-shrink:0}
+  .act-row.animating{animation:lbFadeIn .4s ease forwards;opacity:0}
+  .act-addr{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .act-addr a{color:var(--fg-2);text-decoration:none;transition:color .2s}
+  .act-addr a:hover{color:var(--accent)}
+  .act-kind{text-align:center;font-weight:600;letter-spacing:.08em;font-size:11px}
+  .act-kind.stake{color:var(--accent)}
+  .act-kind.unstake{color:#ff6b6b}
+  .act-kind.claim{color:var(--gold)}
+  .act-amount{text-align:right;color:var(--fg-2);font-weight:500}
+  .act-amount.eth{color:var(--gold)}
 
   /* ── User panel enhancements ── */
   #user-panel .user-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px}
@@ -441,36 +445,48 @@ function renderActivityFeed() {
   const list = document.getElementById('activityList');
   if (!list || typeof window.BUData === 'undefined') return;
   const activity = window.BUData.getActivity ? window.BUData.getActivity(30) : [];
-  if (!activity || activity.length === 0) {
+  // Filter to the three event kinds the UI displays.
+  const rows = (activity || []).filter(ev => ev.kind === 'stake' || ev.kind === 'unstake' || ev.kind === 'claim').slice(0, 25);
+  if (rows.length === 0) {
     list.innerHTML = '<div class="lb-empty"><div class="lb-skull">💀</div><p>No activity yet</p></div>';
     return;
   }
   const explorer = (window.BU_CONFIG?.activeNetwork?.explorerUrl || '').replace(/\/$/, '');
-  const short = a => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
-  const icons = { stake: '⛓', unstake: '🔓', claim: '💰', royalty: '📈' };
-  const labels = { stake: 'Staked', unstake: 'Unstaked', claim: 'Claimed', royalty: 'Royalty' };
+  const short  = a => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
+  const labels = { stake: 'Staked', unstake: 'Unstaked', claim: 'Claimed' };
 
-  list.innerHTML = activity.slice(0, 25).map(ev => {
-    const icon = icons[ev.kind] || '📌';
+  const thead = `<div class="act-thead"><span>Wallet</span><span>Activity</span><span>Amount</span></div>`;
+
+  const rowsHtml = rows.map((ev, idx) => {
     const label = labels[ev.kind] || ev.kind;
-    const addr = ev.user ? short(ev.user) : 'Contract';
-    const addrLink = ev.user && explorer
-      ? `<a href="${explorer}/address/${ev.user}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">${addr}</a>`
+    const addr  = ev.user ? short(ev.user) : 'Contract';
+    const addrCell = ev.user && explorer
+      ? `<a href="${explorer}/address/${ev.user}" target="_blank" rel="noopener">${addr}</a>`
       : addr;
-    let detail = '';
+
+    let amountText = '—';
+    let amountCls  = '';
     if (ev.kind === 'stake' || ev.kind === 'unstake') {
-      detail = ev.tokenIds?.length ? ev.tokenIds.length + ' NFT' + (ev.tokenIds.length > 1 ? 's' : '') : '';
+      const n = ev.tokenIds?.length || 0;
+      if (n > 0) amountText = n + ' NFT' + (n > 1 ? 's' : '');
     } else if (ev.kind === 'claim' && ev.amount) {
-      try { detail = parseFloat(ethers.formatEther(ev.amount)).toFixed(4) + ' ETH'; } catch { detail = ''; }
+      try { amountText = parseFloat(ethers.formatEther(ev.amount)).toFixed(4) + ' ETH'; amountCls = 'eth'; }
+      catch { /* leave default */ }
     }
-    const txLink = ev.txHash && explorer
-      ? `<a href="${explorer}/tx/${ev.txHash}" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;font-size:10px">View ↗</a>`
-      : '';
-    return `<div class="act-row">
-      <div class="act-icon ${ev.kind}">${icon}</div>
-      <div class="act-body"><span class="act-addr">${addrLink}</span> ${label}${detail ? ' · ' + detail : ''}<div class="act-detail">${txLink}</div></div>
+
+    return `<div class="act-row animating" style="animation-delay:${idx * 40}ms">
+      <div class="act-addr">${addrCell}</div>
+      <div class="act-kind ${ev.kind}">${label}</div>
+      <div class="act-amount ${amountCls}">${amountText}</div>
     </div>`;
   }).join('');
+
+  list.innerHTML = thead + rowsHtml;
+
+  // Remove animation class after it fires so hover styles work cleanly.
+  list.querySelectorAll('.act-row.animating').forEach(el => {
+    el.addEventListener('animationend', () => el.classList.remove('animating'), { once: true });
+  });
 }
 
 // ── Live ticker builder ────────────────────────────────
@@ -518,12 +534,19 @@ function buildLiveTicker() {
 let _enhanceTimer = null;
 function startEnhancements() {
   updateStakingPct();
-  // Wait for BUData to be ready before rendering activity/ticker
+  // Wait for BUData.initActivity() (called at 600ms in page-staking.js) to
+  // synchronously hydrate ACTIVITY from localStorage, then render. 800ms is
+  // enough margin and feels instant to the user on reload.
   const tryRender = () => {
     renderActivityFeed();
     buildLiveTicker();
   };
-  setTimeout(tryRender, 3000); // initial delay for data to load
+  setTimeout(tryRender, 800);
+  // A few extra renders in the first ~5s catch the case where the background
+  // sweep adds new events very quickly (e.g. when localStorage was empty and
+  // the first chunks return events).
+  setTimeout(tryRender, 2500);
+  setTimeout(tryRender, 5000);
   _enhanceTimer = setInterval(() => {
     updateStakingPct();
     renderActivityFeed();
