@@ -1,5 +1,5 @@
 /* ==========================================================
-   BASED UNDEADS — script.js (upgraded)
+   BASED UNDEADS, script.js (upgraded)
    Powers: index.html
    - Sales tracker (1d / 7d / 30d via OpenSea events API)
    - Floor listings
@@ -40,7 +40,7 @@ async function initializeAPIKeys() {
     console.log('✓ API keys loaded');
     return true;
   } catch (e) {
-    console.warn('⚠ API keys not available — some features degraded.', e.message);
+    console.warn('⚠ API keys not available, some features degraded.', e.message);
     return false;
   }
 }
@@ -302,20 +302,36 @@ async function loadFloorListings() {
         </a>`;
     }).join('');
 
-    // Fetch images directly from onchain renderer — throttled, no API key needed
+    // Fetch images from onchain renderer, delayed start so featured scroller
+    // doesn't compete for the same Alchemy rate limit budget
     (async () => {
-      for (const item of withPrices) {
-        try {
-          const data = '0xc87b56dd' + u256(item.tokenId);
-          const raw = await rpcCallTo(NET.rpcUrl, 'eth_call', [{ to: NET.rendererAddress, data }, 'latest']);
-          const uri = abiDecodeString(raw);
-          const json = JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, '')));
-          if (json.image) {
-            const img = grid.querySelector(`img[data-token="${item.tokenId}"]`);
-            if (img) img.src = json.image;
-          }
-        } catch (e) {}
-        await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 4000)); // wait for scroller's first batches
+      const BATCH = 2;
+      for (let i = 0; i < withPrices.length; i += BATCH) {
+        const batch = withPrices.slice(i, i + BATCH);
+        await Promise.allSettled(batch.map(async item => {
+          try {
+            const calldata = '0xc87b56dd' + u256(item.tokenId);
+            const rpcResp = await fetch(NET.rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0', method: 'eth_call',
+                params: [{ to: NET.rendererAddress, data: calldata }, 'latest'],
+                id: item.tokenId
+              })
+            });
+            const rpcJson = await rpcResp.json();
+            if (rpcJson.error || !rpcJson.result || rpcJson.result === '0x') return;
+            const uri = abiDecodeString(rpcJson.result);
+            const json = JSON.parse(atob(uri.replace(/^data:application\/json;base64,/, '')));
+            if (json.image) {
+              const img = grid.querySelector(`img[data-token="${item.tokenId}"]`);
+              if (img) img.src = json.image;
+            }
+          } catch (e) {}
+        }));
+        if (i + BATCH < withPrices.length) await new Promise(r => setTimeout(r, 1200));
       }
     })();
   } catch (e) {
@@ -338,7 +354,7 @@ function initSalesTabs() {
   });
 }
 // ===========================================================
-// TESTNET FALLBACK — direct RPC (mirrors validator.html logic)
+// TESTNET FALLBACK, direct RPC (mirrors validator.html logic)
 // ===========================================================
 let _rpcId = 1;
 async function rpcCall(method, params) {
@@ -412,7 +428,7 @@ async function loadFeaturedUndeadsFromRenderer() {
   const renderer    = useFallback ? window.FEATURED_FALLBACK.rendererAddress : NET.rendererAddress;
   const nftContract = useFallback ? window.FEATURED_FALLBACK.NFT_ADDRESS     : NET.NFT_ADDRESS;
 
-  // Read rpcUrl as a getter so it always reflects the latest value —
+  // Read rpcUrl as a getter so it always reflects the latest value,
   // initializeAPIKeys() upgrades NET.rpcUrl to Alchemy before this
   // function does any real work, so by the time RPC calls fire the
   // key is already in place. No hardcoding needed anywhere.
@@ -654,32 +670,32 @@ function openUndeadModal (nft) {
   }
 }
 
-// Story / about — randomised on every page load. Works on testnet or mainnet
+// Story / about, randomised on every page load. Works on testnet or mainnet
 // because `all` is fetched from CONFIG.OPENSEA_API_HOST (driven by config.js).
 function populateAboutImages(all) {
   const grid = document.getElementById('aboutImageGrid');
   if (!grid || !all || all.length === 0) return;
   const pool = [...all];
-  const pick = pool.sort(() => 0.5 - Math.random()).slice(0, 9);
+  const pick = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
   grid.innerHTML = pick.map(nft => {
     const img = proxyImage(nft.image_url || nft.display_image_url || '');
     return `<div class="about-image"><img src="${img}" alt="Undead" loading="lazy" onerror="this.style.display='none'"></div>`;
   }).join('');
 }
 
-// Passive income teaser — hexagonal tarot spread of 9 randoms
+// Passive income teaser, hexagonal tarot spread of 9 randoms
 function populateStakingVisual(all) {
   const grid = document.getElementById('stakingTeaserVisual');
   if (!grid || !all || all.length === 0) return;
   const pool = [...all];
-  const pick = pool.sort(() => 0.5 - Math.random()).slice(0, 9);
+  const pick = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
   grid.innerHTML = pick.map(nft => {
     const img = proxyImage(nft.image_url || nft.display_image_url || '');
     return `<img src="${img}" alt="Undead" loading="lazy" onerror="this.style.display='none'">`;
   }).join('');
 }
 
-// Previous Projects — rotate Squiggle viewer token on load + Replay/Random
+// Previous Projects, rotate Squiggle viewer token on load + Replay/Random
 function initProjectsViewer () {
   const frame     = document.getElementById('squiggleFrame');
   const replay    = document.getElementById('squiggleReplay');
@@ -690,7 +706,7 @@ function initProjectsViewer () {
   const puzzleNew = document.getElementById('puzzleNew');
   if (!frame) return;
 
-  const SQUIGGLE_MAX = 500;   // highest Squiggle On Base token ID — bump if collection grows
+  const SQUIGGLE_MAX = 10000;   // highest Squiggle On Base token ID, bump if collection grows
   const randomId = () => Math.floor(Math.random() * SQUIGGLE_MAX) + 1;
 
   let tid = randomId();       // ← random on every page load
@@ -760,7 +776,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Mainnet with contract deployed ──────────────────────────
   if (!keysLoaded) {
     const scroller = document.getElementById('nftScroller');
-    if (scroller) scroller.innerHTML = '<div class="sales-loading">API not configured — set OPENSEA_API_KEY in Vercel environment variables.</div>';
+    if (scroller) scroller.innerHTML = '<div class="sales-loading">API not configured, set OPENSEA_API_KEY in Vercel environment variables.</div>';
     return;
   }
 

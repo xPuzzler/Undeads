@@ -347,27 +347,32 @@
       .nft-gallery { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     }
   </style>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
   <div class="noise"></div>
   <div class="skull-floaters" aria-hidden="true"></div>
 
   <!-- NAV -->
-  <nav>
-    <a href="index.html" class="nav-logo">BASED UNDEADS</a>
-    <div class="nav-links">
-      <a href="index.html#featured" class="nav-link">Collection</a>
-      <a href="staking.html"        class="nav-link">Stake</a>
-      <a href="game.html"           class="nav-link">$1 Game</a>
-      <a href="tools.html"          class="nav-link">Tools</a>
-      <a href="validate.html"       class="nav-link">Validator</a>
-      <a href="index.html#about"    class="nav-link">About</a>
-    </div>
-    <div class="nav-social">
-      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
-      <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
-    </div>
-  </nav>
+  <nav class="site-nav">
+  <a href="./index.html" class="brand">
+    <span>BASED UNDEADS</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="./index.html">Home</a></li>
+    <li><a href="./staking.html">Stake</a></li>
+    <li><a href="./tools.html">Tools</a></li>
+    <li><a href="./game.html">$1 Game</a></li>
+    <li><a href="./staking-guide.html">Guide</a></li>
+    <li><a href="./index.html#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-socials" id="nav-socials-slot"></div>
+    <div id="net-pill-slot"></div>
+    <div id="wallet-slot"></div>
+    <button class="mobile-toggle" aria-label="Menu">≡</button>
+  </div>
+</nav>
 
   <!-- HERO -->
   <section class="tracker-hero">
@@ -637,7 +642,7 @@
         <div class="t-section-title">RPC Activity Log</div>
       </div>
       <div class="log-terminal" id="logTerminal">
-        <div class="log-entry info"><span class="ts">00:00</span><span class="msg">BasedUndeads Deployment Tracker — initializing…</span></div>
+        <div class="log-entry info"><span class="ts">00:00</span><span class="msg">BasedUndeads Deployment Tracker, initializing…</span></div>
       </div>
     </div>
 
@@ -656,7 +661,7 @@
     NFT:      '0xae65a210651c1e0468dF4D2bf47CB98804af5EFe',
     STAKING:  '0x54F42834b6304955A509F39Aff5202597dF8F91E',
     MAX_SUPPLY: 6666,
-    // Token IDs to display in gallery — all 50 sampled tokens
+    // Token IDs to display in gallery, all 50 sampled tokens
     GALLERY_IDS: Array.from({length: 50}, (_, i) => Math.floor(1 + i * (6666/50))),
     // Sample IDs to probe upload coverage
     SAMPLE_IDS: Array.from({length: 50}, (_, i) => Math.floor(1 + i * (6666/50))),
@@ -760,8 +765,8 @@
       const network = await provider.getNetwork();
       if (Number(network.chainId) === CFG.chainId) {
         document.getElementById('dotStatus').className   = 'dot';
-        document.getElementById('networkLabel').textContent = 'Base Sepolia — Connected';
-        log(`✓ RPC connected — chainId ${network.chainId}`, 'ok');
+        document.getElementById('networkLabel').textContent = 'Base Sepolia, Connected';
+        log(`✓ RPC connected, chainId ${network.chainId}`, 'ok');
       }
     } catch(e) {
       document.getElementById('dotStatus').className = 'dot error';
@@ -818,7 +823,7 @@
       if (!storageFrozen) pending.push('Storage');
       if (!nftFrozen)     pending.push('NFT');
       setBadgePending('freeze-status-badge', `${pending.join(' & ')} Not Frozen`);
-      log(`ℹ Freeze pending — Storage:${storageFrozen} NFT:${nftFrozen}`, 'info');
+      log(`ℹ Freeze pending, Storage:${storageFrozen} NFT:${nftFrozen}`, 'info');
     }
   }
 
@@ -843,7 +848,7 @@
     } else if (n > 0) {
       setStepDone('step-airdrop');   // partial but running
       setBadgeDone('airdrop-status-badge', `${n.toLocaleString()} / 6,666`);
-      log(`ℹ Airdrop in progress — ${n} / ${CFG.MAX_SUPPLY}`, 'info');
+      log(`ℹ Airdrop in progress, ${n} / ${CFG.MAX_SUPPLY}`, 'info');
     } else {
       setStepPending('step-airdrop');
       setBadgePending('airdrop-status-badge', 'Not Started');
@@ -894,11 +899,11 @@
     const poolEth = parseFloat(ethers.formatEther(poolBal)).toFixed(5);
     setStat('stat-staked', Number(staked).toLocaleString(), 'accent');
     setStat('stat-pool',   poolEth + ' Ξ', 'accent');
-    log(`✓ Staking — totalStaked:${staked}  pool:${poolEth} ETH`, 'ok');
+    log(`✓ Staking, totalStaked:${staked}  pool:${poolEth} ETH`, 'ok');
   }
 
   // ════════════════════════════════════════════════
-  //  GALLERY — mirrors website's fetchTokenViaRPC
+  //  GALLERY, mirrors website's fetchTokenViaRPC
   //  (raw fetch to renderer, no ethers needed here)
   // ════════════════════════════════════════════════
   const RPC_URL      = 'https://sepolia.base.org';
@@ -964,7 +969,7 @@
       log(`✓ #${id} rendered`, 'ok');
     } catch(e) {
       card.querySelector('img').src = `https://placehold.co/220x220/0a0505/8b1a1a/png?text=%23${id}`;
-      card.querySelector('p').textContent = `#${id} — not minted`;
+      card.querySelector('p').textContent = `#${id}, not minted`;
       log(`ℹ #${id}: ${e.message.slice(0, 60)}`, 'dim');
     }
   }
@@ -1038,5 +1043,27 @@
   // ════════════════════════════════════════════════
   document.addEventListener('DOMContentLoaded', init);
   </script>
+<script src="./js/web3.js"></script>
+<script src="./js/ui.js"></script>
+
+<script>
+// New nav init (injected by patch.py)
+(function initNewNav() {
+  if (typeof window.BUUI === 'undefined') return;
+  window.BUUI.renderNavSocials();
+  window.BUUI.renderNetworkPill();
+  window.BUUI.bindMobileNav();
+  window.BU && window.BU.onAccountChange && window.BU.onAccountChange(() => window.BUUI.renderWalletSlot());
+  // Wallet slot
+  if (typeof window.BU !== 'undefined' && window.BU.tryEagerConnect) {
+    Promise.resolve()
+      .then(() => window.BU.loadABIs && window.BU.loadABIs())
+      .then(() => window.BU.upgradeProviderFromKeys && window.BU.upgradeProviderFromKeys())
+      .then(() => window.BU.tryEagerConnect())
+      .then(() => window.BUUI.renderWalletSlot())
+      .catch(() => window.BUUI.renderWalletSlot());
+  }
+})();
+</script>
 </body>
 </html>

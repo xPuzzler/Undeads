@@ -1,8 +1,8 @@
 # ============================================================
-#  IMPORTANT — never commit these
+#  IMPORTANT, never commit these
 # ============================================================
 
-# Environment variables — API keys, secrets
+# Environment variables, API keys, secrets
 .env
 .env.*
 !.env.example

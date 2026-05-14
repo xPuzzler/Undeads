@@ -354,7 +354,7 @@ async function fetchStakedNFTs(addr) {
     const decoded = iface.decodeFunctionResult('getStakedTokens', rpcJson.result);
     const tokenIds = decoded[0].map(id => id.toString());
     if (!tokenIds.length) return [];
-    toast(`Found ${tokenIds.length} staked NFT(s) — fetching images…`);
+    toast(`Found ${tokenIds.length} staked NFT(s), fetching images…`);
     const stakedNFTs = [];
     for (let i = 0; i < tokenIds.length; i += 5) {
       const batch = tokenIds.slice(i, i + 5);
@@ -489,7 +489,7 @@ async function fetchOpenSeaWallet(addr, chainKey) {
           const rawImage = n.raw?.metadata?.image || n.raw?.metadata?.image_url || '';
           const rawAnim  = n.raw?.metadata?.animation_url || n.raw?.metadata?.animation || '';
           const cdnImage = n.image?.cachedUrl || n.image?.thumbnailUrl || '';
-          // Display URL (prefer CDN — faster), but keep raw for the GIF/video builder
+          // Display URL (prefer CDN, faster), but keep raw for the GIF/video builder
           const imgUrl = proxyUrl(cdnImage || rawImage);
           const animUrl = proxyUrl(rawAnim);
           if (!imgUrl && !animUrl) return;
@@ -609,7 +609,7 @@ function updateGridSelCount() {
   }
   const types = new Set(selectedForGrid.map(n => n.mediaType || 'image'));
   if (types.size > 1) {
-    el.textContent = `${selectedForGrid.length} selected · ⚠️ Mixed types (${[...types].join(', ')}) — pick one type only`;
+    el.textContent = `${selectedForGrid.length} selected · ⚠️ Mixed types (${[...types].join(', ')}), pick one type only`;
     el.style.color = '#ff6b6b';
   } else {
     const t = [...types][0];
@@ -694,7 +694,7 @@ async function buildGridCanvas(nfts, rows, cols) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle=sepC; ctx.fillRect(0,0,W,H);
 
-  // Pre-load all images in parallel — much faster than serial.
+  // Pre-load all images in parallel, much faster than serial.
   // Pass the full nft object so loadImg can route BasedUndeads through onchain.
   const imagePromises = nfts.slice(0, rows*cols).map(nft =>
     nft?.image ? loadImg(nft.image, nft).catch(() => null) : Promise.resolve(null)
@@ -762,7 +762,7 @@ async function previewAnimatedGrid(data) {
         return;
       } catch (e) {
         console.warn('[tools] GIF builder failed, falling back to video:', e.message);
-        toast('GIF builder unavailable — exporting as video instead', 'info');
+        toast('GIF builder unavailable, exporting as video instead', 'info');
       }
     }
     // For WebP or GIF fallback: use canvas-based video recording
@@ -808,7 +808,7 @@ function showPreviewVideo(src) {
 }
 
 /* ============================================================
-   ANIMATED GRID BUILDERS — GIF and Video
+   ANIMATED GRID BUILDERS, GIF and Video
    ============================================================ */
 
 // Lazy-load gif.js from CDN (only when needed)
@@ -879,7 +879,7 @@ async function buildAnimatedGifGrid(nfts, rows, cols) {
   const H = rows * cellSize + (rows + 1) * sep;
 
   toast('Decoding animated frames…');
-  // Decode each NFT in parallel — try multiple URL candidates per NFT
+  // Decode each NFT in parallel, try multiple URL candidates per NFT
   const decodedSlots = await Promise.all(
     nfts.slice(0, rows * cols).map(async (nft) => {
       // Try every URL we have, in order of likelihood of being animated
@@ -908,7 +908,7 @@ async function buildAnimatedGifGrid(nfts, rows, cols) {
     })
   );
 
-  // Find the longest clip — that's our timeline
+  // Find the longest clip, that's our timeline
   const maxDuration = Math.max(...decodedSlots.filter(Boolean).map(s => s.totalDurationMs), 1000);
   const frameStep = 50; // 20fps output
   const totalFrames = Math.ceil(maxDuration / frameStep);
@@ -1048,7 +1048,7 @@ async function buildVideoGrid(nfts, rows, cols) {
 
 // Build an animated grid by playing source media (any animated format)
 // in HTML <img> elements and recording the canvas to WebM.
-// Works for animated GIFs/WebPs/videos — anything the browser can natively animate.
+// Works for animated GIFs/WebPs/videos, anything the browser can natively animate.
 async function buildAnimatedGridViaCanvas(nfts, rows, cols, mediaType) {
   const cellSize = 256;
   const sep = Math.max(0, parseInt(document.getElementById('separatorWidth').value) || 0);
@@ -1188,7 +1188,7 @@ async function downloadGridPNG() {
         toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');
       } catch (e) {
         console.warn('[tools] GIF failed, falling back to webm:', e.message);
-        toast('GIF unavailable — saving as WebM video instead', 'info');
+        toast('GIF unavailable, saving as WebM video instead', 'info');
         const blob = await buildAnimatedGridViaCanvas(data.nfts, data.rows, data.cols, 'gif');
         downloadBlob(blob, `undead-grid-${data.rows}x${data.cols}.webm`);
         toast(`Saved (${(blob.size / 1024 / 1024).toFixed(1)} MB)!`, 'success');

@@ -1,18 +1,20 @@
-// Netlify Function (legacy/CommonJS format — works on all CLI versions).
+// Netlify Function (legacy/CommonJS format, works on all CLI versions).
 // Returns API keys from env vars at /.netlify/functions/api-keys
 //
 // LOCAL: keys come from .env at project root (loaded by `netlify dev`)
 // PROD:  keys come from Netlify dashboard → Site config → Environment variables
 
 exports.handler = async (event, context) => {
-  const alchemy = process.env.ALCHEMY_API_KEY || null;
-  const opensea = process.env.OPENSEA_API_KEY || null;
-  const moralis = process.env.MORALIS_API_KEY || null;
+  const alchemy  = process.env.ALCHEMY_API_KEY  || null;
+  const opensea  = process.env.OPENSEA_API_KEY  || null;
+  const moralis  = process.env.MORALIS_API_KEY  || null;
+  const basescan = process.env.BASESCAN_API_KEY || null;
 
-  console.log('[api-keys] called — env present:', {
-    hasAlchemy: !!alchemy,
-    hasOpenSea: !!opensea,
-    hasMoralis: !!moralis,
+  console.log('[api-keys] called, env present:', {
+    hasAlchemy:  !!alchemy,
+    hasOpenSea:  !!opensea,
+    hasMoralis:  !!moralis,
+    hasBasescan: !!basescan,
   });
 
   return {
@@ -23,7 +25,7 @@ exports.handler = async (event, context) => {
       'Access-Control-Allow-Origin': '*',
     },
     body: JSON.stringify({
-      apiKeys: { alchemy, opensea, moralis },
+      apiKeys: { alchemy, opensea, moralis, basescan },
     }),
   };
 };

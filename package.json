@@ -2,10 +2,10 @@
   "name": "basedundeads-website",
   "version": "1.0.0",
   "private": true,
-  "description": "BasedUndeads — fully onchain NFT collection on Base",
+  "description": "BasedUndeads, fully onchain NFT collection on Base",
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'Static site — no build step'"
+    "build": "echo 'Static site, no build step'"
   },
   "dependencies": {
     "express": "^4.21.0",

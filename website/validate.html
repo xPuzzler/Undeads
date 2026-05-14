@@ -669,7 +669,7 @@ async function rpcCall(method, params) {
       });
 
       if (res.status === 429 || res.status >= 500) {
-        // Rate-limited or server error — back off and retry.
+        // Rate-limited or server error, back off and retry.
         const wait = parseInt(res.headers.get('retry-after')) * 1000 || (500 * Math.pow(2, attempt));
         await new Promise(r => setTimeout(r, wait));
         continue;
@@ -677,7 +677,7 @@ async function rpcCall(method, params) {
 
       const json = await res.json();
       if (json.error) {
-        // CONTRACT-LEVEL error (revert). This is meaningful — return it as-is,
+        // CONTRACT-LEVEL error (revert). This is meaningful, return it as-is,
         // do NOT retry. Caller decides what to do (e.g., ownerOf for unminted token).
         const e = new Error(json.error.message || 'rpc error');
         e.isContractError = true;
@@ -687,9 +687,9 @@ async function rpcCall(method, params) {
 
     } catch (e) {
       lastErr = e;
-      // Contract reverts shouldn't be retried — bubble them up immediately.
+      // Contract reverts shouldn't be retried, bubble them up immediately.
       if (e.isContractError) throw e;
-      // Network/parse errors — back off and retry.
+      // Network/parse errors, back off and retry.
       const wait = 500 * Math.pow(2, attempt);
       await new Promise(r => setTimeout(r, wait));
     }
@@ -729,7 +729,7 @@ async function fetchToken(id) {
 
   // Fetch URI and owner INDEPENDENTLY. The renderer always works once art is
   // uploaded, but ownerOf reverts until the token is airdropped. We don't want
-  // a missing owner to make the whole card show as "Not minted" — so we
+  // a missing owner to make the whole card show as "Not minted", so we
   // tolerate either side failing.
   let uri, owner;
 
@@ -744,7 +744,7 @@ async function fetchToken(id) {
   try {
     owner = await fetchOwner(id);
   } catch {
-    owner = null; // Token not airdropped yet — that's fine, just no owner shown.
+    owner = null; // Token not airdropped yet, that's fine, just no owner shown.
   }
 
   try {
@@ -848,7 +848,7 @@ async function loadRandom(count = 20) {
     const id = Math.floor(Math.random() * MAX_ID) + 1;
     if (!ids.includes(id)) ids.push(id);
   }
-  // Sequential fetching with longer pacing — prevents public RPC throttling.
+  // Sequential fetching with longer pacing, prevents public RPC throttling.
   for (let i = 0; i < ids.length; i++) {
     const data = await fetchToken(ids[i]);
     if (data && grid.children[i]) {
@@ -856,7 +856,7 @@ async function loadRandom(count = 20) {
       tmp.innerHTML = makeTokenCard(data);
       grid.replaceChild(tmp.firstElementChild, grid.children[i]);
     }
-    if (i < ids.length - 1) await sleep(200); // ↑ from 80 — public RPC needs breathing room
+    if (i < ids.length - 1) await sleep(200); // ↑ from 80, public RPC needs breathing room
   }
   randomLoading = false;
 }
@@ -888,7 +888,7 @@ async function loadCollectionPage(page) {
       tmp.innerHTML = makeTokenCard(data);
       grid.replaceChild(tmp.firstElementChild, grid.children[i]);
     }
-    if (i < ids.length - 1) await sleep(180); // ↑ from 60 — public RPC needs breathing room
+    if (i < ids.length - 1) await sleep(180); // ↑ from 60, public RPC needs breathing room
   }
 }
 

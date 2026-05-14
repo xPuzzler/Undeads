@@ -669,6 +669,7 @@
     .nav-hamburger { display: block; }
   }
 </style>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
   <div class="cursor"></div>
@@ -678,29 +679,25 @@
   <div class="skull-floaters" aria-hidden="true"></div>
 
   <!-- ══════════ NAV (matches index.html) ══════════ -->
-  <nav>
-    <a href="index.html" class="nav-logo">BASED UNDEADS</a>
-    <div class="nav-links">
-      <a href="index.html#featured" class="nav-link">Collection</a>
-      <a href="staking.html"        class="nav-link">Stake</a>
-      <a href="game.html"           class="nav-link">$1 Game</a>
-      <a href="tools.html"          class="nav-link" style="color:var(--accent);opacity:1;">Tools</a>
-      <a href="validate.html"       class="nav-link">Validator</a>
-      <a href="index.html#about"    class="nav-link">About</a>
-    </div>
-    <div class="nav-social">
-      <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-      <a href="https://x.com/BasedUndeads"     target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
-      <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
-        <svg width="20" height="20" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <g clip-path="url(#os1)"><path d="M181.566 0C80.91-.828-.828 80.91 0 181.566.846 279.306 80.694 359.172 178.416 359.982c100.656.864 182.43-77.91 181.566-181.566C359.172 80.712 279.306.846 181.566 0Zm-53.82 89.586c11.52 14.634 18.414 33.156 18.414 53.244 0 17.406-5.166 33.606-14.04 47.124H69.714l58.032-100.368Zm190.26 109.656v12.96c0 .846-.45 1.566-1.224 1.89-4.23 1.8-18.18 8.28-23.994 16.344-14.976 20.844-26.406 53.604-51.966 53.604H134.172c-37.764 0-69.354-29.97-69.336-69.894 0-.99.846-1.8 1.836-1.8h50.544c1.746 0 3.114 1.404 3.114 3.114v9.756c0 5.184 4.194 9.396 9.396 9.396h38.34v-22.32h-26.19c15.066-19.08 24.03-43.164 24.03-69.39 0-29.25-11.214-55.926-29.574-75.87 11.106 1.296 21.726 3.51 31.734 6.444v-6.21c0-6.444 5.22-11.664 11.664-11.664s11.664 5.22 11.664 11.664v14.976c35.784 16.704 59.22 44.424 59.22 75.78 0 18.396-8.046 35.514-21.924 49.914-2.664 2.754-6.354 4.32-10.224 4.32h-27.054v22.284h33.966c7.326 0 20.466-13.896 26.694-22.266 0 0 .27-.414.99-.63.72-.216 61.65-13.932 61.65-13.932 1.296-.36 2.574.63 2.574 1.944Z" fill="white"/></g>
-          <defs><clipPath id="os1"><rect width="360" height="360" fill="white"/></clipPath></defs>
-        </svg>
-      </a>
-      <a href="staking.html" class="btn btn-gold btn-block btn-sm">Stake Now</a>
-      
-    </div>
-  </nav>
+  <nav class="site-nav">
+  <a href="./index.html" class="brand">
+    <span>BASED UNDEADS</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="./index.html">Home</a></li>
+    <li><a href="./staking.html">Stake</a></li>
+    <li><a href="./tools.html" class="active">Tools</a></li>
+    <li><a href="./game.html">$1 Game</a></li>
+    <li><a href="./staking-guide.html">Guide</a></li>
+    <li><a href="./index.html#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-socials" id="nav-socials-slot"></div>
+    <div id="net-pill-slot"></div>
+    <div id="wallet-slot"></div>
+    <button class="mobile-toggle" aria-label="Menu">≡</button>
+  </div>
+</nav>
 
   <!-- Mobile menu -->
   <div class="mobile-menu" id="mobileMenu">
@@ -1101,7 +1098,7 @@
       document.querySelector('.scroll-progress').style.width = p + '%';
     });
 
-    // Config — pulls live values from config.js (window.NETWORK)
+    // Config, pulls live values from config.js (window.NETWORK)
     const CONFIG = {
       chainIdNum:      window.NETWORK?.chainId,
       rpc:             window.NETWORK?.rpcUrl,
@@ -1113,5 +1110,27 @@
     };
   </script>
   <script src="tools.js"></script>
+<script src="./js/web3.js"></script>
+<script src="./js/ui.js"></script>
+
+<script>
+// New nav init (injected by patch.py)
+(function initNewNav() {
+  if (typeof window.BUUI === 'undefined') return;
+  window.BUUI.renderNavSocials();
+  window.BUUI.renderNetworkPill();
+  window.BUUI.bindMobileNav();
+  window.BU && window.BU.onAccountChange && window.BU.onAccountChange(() => window.BUUI.renderWalletSlot());
+  // Wallet slot
+  if (typeof window.BU !== 'undefined' && window.BU.tryEagerConnect) {
+    Promise.resolve()
+      .then(() => window.BU.loadABIs && window.BU.loadABIs())
+      .then(() => window.BU.upgradeProviderFromKeys && window.BU.upgradeProviderFromKeys())
+      .then(() => window.BU.tryEagerConnect())
+      .then(() => window.BUUI.renderWalletSlot())
+      .catch(() => window.BUUI.renderWalletSlot());
+  }
+})();
+</script>
 </body>
 </html>

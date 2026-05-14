@@ -586,6 +586,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
   flex-wrap: wrap;
 }
 </style>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
@@ -596,32 +597,24 @@ main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
 <div class="skull-floaters" aria-hidden="true"></div>
 
 <!-- ============== NAV ============== -->
-<nav>
-  <a href="index.html" class="nav-logo">BASED UNDEADS</a>
-  <div class="nav-links">
-    <a href="index.html#featured" class="nav-link">Collection</a>
-    <a href="staking.html"        class="nav-link" style="color:var(--accent);opacity:1;">Stake</a>
-    <a href="game.html"           class="nav-link">$1 Game</a>
-    <a href="tools.html"          class="nav-link">Tools</a>
-    <a href="validate.html"       class="nav-link">Validator</a>
-    <a href="index.html#about"    class="nav-link">About</a>
+<nav class="site-nav">
+  <a href="./index.html" class="brand">
+    <span>BASED UNDEADS</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="./index.html">Home</a></li>
+    <li><a href="./staking.html">Stake</a></li>
+    <li><a href="./tools.html">Tools</a></li>
+    <li><a href="./game.html">$1 Game</a></li>
+    <li><a href="./staking-guide.html" class="active">Guide</a></li>
+    <li><a href="./index.html#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-socials" id="nav-socials-slot"></div>
+    <div id="net-pill-slot"></div>
+    <div id="wallet-slot"></div>
+    <button class="mobile-toggle" aria-label="Menu">≡</button>
   </div>
-  <div class="nav-social">
-    <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-    <a href="https://x.com/BasedUndeads"     target="_blank" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
-    <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="opensea-btn" aria-label="OpenSea">
-      <svg width="22" height="22" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g clip-path="url(#sgc0)"><g clip-path="url(#sgc1)">
-        <path d="M181.566 0C80.91 -0.828 -0.828 80.91 0 181.566C0.846 279.306 80.694 359.172 178.416 359.982C279.072 360.846 360.846 279.072 359.982 178.416C359.172 80.712 279.306 0.846 181.566 0ZM127.746 89.586C139.266 104.22 146.16 122.742 146.16 142.83C146.16 160.236 140.994 176.436 132.12 189.954H69.714L127.728 89.568L127.746 89.586ZM318.006 199.242V212.202C318.006 213.048 317.556 213.768 316.782 214.092C312.552 215.892 298.602 222.372 292.788 230.436C277.812 251.28 266.382 284.04 240.822 284.04H134.172C96.408 284.04 64.818 254.07 64.836 214.146C64.836 213.156 65.682 212.346 66.672 212.346H117.216C118.962 212.346 120.33 213.75 120.33 215.46V225.216C120.33 230.4 124.524 234.612 129.726 234.612H168.066V212.292H141.876C156.942 193.212 165.906 169.128 165.906 142.902C165.906 113.652 154.692 86.976 136.332 67.032C147.438 68.328 158.058 70.542 168.066 73.476V67.266C168.066 60.822 173.286 55.602 179.73 55.602C186.174 55.602 191.394 60.822 191.394 67.266V82.242C227.178 98.946 250.614 126.666 250.614 158.022C250.614 176.418 242.568 193.536 228.69 207.936C226.026 210.69 222.336 212.256 218.466 212.256H191.412V234.54H225.378C232.704 234.54 245.844 220.644 252.072 212.274C252.342 211.86 253.062 211.644C253.782 211.428 315.432 197.28 315.432 197.28C316.728 196.92 318.006 197.91 318.006 199.224V199.242Z" fill="white"/>
-        </g></g>
-        <defs>
-          <clipPath id="sgc0"><rect width="360" height="360" fill="white"/></clipPath>
-          <clipPath id="sgc1"><rect width="360" height="360" fill="white"/></clipPath>
-        </defs>
-      </svg>
-    </a>
-  </div>
-  <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
 </nav>
 
 <!-- ============== HEADER ============== -->
@@ -1007,8 +1000,8 @@ main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
     <details>
       <summary>When do I start earning rewards after I stake?</summary>
       <div class="answer">
-        <strong>Immediately.</strong> The reward math only looks at how many NFTs you have staked — not how long they've been there. The moment your stake transaction confirms, you're earning your share of any royalties that arrive afterward.<br><br>
-        The 24h lock is purely about <em>when you can unstake</em> — it has zero effect on earnings. You could stake at 3:00 PM, see a sale happen at 3:01 PM, and watch your earned balance tick up immediately. You can even <code>claim()</code> those rewards before the lock expires — claiming and unstaking are two separate things.
+        <strong>Immediately.</strong> The reward math only looks at how many NFTs you have staked, not how long they've been there. The moment your stake transaction confirms, you're earning your share of any royalties that arrive afterward.<br><br>
+        The 24h lock is purely about <em>when you can unstake</em>, it has zero effect on earnings. You could stake at 3:00 PM, see a sale happen at 3:01 PM, and watch your earned balance tick up immediately. You can even <code>claim()</code> those rewards before the lock expires, claiming and unstaking are two separate things.
       </div>
     </details>
 
@@ -1038,7 +1031,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
       <summary>Why does the dashboard ask me to sign an "approval" the first time I stake?</summary>
       <div class="answer">
         NFTs use a permission system. Before the staking contract can move your NFTs out of your wallet, you have to grant it permission once via <code>setApprovalForAll</code>. After that <strong>single signature</strong>, every future stake works without re-approval.<br><br>
-        This is standard for every NFT marketplace and staking platform, same pattern OpenSea, Magic Eden, and others use. The approval is for the staking contract specifically, not a blanket permission for anyone else. You can revoke it any time by calling <code>setApprovalForAll(stakingContract, false)</code> if you want — though you'd just have to re-approve to stake again.
+        This is standard for every NFT marketplace and staking platform, same pattern OpenSea, Magic Eden, and others use. The approval is for the staking contract specifically, not a blanket permission for anyone else. You can revoke it any time by calling <code>setApprovalForAll(stakingContract, false)</code> if you want, though you'd just have to re-approve to stake again.
       </div>
     </details>
 
@@ -1115,7 +1108,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 64px 32px 100px; }
       <div class="answer">
         Your staked NFTs and unclaimed rewards are tied to that wallet address <strong>forever</strong>. Only YOU (or anyone with your private key) can call <code>unstake()</code> or <code>claim()</code> for that wallet.<br><br>
         The team has <strong>no admin override</strong> to recover NFTs from a lost wallet. This is a feature, not a bug it's why the staking contract is genuinely trustless. But it means you should treat your wallet security as protecting <em>both</em> your NFTs <em>and</em> your accumulated rewards.<br><br>
-        Use a hardware wallet (Ledger, Trezor) for any wallet holding significant NFTs or staking positions. Back up your seed phrase. Never share it with anyone — not even people claiming to be from the team.
+        Use a hardware wallet (Ledger, Trezor) for any wallet holding significant NFTs or staking positions. Back up your seed phrase. Never share it with anyone, not even people claiming to be from the team.
       </div>
     </details>
 
@@ -1289,5 +1282,28 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="./js/web3.js"></script>
+<script src="./js/ui.js"></script>
+
+<script>
+// New nav init (injected by patch.py)
+(function initNewNav() {
+  if (typeof window.BUUI === 'undefined') return;
+  window.BUUI.renderNavSocials();
+  window.BUUI.renderNetworkPill();
+  window.BUUI.bindMobileNav();
+  window.BU && window.BU.onAccountChange && window.BU.onAccountChange(() => window.BUUI.renderWalletSlot());
+  // Wallet slot
+  if (typeof window.BU !== 'undefined' && window.BU.tryEagerConnect) {
+    Promise.resolve()
+      .then(() => window.BU.loadABIs && window.BU.loadABIs())
+      .then(() => window.BU.upgradeProviderFromKeys && window.BU.upgradeProviderFromKeys())
+      .then(() => window.BU.tryEagerConnect())
+      .then(() => window.BUUI.renderWalletSlot())
+      .catch(() => window.BUUI.renderWalletSlot());
+  }
+})();
+</script>
 </body>
 </html>

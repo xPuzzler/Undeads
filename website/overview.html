@@ -4,10 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Overview - Based Undeads</title>
-<meta name="description" content="The complete overview of Based Undeads — 6,666 fully onchain souls on Base. Art, staking, tools, and the philosophy behind the horde."/>
+<meta name="description" content="The complete overview of Based Undeads, 6,666 fully onchain souls on Base. Art, staking, tools, and the philosophy behind the horde."/>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
 
-<meta property="og:title" content="Based Undeads — Overview">
+<meta property="og:title" content="Based Undeads, Overview">
 <meta property="og:description" content="6,666 souls. Forever onchain. The horde explained."/>
 <meta property="og:type" content="website">
 
@@ -21,7 +21,7 @@
 
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   OVERVIEW PAGE — page-specific styles only.
+   OVERVIEW PAGE, page-specific styles only.
    Nav, footer, cursor, buttons inherit from styles.css.
 ═══════════════════════════════════════════════════════════════ */
 :root {
@@ -859,7 +859,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
   <p class="ov-lede">
     Based Undeads is a 6,666-piece pixel art collection living entirely
     onchain on Base. No IPFS. No servers. No third parties. The art,
-    the metadata, the rules — every byte etched into smart contracts
+    the metadata, the rules, every byte etched into smart contracts
     that will outlive this website. This is what the project is, why
     it exists, and where it's going.
   </p>
@@ -892,7 +892,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
     <h2 class="ov-section-title">6,666 <em>Souls</em></h2>
     <p class="ov-section-sub">
       A horde of skeletal warriors, phantom wanderers, undead rulers, and forgotten
-      kings — each one rendered pixel by pixel as a one-of-a-kind sprite. Some are
+      kings, each one rendered pixel by pixel as a one-of-a-kind sprite. Some are
       common foot-soldiers of the army. Others are 1-of-1 legends with traits no
       other Undead carries.
     </p>
@@ -901,13 +901,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
       <p>
         Every Undead has up to <strong>8 traits</strong>: Background, Type, Clothes,
         Eyes, Eyewear, Head, Mask, and Mouth. The combinations produce a wide
-        spectrum — the foot-soldier in dirty rags is as much a part of the horde as
+        spectrum, the foot-soldier in dirty rags is as much a part of the horde as
         the gilded vampire king. Trait rarity is preserved permanently in the
         renderer contract, so the on-chain record itself is the source of truth
         for which traits are common and which are rare.
       </p>
       <p>
-        The art is a deliberate departure for the artist — <em>SAM's first venture
+        The art is a deliberate departure for the artist, <em>SAM's first venture
         into pixel art</em>, learned sprite by sprite, shadow by shadow. The result
         is a collection with a unified gothic aesthetic: blood-red palettes,
         candlelit highlights, decay rendered in gold and bone. Look at one Undead
@@ -923,7 +923,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
     <p class="ov-section-sub">
       Most NFT collections store art on IPFS or centralized servers, leaving the
       "permanent" part hanging on a thread. Based Undeads stores everything on
-      Base directly — split across four contracts that work together to render
+      Base directly, split across four contracts that work together to render
       a complete NFT entirely from chain state.
     </p>
 
@@ -935,7 +935,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <p>
           Holds the raw PNG bytes for every Undead, deployed as compressed
           <code>SSTORE2</code> blobs. Each token's image is fetched directly
-          from chain — no external lookup, no proxy, no decay.
+          from chain, no external lookup, no proxy, no decay.
         </p>
       </div>
 
@@ -945,8 +945,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <h3>Renderer Contract</h3>
         <p>
           Turns raw bytes into full ERC-721 metadata at request time. Calls
-          <code>tokenURI()</code> and you get a base64 data URI — image,
-          name, description, traits — assembled live, never cached off-chain.
+          <code>tokenURI()</code> and you get a base64 data URI, image,
+          name, description, traits, assembled live, never cached off-chain.
         </p>
       </div>
 
@@ -968,7 +968,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <p>
           The yield engine. Receives every royalty, splits 50/50 between
           creator and stakers, distributes to lockers using the Synthetix
-          pull pattern — gas-efficient at any scale, mathematically airtight.
+          pull pattern, gas-efficient at any scale, mathematically airtight.
         </p>
       </div>
     </div>
@@ -977,8 +977,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
       <div class="compare-col them">
         <h4>The Old Way</h4>
         <ul>
-          <li>Art hosted on IPFS — pinned by a service that may stop tomorrow</li>
-          <li>Metadata served from a website — taken offline = NFT goes blank</li>
+          <li>Art hosted on IPFS, pinned by a service that may stop tomorrow</li>
+          <li>Metadata served from a website, taken offline = NFT goes blank</li>
           <li>Centralized image gateways throttle, cache, censor</li>
           <li>"Forever" depends on someone paying a hosting bill</li>
           <li>Disappears the moment the team walks away</li>
@@ -989,7 +989,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <ul>
           <li>PNG bytes stored as immutable contract code on Base</li>
           <li>Metadata generated fresh from chain on every <code>tokenURI</code> call</li>
-          <li>No external dependencies of any kind — IPFS, servers, all gone</li>
+          <li>No external dependencies of any kind, IPFS, servers, all gone</li>
           <li>"Forever" really means as long as Base exists</li>
           <li>Survives the team, the website, the founders entirely</li>
         </ul>
@@ -1003,7 +1003,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
     <h2 class="ov-section-title">Stake. <em>Earn.</em> Forever.</h2>
     <p class="ov-section-sub">
       Holders aren't just collectors. Every secondary sale on OpenSea pays a 7.5%
-      royalty into the staking contract — and half of that flows directly to
+      royalty into the staking contract, and half of that flows directly to
       Undeads who are locked in. Your slice scales with your stake.
     </p>
 
@@ -1063,7 +1063,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
     <h2 class="ov-section-title">Free <em>Tools</em> for Every Holder</h2>
     <p class="ov-section-sub">
       Built by the project, gifted to the community. Both tools work with any NFT
-      collection on Base, Ethereum, ApeChain, or Abstract — not just Undeads. Use
+      collection on Base, Ethereum, ApeChain, or Abstract, not just Undeads. Use
       them, share them, never pay for them.
     </p>
 
@@ -1073,7 +1073,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <h4>NFT Grid <em>Maker</em></h4>
         <p>
           Stitch any selection of NFTs into a single high-resolution PNG. Banner
-          posts, wall art, collection flexes, profile mosaics — built for collectors
+          posts, wall art, collection flexes, profile mosaics, built for collectors
           who want their horde seen. Up to 50×50 grids, manual or random placement,
           custom borders, export as PNG or ZIP.
         </p>
@@ -1096,7 +1096,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <p>
           Build phone wallpapers featuring any NFT. Pick a backdrop, drop a
           character, drag to resize, export ready for your lock screen. 12 gradients,
-          9 patterns, 6 device frames, optional background removal — make your
+          9 patterns, 6 device frames, optional background removal, make your
           favorite Undead the first thing you see in the morning.
         </p>
         <div class="tool-features">
@@ -1130,7 +1130,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <h3>THE <span class="dollar">$1</span> GAME</h3>
         <p>
           Got an NFT collecting dust? List it. Set a target ticket count. Watch
-          tickets get bought — each one a chance to win. When the target hits,
+          tickets get bought, each one a chance to win. When the target hits,
           the contract picks a winner using on-chain randomness, sends the NFT
           to them, sends 90% of the pot to you, and that's it. No middleman.
           No admin. No trust required.
@@ -1177,7 +1177,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
     <p class="ov-section-sub">
       Every piece of the protocol is open and verifiable on Basescan. Hover the
       cards below to see what each contract does. Storage and NFT contracts are
-      frozen — the renderer is intentionally upgradable so we can ship better
+      frozen, the renderer is intentionally upgradable so we can ship better
       art tooling later, while the underlying art and supply stay locked.
     </p>
 
@@ -1187,7 +1187,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <div class="desc">Stores raw PNG bytes for every Undead.</div>
         <div class="role">
           SSTORE2 blob contracts hold compressed pixel data on-chain.
-          Frozen post-upload — art cannot be modified.
+          Frozen post-upload, art cannot be modified.
         </div>
       </div>
 
@@ -1205,7 +1205,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         <div class="desc">ERC-721 + ERC-2981 royalties, points to renderer.</div>
         <div class="role">
           Standard token contract with built-in 7.5% royalty routing to the
-          staking contract. Frozen — supply, art, and royalty target are locked.
+          staking contract. Frozen, supply, art, and royalty target are locked.
         </div>
       </div>
 
@@ -1250,7 +1250,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         </span>
         <h4>The Refinements</h4>
         <ul>
-          <li>Twitter sales bot — automated alerts on every secondary sale</li>
+          <li>Twitter sales bot, automated alerts on every secondary sale</li>
           <li>Trait rarity rankings + on-page filtering</li>
           <li>Holder dashboard with personal stats</li>
           <li>Collector leaderboards by stake share</li>
@@ -1264,7 +1264,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
         </span>
         <h4>The Horde Grows</h4>
         <ul>
-          <li>More creator tools — open to community requests</li>
+          <li>More creator tools, open to community requests</li>
           <li>Cross-collection collab features</li>
           <li>Discord integrations for holders</li>
           <li>Possibility: secondary item drops, holder-gated</li>
@@ -1290,7 +1290,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
           Based Undeads is the work of a single person. Every contract written,
           every sprite drawn, every line of frontend code, every piece of copy
           on this site. SAM is also the artist behind <strong>Based Squiggles</strong>
-          and <strong>Crypto Puzzles</strong> — projects that paved the way for the
+          and <strong>Crypto Puzzles</strong>, projects that paved the way for the
           fully-onchain approach used here. The horde represents a new chapter:
           a leap from generative scripts into hand-drawn pixels, from solo dev
           tooling into community-owned infrastructure.
@@ -1316,7 +1316,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 80px 32px 100px; }
       <h3>JOIN THE HORDE</h3>
       <p>
         Pick up an Undead on OpenSea. Stake it. Earn from every sale across the
-        whole collection, forever — or just admire the art and let it rot in your
+        whole collection, forever, or just admire the art and let it rot in your
         wallet. Either way, welcome.
       </p>
       <div class="final-cta-actions">

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
    <link rel="stylesheet" href="styles.css">
 <script src="skulls.js" defer></script>
 
@@ -493,6 +493,7 @@
       .nft-picker-loading-inner { grid-template-columns: repeat(2,1fr); }
     }
   </style>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
@@ -511,22 +512,26 @@
   <div class="skull-float" style="--x:92%;--dur:17s;--delay:11s">💀</div>
 
   <!-- NAV -->
-  <nav>
-    <a href="index.html" class="nav-logo">BASED UNDEADS</a>
-    <div class="nav-links">
-      <a href="index.html" class="nav-link">Home</a>
-      <a href="game.html#active" class="nav-link">Active Games</a>
-      <a href="game.html#hall" class="nav-link">Hall of Winners</a>
-    </div>
-    <div class="nav-right">
-      <div class="nav-social">
-        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank"><i class="fab fa-discord"></i></a>
-        <a href="https://x.com/BasedUndeads" target="_blank"><i class="fab fa-x-twitter"></i></a>
-      </div>
-      <button class="connect-btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
-    </div>
-    <button class="mobile-nav-btn" id="mobileNavBtn"><i class="fas fa-bars"></i></button>
-  </nav>
+  <nav class="site-nav">
+  <a href="./index.html" class="brand">
+    <span>BASED UNDEADS</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="./index.html">Home</a></li>
+    <li><a href="./staking.html">Stake</a></li>
+    <li><a href="./tools.html">Tools</a></li>
+    <li><a href="./game.html" class="active">$1 Game</a></li>
+    <li><a href="./staking-guide.html">Guide</a></li>
+    <li><a href="./index.html#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-socials" id="nav-socials-slot"></div>
+    <div id="net-pill-slot"></div>
+    <div id="wallet-slot"></div>
+    <button class="connect-btn" id="connectBtn" onclick="connectWallet()" style="display:none">Connect Wallet</button>
+    <button class="mobile-toggle" aria-label="Menu">≡</button>
+  </div>
+</nav>
 
   <!-- HERO -->
   <section class="hero">
@@ -889,7 +894,7 @@
 // BASED UNDEADS - THE $1 GAME  (v4 frontend)
 // ================================================================
 
-const CONTRACT_ADDRESS = '0x2Ee5381B13644a3C8302547F90E139e6F7562f97'; // ← REPLACE
+const CONTRACT_ADDRESS = '0x2E62eB18EDC34E4f1461e341Bb8d9f21EA35901B'; // ← REPLACE
 const BASE_CHAIN_ID    = 8453;
 const PLATFORM_WALLET  = '0xf2046406D6ccd578206E54207dA9143954F75989';
 
@@ -900,7 +905,6 @@ const GAME_ABI = [
   "function drawWinner(uint256 id) external",
   "function creatorReclaimNFT(uint256 id) external",
   "function claimNFT(uint256 id) external",
-  "function sweepOrphanedETH() external",
   "function getTicketPriceWei() external view returns (uint256)",
   "function getAllGames() external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
   "function getGame(uint256 id) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim))",
@@ -930,11 +934,11 @@ const ERC721_ABI = [
 ];
 
 // ─── State ────────────────────────────────────────────────────────
-let provider, signer, contract;
+let provider, signer, contract, readContract;
 let userAddress    = null;
 let allGames       = [];
 let currentGameId  = null;
-let ticketPriceWei = ethers.BigNumber.from(0);
+let ticketPriceWei = 0n;
 let selectedDuration = 86400;
 let selectedNFT    = null; // { contract, tokenId, image, name }
 let openSeaApiKey  = null;
@@ -976,27 +980,30 @@ async function connectWallet(){
   if(!window.ethereum){notify('Please install MetaMask','error');return;}
   try {
     await window.ethereum.request({method:'eth_requestAccounts'});
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    provider = new ethers.BrowserProvider(window.ethereum);
     const net = await provider.getNetwork();
     if(net.chainId !== BASE_CHAIN_ID){
       try {
         await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16)}]});
-        provider = new ethers.providers.Web3Provider(window.ethereum);
+        provider = new ethers.BrowserProvider(window.ethereum);
       } catch(sw){
         if(sw.code===4902){
           await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16),chainName:'Base',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://mainnet.base.org'],blockExplorerUrls:['https://basescan.org']}]});
-          provider = new ethers.providers.Web3Provider(window.ethereum);
+          provider = new ethers.BrowserProvider(window.ethereum);
         } else { notify('Please switch to Base network','error');return; }
       }
     }
-    signer = provider.getSigner();
+    signer = await provider.getSigner();
     userAddress = await signer.getAddress();
     if(CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE'){
       contract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, signer);
     }
     const btn = document.getElementById('connectBtn');
-    btn.textContent = userAddress.slice(0,6)+'...'+userAddress.slice(-4);
-    btn.classList.add('connected');
+    if(btn){
+      btn.textContent=userAddress.slice(0,6)+'...'+userAddress.slice(-4);
+      btn.classList.add('connected');
+      btn.style.display='';
+    }
     notify('Wallet connected · Base Mainnet','success');
     await checkPendingPayout();
     document.getElementById('yourGamesSection').style.display='block';
@@ -1015,6 +1022,15 @@ async function init(){
     if(r.ok){ const d=await r.json(); openSeaApiKey=Array.isArray(d.apiKeys?.opensea)?d.apiKeys.opensea[0]:d.apiKeys?.opensea; }
   } catch(e){}
 
+  // Create a read-only provider so games load for everyone (no wallet required).
+  // Use the Alchemy URL which has correct CORS headers on localhost.
+  try {
+    const _roRpc = window.BU_CONFIG?.activeNetwork?.rpcUrl
+                   || 'https://base-mainnet.g.alchemy.com/v2/zRlDmWXD-OkVUdXuiY8sBppRtbWt9FDx';
+    const _roProv = new ethers.JsonRpcProvider(_roRpc, { chainId: 8453, name: 'base' });
+    readContract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, _roProv);
+  } catch(e){ console.warn('[game] read-only contract init failed', e.message); }
+
   if(window.ethereum){
     const accounts = await window.ethereum.request({method:'eth_accounts'}).catch(()=>[]);
     if(accounts.length>0) await connectWallet();
@@ -1032,18 +1048,19 @@ async function init(){
 
 // ─── Load All Games ───────────────────────────────────────────────
 async function loadAllGames(){
-  if(!contract) return;
+  const _c = contract || readContract;
+  if(!_c) return;
   try {
-    const raw = await contract.getAllGames();
+    const raw = await _c.getAllGames();
     allGames = raw.map((g,i)=>({
       id            : i,
       creator       : g.creator,
       nftContract   : g.nftContract,
       tokenId       : g.tokenId.toString(),
-      endTime       : g.endTime.toNumber(),
-      assetValueUSD : g.assetValueUSD.toNumber(),
-      totalETH      : ethers.utils.formatEther(g.totalETH),
-      ticketCount   : g.ticketCount.toNumber(),
+      endTime       : Number(g.endTime),
+      assetValueUSD : Number(g.assetValueUSD),
+      totalETH      : ethers.formatEther(g.totalETH),
+      ticketCount   : Number(g.ticketCount),
       winner        : g.winner,
       active        : g.active,
       drawn         : g.drawn,
@@ -1054,14 +1071,14 @@ async function loadAllGames(){
 
     await enrichWithImages(allGames);
 
-    const completed = await contract.totalGamesCompleted();
-    const volume    = await contract.totalETHVolume();
+    const completed = await _c.totalGamesCompleted();
+    const volume    = await _c.totalETHVolume();
     const active    = allGames.filter(g=>g.active&&!g.drawn&&Date.now()/1000<g.endTime).length;
     document.getElementById('statActive').textContent    = active;
     document.getElementById('statCompleted').textContent = completed.toString();
-    document.getElementById('statVolume').textContent    = parseFloat(ethers.utils.formatEther(volume)).toFixed(3)+' ETH';
+    document.getElementById('statVolume').textContent    = parseFloat(ethers.formatEther(volume)).toFixed(3)+' ETH';
 
-    ticketPriceWei = await contract.getTicketPriceWei();
+    ticketPriceWei = await _c.getTicketPriceWei();
 
     renderActiveGames();
     renderExpiredGames();
@@ -1114,7 +1131,7 @@ function renderYourGames(){
     if(!contract||!userAddress)return;
     try {
       const t=await contract.walletTickets(g.id,userAddress);
-      g._myTickets=t.toNumber();
+      g._myTickets=Number(t);
       if(g._myTickets>0){
         const card=document.getElementById(`card-${g.id}`);
         if(card)card.classList.add('your-game');
@@ -1161,7 +1178,7 @@ function gameCardHTML(g,isExpired){
       ${isExpired&&g.drawn?`
         <div class="winner-badge" onclick="event.stopPropagation();showWinnerRevealById(${g.id})">
           <span>Winner Announced</span>
-          <p>${g.winner&&g.winner!==ethers.constants.AddressZero?g.winner.slice(0,6)+'...'+g.winner.slice(-4):'-'}</p>
+          <p>${g.winner&&g.winner!==ethers.ZeroAddress?g.winner.slice(0,6)+'...'+g.winner.slice(-4):'-'}</p>
         </div>`:''}
       ${isExpired&&!g.drawn&&g.ticketCount>0?`
         <div class="winner-badge" onclick="event.stopPropagation();openGameDetail(${g.id})">
@@ -1199,7 +1216,7 @@ function gameCardHTML(g,isExpired){
 
 // ─── Hall of Winners ──────────────────────────────────────────────
 function renderHallOfWinners(){
-  const won=allGames.filter(g=>g.drawn&&g.winner&&g.winner!==ethers.constants.AddressZero);
+  const won=allGames.filter(g=>g.drawn&&g.winner&&g.winner!==ethers.ZeroAddress);
   won.sort((a,b)=>b.endTime-a.endTime);
   const container=document.getElementById('hallGrid');
   if(!won.length){container.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="skull">🏆</div><p>First winner will appear here</p></div>`;return;}
@@ -1246,7 +1263,7 @@ async function openGameDetail(id){
   } else timerEl.textContent='Game Ended';
 
   let myTickets=0;
-  if(contract&&userAddress){try{myTickets=(await contract.walletTickets(id,userAddress)).toNumber();}catch(e){}}
+  if(contract&&userAddress){try{myTickets=Number(await contract.walletTickets(id,userAddress));}catch(e){}}
   document.getElementById('modalYourTickets').textContent=myTickets;
   document.getElementById('modalOdds').textContent=g.ticketCount>0&&myTickets>0?((myTickets/g.ticketCount)*100).toFixed(2)+'%':'-';
 
@@ -1291,9 +1308,9 @@ async function loadParticipants(id){
 
 function updateCostDisplay(){
   const qty=getTicketQty();
-  if(ticketPriceWei.gt(0)){
-    const total=ticketPriceWei.mul(qty);
-    document.getElementById('costEth').textContent=parseFloat(ethers.utils.formatEther(total)).toFixed(6)+' ETH';
+  if(ticketPriceWei > 0n){
+    const total=ticketPriceWei * BigInt(qty);
+    document.getElementById('costEth').textContent=parseFloat(ethers.formatEther(total)).toFixed(6)+' ETH';
     document.getElementById('costUsd').textContent=(qty*1).toFixed(2);
   } else {
     document.getElementById('costEth').textContent='~'+qty+' × $1 in ETH';
@@ -1312,8 +1329,8 @@ async function doBuyTickets(){
   try {
     const price=await contract.getTicketPriceWei();
     ticketPriceWei=price;
-    const totalCost=price.mul(qty);
-    const withBuffer=totalCost.mul(101).div(100);
+    const totalCost=price * BigInt(qty);
+    const withBuffer=totalCost * 101n / 100n;
     const tx=await contract.buyTickets(currentGameId,qty,{value:withBuffer});
     notify('Transaction submitted...','info');
     await tx.wait();
@@ -1336,7 +1353,7 @@ async function doDrawWinner(){
     const tx=await contract.drawWinner(currentGameId);
     notify('Drawing winner on-chain...','info');
     const receipt=await tx.wait();
-    const iface=new ethers.utils.Interface(GAME_ABI);
+    const iface=new ethers.Interface(GAME_ABI);
     let winnerAddr=null;
     for(const log of receipt.logs){try{const p=iface.parseLog(log);if(p.name==='WinnerDrawn'){winnerAddr=p.args.winner;break;}}catch(e){}}
     closeModal('gameModal');
@@ -1377,9 +1394,9 @@ async function checkPendingPayout(){
   try {
     const fp=await contract.failedCreatorPayouts(userAddress);
     // fp.amount is the failed ETH that the owner can recover for this address
-    if(fp.amount && fp.amount.gt(0)){
+    if(fp.amount && fp.amount > 0n){
       document.getElementById('withdrawBanner').style.display='flex';
-      document.getElementById('pendingAmount').textContent=parseFloat(ethers.utils.formatEther(fp.amount)).toFixed(6)+' ETH';
+      document.getElementById('pendingAmount').textContent=parseFloat(ethers.formatEther(fp.amount)).toFixed(6)+' ETH';
     }
   } catch(e){}
 }
@@ -1587,7 +1604,7 @@ async function doCreateGame(){
   const assetVal   =parseFloat(document.getElementById('assetValue').value||0);
   const desc       =document.getElementById('gameDesc').value.trim();
 
-  if(!nftContract||!ethers.utils.isAddress(nftContract)){notify('Enter a valid NFT contract address','error');return;}
+  if(!nftContract||!ethers.isAddress(nftContract)){notify('Enter a valid NFT contract address','error');return;}
   if(!tokenId||isNaN(parseInt(tokenId))){notify('Enter a valid token ID','error');return;}
   if(assetVal<1){notify('Minimum asset value is $1 USD','error');return;}
   if(Math.round(assetVal*100)<100){notify('Minimum asset value is $1 USD','error');return;}
@@ -1603,7 +1620,7 @@ async function doCreateGame(){
 
   try {
     const nftCon = new ethers.Contract(nftContract, ERC721_ABI, signer);
-    const tokenIdBN = ethers.BigNumber.from(tokenId);
+    const tokenIdBN = BigInt(tokenId);
 
     // Step 1: Approve the contract to pull the NFT.
     // The contract calls transferFrom(msg.sender, address(this), tokenId) inside createGame.
@@ -1663,7 +1680,7 @@ async function doCreateGame(){
     console.log('--- Final params being sent to contract ---');
     console.log('nftContract:', nftContract);
     console.log('tokenId string:', tokenId);
-    console.log('tokenId as BigNumber:', ethers.BigNumber.from(tokenId).toString());
+    console.log('tokenId as BigNumber:', BigInt(tokenId).toString());
     console.log('selectedDuration:', selectedDuration);
     console.log('assetValueUSD (cents):', assetValueUSD);
     console.log('desc:', desc);
@@ -1673,17 +1690,17 @@ async function doCreateGame(){
     try {
       let gasEstimate;
       try {
-        gasEstimate = await contract.estimateGas.createGame(
-          nftContract, ethers.BigNumber.from(tokenId), selectedDuration, assetValueUSD, desc
+        gasEstimate = await contract.createGame.estimateGas(
+          nftContract, BigInt(tokenId), selectedDuration, assetValueUSD, desc
         );
-        gasEstimate = gasEstimate.mul(140).div(100); // 40% buffer
+        gasEstimate = gasEstimate * 140n / 100n; // 40% buffer
         console.log('Gas estimate (with buffer):', gasEstimate.toString());
       } catch(estErr) {
         console.error('Gas estimate failed:', estErr);
         const rawEst = estErr?.error?.data || estErr?.data?.data || estErr?.data || '';
         let estMsg = estErr?.reason || estErr?.error?.message || estErr?.message || 'Contract will revert';
         if (typeof rawEst === 'string' && rawEst.startsWith('0x08c379a0')) {
-          try { const d = ethers.utils.defaultAbiCoder.decode(['string'],'0x'+rawEst.slice(10)); estMsg=d[0]; } catch(e){}
+          try { const d = ethers.AbiCoder.defaultAbiCoder().decode(['string'],'0x'+rawEst.slice(10)); estMsg=d[0]; } catch(e){}
         }
         if (typeof rawEst === 'string' && rawEst.includes('e1f1d02e')) estMsg = 'Collection not allowed by contract';
         notify('Transaction will fail: ' + estMsg.substring(0,160), 'error');
@@ -1692,7 +1709,7 @@ async function doCreateGame(){
         document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
         return;
       }
-      tx = await contract.createGame(nftContract,ethers.BigNumber.from(tokenId),selectedDuration,assetValueUSD,desc,{gasLimit:gasEstimate});
+      tx = await contract.createGame(nftContract,BigInt(tokenId),selectedDuration,assetValueUSD,desc,{gasLimit:gasEstimate});
     } catch(txErr) {
       console.error('=== RAW TX ERROR ===', txErr);
       console.error('code:', txErr?.code);
@@ -1734,7 +1751,7 @@ async function doCreateGame(){
         // Try decoding as revert string (starts with 0x08c379a0)
         if (raw.startsWith('0x08c379a0')) {
           try {
-            const decoded = ethers.utils.defaultAbiCoder.decode(['string'], '0x' + raw.slice(10));
+            const decoded = ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + raw.slice(10));
             msg = decoded[0];
           } catch(e) {}
         }
@@ -1890,7 +1907,7 @@ function buildLiveFeed(){
     }
 
     // Winner announced
-    if(g.drawn && g.winner && g.winner !== ethers.constants.AddressZero){
+    if(g.drawn && g.winner && g.winner !== ethers.ZeroAddress){
       const pool = parseFloat(g.totalETH||0).toFixed(4);
       events.push({ type:'winner', name, winner: g.winner, pool });
     }
@@ -1928,7 +1945,7 @@ function renderDemoGames(){
       tokenId:'421',description:'Rare 1/1 custom warrior',ticketCount:47,
       totalETH:'0.0141',assetValueUSD:25000,
       endTime:Math.floor(Date.now()/1000)+3600*8,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
     },
     {
       id:1,creator:'0x0000000000000000000000000000000000000000',
@@ -1936,7 +1953,7 @@ function renderDemoGames(){
       tokenId:'69',description:'OG genesis undead',ticketCount:183,
       totalETH:'0.0549',assetValueUSD:100000,
       endTime:Math.floor(Date.now()/1000)+3600*2,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
     },
     {
       id:2,creator:'0x0000000000000000000000000000000000000000',
@@ -1944,7 +1961,7 @@ function renderDemoGames(){
       tokenId:'1337',description:'Legendary skull knight',ticketCount:22,
       totalETH:'0.0066',assetValueUSD:5000,
       endTime:Math.floor(Date.now()/1000)+86400*3,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.constants.AddressZero
+      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
     },
   ];
   allGames=demoGames;
@@ -1973,15 +1990,50 @@ window.addEventListener('DOMContentLoaded',()=>{
   const gameId=params.get('id');
   if(gameId!==null)setTimeout(()=>openGameDetail(parseInt(gameId)),1500);
 
-  document.getElementById('mobileNavBtn').addEventListener('click',()=>{
-    const nl=document.querySelector('.nav-links');
-    const isOpen=nl.style.display==='flex';
-    nl.style.cssText=isOpen?'':
-      'display:flex;position:fixed;top:70px;left:0;right:0;flex-direction:column;background:rgba(3,3,3,.98);backdrop-filter:blur(20px);padding:24px;gap:16px;border-bottom:1px solid var(--border);z-index:99';
-  });
+  // Mobile nav is handled by BUUI.bindMobileNav()
 
   init();
 });
+</script>
+<script src="./config.js"></script>
+<script src="./js/web3.js"></script>
+<script src="./js/ui.js"></script>
+
+<script>
+// New nav init (injected by patch.py)
+(function initNewNav() {
+  if (typeof window.BUUI === 'undefined') return;
+  window.BUUI.renderNavSocials();
+  window.BUUI.renderNetworkPill();
+  window.BUUI.bindMobileNav();
+  window.BU && window.BU.onAccountChange && window.BU.onAccountChange(async (addr) => {
+    // Refresh nav wallet button
+    window.BUUI && window.BUUI.renderWalletSlot();
+    if (addr) {
+      // Sync BU's connected signer into game.html's local state so
+      // buyTickets / createGame / renderYourGames all work.
+      signer      = window.BU.getSigner();
+      userAddress = addr;
+      if (typeof CONTRACT_ADDRESS !== 'undefined' &&
+          CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE') {
+        contract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, signer);
+      }
+      // Reload games so "Your Games" section appears
+      await loadAllGames();
+    } else {
+      signer = null; userAddress = null; contract = null;
+    }
+  });
+  // Wallet slot
+  if (typeof window.BU !== 'undefined' && window.BU.tryEagerConnect) {
+    Promise.resolve()
+      .then(() => window.BU.loadABIs && window.BU.loadABIs())
+      .then(() => window.BU.upgradeProviderFromKeys && window.BU.upgradeProviderFromKeys())
+      .then(() => window.BU.tryEagerConnect())
+      .then(() => window.BUUI.renderWalletSlot())
+      .catch(() => window.BUUI.renderWalletSlot());
+  }
+})();
 </script>
 </body>
 </html>

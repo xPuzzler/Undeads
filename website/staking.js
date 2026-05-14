@@ -91,7 +91,7 @@ function updateStat(id, newText) {
   // Silent if unchanged
   if (prev === newText) return;
 
-  // Value changed — update text then vibrate + glow
+  // Value changed, update text then vibrate + glow
   _countUpEl(el, newText);
   if (card) {
     card.classList.remove('stat-changed');
@@ -201,7 +201,7 @@ function tickUnlockCountdown() {
   const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
 
   if (remainingSec <= 0) {
-    notice.innerHTML = `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked — unstake anytime</div>`;
+    notice.innerHTML = `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked, unstake anytime</div>`;
     stopUnlockCountdown();
     unlockEndTime = 0;
     if (stakingContract && userAddress) refreshStakedNFTs();
@@ -409,7 +409,37 @@ async function refreshEverything () {
   ]);
 }
 
-// Public stats — works without wallet
+// Fetches all unique staker addresses from Basescan logs (bypasses Alchemy block range limit)
+async function fetchStakedAddressesFromLogs() {
+  const STAKED_TOPIC = '0x134b166c6094cc1ccbf1e3353ce5c3cd9fd29869051bdb999895854d77cc5ef6';
+  try {
+    const url = `https://api.basescan.org/api?module=logs&action=getLogs` +
+      `&address=${NETWORK.STAKING_ADDRESS}` +
+      `&topic0=${STAKED_TOPIC}` +
+      `&fromBlock=0&toBlock=latest&offset=1000&page=1`;
+    const r = await fetch(url);
+    const d = await r.json();
+    console.info('[staking] Basescan response status:', d.status, '| message:', d.message, '| result type:', typeof d.result, '| contract:', NETWORK.STAKING_ADDRESS);
+    if (!Array.isArray(d.result)) {
+      console.warn('[staking] Basescan returned no log array:', d.message || d.result);
+      return [];
+    }
+    console.info('[staking] Basescan found', d.result.length, 'Staked log entries');
+    const seen = new Set();
+    d.result.forEach(log => {
+      if (log.topics?.[1]) {
+        const addr = '0x' + log.topics[1].slice(26);
+        seen.add(addr.toLowerCase());
+      }
+    });
+    return [...seen];
+  } catch(e) {
+    console.warn('[staking] Basescan log fetch failed:', e.message);
+    return [];
+  }
+}
+
+// Public stats, works without wallet
 async function refreshPublicStats () {
   try {
     const p = (window.ethereum)
@@ -428,16 +458,20 @@ async function refreshPublicStats () {
     const poolEth = parseFloat(ethers.formatEther(received - distributed));
     updateStat('totalRewardPool', poolEth.toFixed(4) + ' Ξ');
 
-    // Total stakers — needs eth_getLogs; works with MetaMask, may fail on public RPC
+    // Total stakers, uses Basescan API to avoid Alchemy free-tier block range limit
     try {
-      const filter = stakingRead.filters.Staked();
-      const events = await stakingRead.queryFilter(filter);
-      const uniqueAddresses = [...new Set(events.map(e => e.args[0].toLowerCase()))];
-
-      const balances = await Promise.all(
-        uniqueAddresses.map(addr => stakingRead.stakedBalance(addr).catch(() => 0n))
-      );
-
+      const uniqueAddresses = await fetchStakedAddressesFromLogs();
+      if (uniqueAddresses.length === 0) throw new Error('no addresses');
+      const CHUNK = 20;
+      const balances = [];
+      for (let i = 0; i < uniqueAddresses.length; i += CHUNK) {
+        const slice = uniqueAddresses.slice(i, i + CHUNK);
+        const results = await Promise.allSettled(
+          slice.map(addr => stakingRead.stakedBalance(addr).catch(() => 0n))
+        );
+        results.forEach(r => balances.push(r.status === 'fulfilled' ? r.value : 0n));
+        if (i + CHUNK < uniqueAddresses.length) await new Promise(r => setTimeout(r, 80));
+      }
       const activeCount = balances.filter(b => BigInt(b) > 0n).length;
       updateStat('totalStakers', activeCount.toLocaleString());
     } catch (e) {
@@ -449,7 +483,7 @@ async function refreshPublicStats () {
   }
 }
 
-// Personal stats — only after wallet connect
+// Personal stats, only after wallet connect
 async function refreshStats () {
   try {
     const [bal, staked, total, earned] = await Promise.all([
@@ -497,7 +531,7 @@ async function refreshRewards () {
     const rewardsUsdEl = document.getElementById('rewardsUsd');
     if (rewardsUsdEl) rewardsUsdEl.textContent = (eth * ethPriceUsd).toFixed(2);
 
-    // claimableEth lives in a stat-card — use updateStat
+    // claimableEth lives in a stat-card, use updateStat
     updateStat('claimableEth', eth.toFixed(6));
 
     const claimBtn = document.getElementById('claimBtn');
@@ -573,9 +607,9 @@ async function enumerateWalletNFTs() {
       } while (pageKey && pageNum < MAX_PAGES);
 
       if (all.length > 0) return all;
-      console.info('[staking] Alchemy returned 0 results — falling through to chain scan');
+      console.info('[staking] Alchemy returned 0 results, falling through to chain scan');
     } catch (e) {
-      console.info('[staking] Alchemy unavailable — falling through:', e.message);
+      console.info('[staking] Alchemy unavailable, falling through:', e.message);
     }
   }
 
@@ -591,10 +625,10 @@ async function enumerateWalletNFTs() {
           image: n.image_url || n.display_image_url || '',
         }));
         if (arr.length > 0) return arr;
-        console.info('[staking] OpenSea returned 0 results — falling through to chain scan');
+        console.info('[staking] OpenSea returned 0 results, falling through to chain scan');
       }
     } catch (e) {
-      console.info('[staking] OpenSea unavailable — falling through:', e.message);
+      console.info('[staking] OpenSea unavailable, falling through:', e.message);
     }
   }
 
@@ -652,7 +686,7 @@ async function refreshWalletNFTs() {
     }
 
     if (apiResult !== null) {
-      console.info(`[staking] API returned ${apiResult.length} but chain says ${bal} — falling through to on-chain scan`);
+      console.info(`[staking] API returned ${apiResult.length} but chain says ${bal}, falling through to on-chain scan`);
     }
 
     grid.innerHTML = '';
@@ -686,7 +720,7 @@ async function refreshWalletNFTs() {
         }
       }
     } else {
-      console.info('Contract is not ERC721Enumerable — using ownerOf scan.');
+      console.info('Contract is not ERC721Enumerable, using ownerOf scan.');
       let totalSupply;
       try { totalSupply = Number(await nftReadContract.totalSupply()); }
       catch { totalSupply = 6666; }
@@ -750,7 +784,7 @@ async function refreshWalletNFTs() {
       if (firstSuccess) console.info(`[staking] First success: token #${firstSuccess.id} → ${firstSuccess.owner}`);
       if (firstReject)  console.info(`[staking] First rejection: token #${firstReject.id} → ${firstReject.reason}`);
       if (foundCount === 0 && rejectedCount === scanned) {
-        console.error(`[staking] ALL ${scanned} ownerOf calls failed — RPC is rate-limiting or unreachable`);
+        console.error(`[staking] ALL ${scanned} ownerOf calls failed, RPC is rate-limiting or unreachable`);
       } else if (foundCount === 0 && rejectedCount < scanned) {
         console.warn(`[staking] Scan succeeded but found 0 matches. Connected: ${userLower}. Sample owner: ${firstSuccess?.owner?.toLowerCase()}`);
       }
@@ -791,7 +825,7 @@ async function refreshStakedNFTs () {
       const notice = document.getElementById('lockNotice');
       if (notice) {
         notice.innerHTML = stakedNFTs.length > 0
-          ? `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked — unstake anytime</div>`
+          ? `<div class="timer-display unlocked"><i class="fas fa-unlock"></i> Unlocked, unstake anytime</div>`
           : '';
       }
     }
@@ -1012,7 +1046,7 @@ async function doClaim () {
 }
 
 // ─── LEADERBOARD ─────────────────────────────────────────────
-let _lbCache = null;          // { rows, ts } — avoid hammering RPC
+let _lbCache = null;          // { rows, ts }, avoid hammering RPC
 let _lbFetching = false;
 
 async function refreshLeaderboard(force = false) {
@@ -1039,22 +1073,14 @@ async function refreshLeaderboard(force = false) {
     const stakingRead = new ethers.Contract(NETWORK.STAKING_ADDRESS, STAKING_ABI, p);
 
     // 1. Collect all unique addresses that ever staked
-    let uniqueAddrs = [];
-    try {
-      const events = await stakingRead.queryFilter(stakingRead.filters.Staked());
-      const seen = new Set();
-      for (const e of events) {
-        const addr = (e.args?.[0] || '').toLowerCase();
-        if (addr && !seen.has(addr)) { seen.add(addr); uniqueAddrs.push(addr); }
-      }
-    } catch (e) {
-      console.warn('[leaderboard] queryFilter failed:', e.message);
-      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>Could not load event logs.<br><small style="opacity:.6">RPC may not support eth_getLogs.</small></p></div>`;
+    const uniqueAddrs = await fetchStakedAddressesFromLogs();
+    if (uniqueAddrs.length === 0) {
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No stakers yet, be the first!</p></div>`;
       return;
     }
 
     if (uniqueAddrs.length === 0) {
-      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No stakers yet — be the first!</p></div>`;
+      table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No stakers yet, be the first!</p></div>`;
       return;
     }
 
@@ -1190,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('preLaunchBanner');
     if (banner) banner.style.display = 'block';
     document.body.classList.add('staking-locked');
-    console.info('[staking] Pre-launch mode — staking actions disabled');
+    console.info('[staking] Pre-launch mode, staking actions disabled');
   }
 
   document.getElementById('prelaunchModalClose')?.addEventListener('click', hidePreLaunchModal);
