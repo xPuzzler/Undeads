@@ -185,13 +185,22 @@ bindStakeActions();
 
 // ─── Leaderboard + Activity ──────────────────────────────────────────────
 let _lbCache = null, _lbFetching = false;
-const LB_LS_KEY        = 'bu_lb_cache_v1';
+// Bumped to v2 to invalidate any v1 caches that may have been polluted by
+// previous wide-fan-out scans hitting Netlify proxy 500s (which silently
+// dropped tokens and persisted an undercount).
+const LB_LS_KEY        = 'bu_lb_cache_v2';
+const LB_LS_KEY_OLD    = 'bu_lb_cache_v1';
 const LB_REFRESH_MS    = 3_600_000;   // 1 hour between auto-refreshes
 const LB_RENDER_TTL_MS = 60_000;      // re-use in-memory cache for this long
 
 function _lbLsLoad() {
-  try { const v = localStorage.getItem(LB_LS_KEY); return v ? JSON.parse(v) : null; }
-  catch { return null; }
+  try {
+    // Sweep the previous-version key on every load so stale undercounts
+    // can't bleed back in.
+    try { localStorage.removeItem(LB_LS_KEY_OLD); } catch {}
+    const v = localStorage.getItem(LB_LS_KEY);
+    return v ? JSON.parse(v) : null;
+  } catch { return null; }
 }
 function _lbLsSave(cache) {
   try { localStorage.setItem(LB_LS_KEY, JSON.stringify(cache)); }
@@ -228,29 +237,119 @@ async function initLBAndActivity() {
   }
 }
 
-// Enumerate active stakers by scanning the on-chain tokenStaker(id) mapping.
-// Why this approach: as of late 2025, free-tier Etherscan V2 dropped Base
-// coverage ("Free API access is not supported for this chain") and free-tier
-// Alchemy caps eth_getLogs at a 10-block range. Both legacy log paths
-// (Basescan v1, Alchemy direct eth_getLogs) now fail on free plans, so the
-// leaderboard is rebuilt from contract state instead of from event history.
-// tokenStaker(uint256) returns the current staker of each token id
-// (address(0) when unstaked). A simple eth_call is cheap and unrestricted on
-// every plan tier.
+// Enumerate active stakers via the same strategy as the verified Python
+// collection script:
+//   1. Alchemy NFT API → getNFTsForOwner(STAKING_CONTRACT) → list of token IDs
+//      currently held by the staking contract. Cheap, paginated, authoritative.
+//   2. For each token id, eth_call tokenStaker(id) to find the depositing
+//      wallet. Batched at 10 (matching the Python script) to stay under the
+//      Netlify rpc proxy's concurrent-call limit; failures are retried
+//      single-shot in a second pass.
+//
+// Why not scan all 6666 ids: every failed eth_call is a "not staked" false
+// negative, so wide parallel fan-out against a rate-limited RPC silently
+// undercounts stakers. Starting from the known-staked list means we know
+// exactly how many tokens we must resolve, can verify completeness, and
+// avoid wasting 5000+ calls on unstaked tokens.
 async function _fetchStakerBalancesViaTokenStaker() {
   const provider = window.BU.getReadProvider();
   const staking  = new ethers.Contract(window.BU_CONFIG.contracts.staking, window.BU.ABI.staking, provider);
-  const totalSupply = window.BU_CONFIG?.collection?.totalSupply || 6666;
 
-  // Short-circuit when nothing is staked. Saves ~133 batch round-trips.
+  // Step 1: get the list of token IDs the staking contract currently holds.
+  let stakedIds = [];
+  try {
+    if (window.BUData?.getStakingContractTokens) {
+      stakedIds = await window.BUData.getStakingContractTokens();
+    }
+  } catch(e) { console.warn('[lb] NFT-API enumeration failed:', e.message); }
+
+  // Fallback: if the NFT API path yielded nothing (no Alchemy key, network
+  // failure, etc.), scan the full tokenStaker mapping. Slower and lossy
+  // under heavy 500s, but better than rendering nothing on a fresh install.
+  if (stakedIds.length === 0) {
+    return await _fetchStakerBalancesFullScan(staking);
+  }
+
+  // Step 2: resolve tokenStaker(id) for each staked token, batched at 10.
+  const ZERO    = '0x0000000000000000000000000000000000000000';
+  const BATCH   = 10;          // small fan-out to be kind to the rpc proxy
+  const GAP_MS  = 120;         // pause between batches
+  const counts  = new Map();   // addr lowercase → count
+  const failed  = [];          // tokenIds that errored in pass 1
+  let confirmedUnstaked = 0;   // tokenStaker returned zero (race-window unstake)
+
+  const resolveOne = async (id) => {
+    try {
+      const a = await staking.tokenStaker(id);
+      const al = (a || '').toLowerCase();
+      return (al && al !== ZERO) ? al : null;
+    } catch { return undefined; } // undefined = error, null = unstaked
+  };
+
+  // Pass 1: batched.
+  for (let i = 0; i < stakedIds.length; i += BATCH) {
+    const slice = stakedIds.slice(i, i + BATCH);
+    const res   = await Promise.all(slice.map(resolveOne));
+    res.forEach((r, k) => {
+      const tid = slice[k];
+      if (r === undefined) failed.push(tid);
+      else if (r === null) confirmedUnstaked++;        // token was unstaked between API call and now
+      else counts.set(r, (counts.get(r) || 0) + 1);
+    });
+    if (i + BATCH < stakedIds.length) await new Promise(r => setTimeout(r, GAP_MS));
+  }
+
+  // Pass 2: retry each failure with backoff. This is what the Python script
+  // does and it's the difference between "leaderboard has 380 NFTs" and
+  // "leaderboard has the real number".
+  if (failed.length > 0) {
+    console.info(`[lb] pass 2: retrying ${failed.length} failed token(s) individually`);
+    const stillFailed = [];
+    for (const tid of failed) {
+      let outcome = 'unresolved';
+      let staker  = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 250 * Math.pow(2, attempt)));
+        const r = await resolveOne(tid);
+        if (r === null) { outcome = 'unstaked'; break; }
+        if (r) { outcome = 'staked'; staker = r; break; }
+        // r === undefined → another error, retry
+      }
+      if (outcome === 'staked') counts.set(staker, (counts.get(staker) || 0) + 1);
+      else if (outcome === 'unstaked') confirmedUnstaked++;
+      else stillFailed.push(tid);
+    }
+    if (stillFailed.length > 0) {
+      console.warn(`[lb] ${stillFailed.length} token(s) still unresolved after retries`);
+    }
+  }
+
+  const out = [];
+  for (const [addr, staked] of counts.entries()) out.push({ addr, staked });
+  // Annotate result. _resolved counts BOTH confirmed-staked AND
+  // confirmed-unstaked tokens — both are legitimate outcomes. Only RPC
+  // failures count against completeness.
+  const totalStakedSum = Array.from(counts.values()).reduce((s, v) => s + v, 0);
+  out._expected = stakedIds.length;
+  out._resolved = totalStakedSum + confirmedUnstaked;
+  return out;
+}
+
+// Last-resort fallback: scan tokenStaker(id) for id in 1..totalSupply.
+// Used only when the Alchemy NFT API is unavailable.
+async function _fetchStakerBalancesFullScan(staking) {
+  const totalSupply = window.BU_CONFIG?.collection?.totalSupply || 6666;
   let totalStaked = 0;
   try { totalStaked = Number(await staking.totalStaked()); } catch {}
-  if (totalStaked === 0) return [];
+  if (totalStaked === 0) {
+    const out = []; out._expected = 0; out._resolved = 0; return out;
+  }
 
-  const counts = new Map();      // addr (lowercase) → active count
+  const counts = new Map();
   const ZERO   = '0x0000000000000000000000000000000000000000';
-  const BATCH  = 50;             // parallel eth_call fan-out
-  const GAP_MS = 60;             // breathing room for free-tier RPCs
+  const BATCH  = 10;
+  const GAP_MS = 120;
+  let resolvedCount = 0;
 
   for (let i = 1; i <= totalSupply; i += BATCH) {
     const ids = [];
@@ -261,15 +360,16 @@ async function _fetchStakerBalancesViaTokenStaker() {
       const a = (r.value || '').toLowerCase();
       if (!a || a === ZERO) continue;
       counts.set(a, (counts.get(a) || 0) + 1);
+      resolvedCount++;
     }
-    // Early exit: once we have totalStaked tokens accounted for, stop scanning.
-    let accounted = 0; for (const v of counts.values()) accounted += v;
-    if (accounted >= totalStaked) break;
+    if (resolvedCount >= totalStaked) break;
     if (i + BATCH <= totalSupply) await new Promise(r => setTimeout(r, GAP_MS));
   }
 
   const out = [];
   for (const [addr, staked] of counts.entries()) out.push({ addr, staked });
+  out._expected = totalStaked;
+  out._resolved = resolvedCount;
   return out;
 }
 
@@ -295,8 +395,28 @@ async function refreshLeaderboard(force = false) {
   try {
     const balances = await _fetchStakerBalancesViaTokenStaker();
     const active = balances.filter(b => b.staked > 0).sort((a, b) => b.staked - a.staked);
+    const newTotalStaked = active.reduce((s, b) => s + b.staked, 0);
+    const cachedTotalStaked = _lbCache?.rows
+      ? _lbCache.rows.reduce((s, r) => s + (r.staked || 0), 0)
+      : 0;
+
+    // Completeness check. The fetcher attaches _expected / _resolved when it
+    // can. If the scan resolved fewer tokens than expected AND the cache we
+    // already have is at least as large, keep the cache. This is what kept
+    // happening: a partial scan would persist an undercount and overwrite a
+    // good prior scan, so each refresh degraded the leaderboard.
+    const expected = balances._expected || 0;
+    const resolved = balances._resolved || newTotalStaked;
+    const isCompleteScan = expected > 0 && resolved >= expected;
+    const isWorseThanCache = newTotalStaked < cachedTotalStaked;
+
     if (active.length === 0) {
-      // Only overwrite the table when we have nothing cached to show.
+      // Empty result from a complete scan is legitimate (nothing staked).
+      // Empty from an incomplete scan is suspect → keep cache if we have one.
+      if (!isCompleteScan && cachedTotalStaked > 0) {
+        console.warn('[leaderboard] incomplete scan returned 0 stakers, keeping cached', cachedTotalStaked, 'NFTs');
+        return;
+      }
       if (!hasVisibleRows) {
         table.innerHTML = `<div class="lb-empty"><div class="lb-skull">💀</div><p>No active stakers right now.</p></div>`;
       }
@@ -305,8 +425,18 @@ async function refreshLeaderboard(force = false) {
       return;
     }
 
-    const total = active.reduce((s, b) => s + b.staked, 0);
-    const rows  = active.map((b, i) => ({ rank: i+1, addr: b.addr, staked: b.staked, share: total > 0 ? (b.staked/total)*100 : 0 }));
+    if (!isCompleteScan && isWorseThanCache) {
+      // Partial result that would degrade the visible leaderboard. Skip the
+      // persist + re-render and keep showing the cached rows. The next
+      // refresh (forced or hourly) gets another chance.
+      console.warn('[leaderboard] partial scan (' + resolved + '/' + expected + ') would undercount; keeping cached', cachedTotalStaked, 'NFTs');
+      return;
+    }
+
+    const rows = active.map((b, i) => ({
+      rank: i+1, addr: b.addr, staked: b.staked,
+      share: newTotalStaked > 0 ? (b.staked/newTotalStaked)*100 : 0,
+    }));
     _lbCache = { rows, ts: Date.now() };
     _lbLsSave(_lbCache);
     _renderLeaderboard(rows);

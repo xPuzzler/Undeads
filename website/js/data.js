@@ -493,6 +493,61 @@ function clearOwnedCache(address) {
   else _ownedCache.clear();
 }
 
+// Enumerate every NFT currently held by the staking contract via Alchemy's
+// NFT API. This is the same approach as the Python collection script the
+// project owner verified works: a single paginated REST call returns the
+// authoritative list of staked token IDs, far cheaper than scanning all
+// 6666 token IDs via tokenStaker(id). Returns [] if the Alchemy key isn't
+// available; throws if pagination fails partway (callers must distinguish
+// "no NFT-API access" from "partial result" so they don't persist an
+// undercount as if it were complete).
+async function getStakingContractTokens() {
+  const STAKING_ADDR = window.BU_CONFIG.contracts.staking;
+  const NFT_ADDRESS  = window.BU_CONFIG.contracts.nft;
+  const alchemyHost  = window.BU_CONFIG.activeNetwork.alchemyHost
+                       || 'https://base-mainnet.g.alchemy.com';
+  const alchemyKey   = window.ALCHEMY_KEY;
+  if (typeof alchemyKey !== 'string' || alchemyKey.length === 0) return [];
+
+  const all = [];
+  let pageKey = null, pageNum = 0;
+  do {
+    const params = new URLSearchParams({
+      owner: STAKING_ADDR,
+      'contractAddresses[]': NFT_ADDRESS,
+      withMetadata: 'false',
+      pageSize: '100',
+    });
+    if (pageKey) params.set('pageKey', pageKey);
+    const url = `${alchemyHost}/nft/v3/${alchemyKey}/getNFTsForOwner?${params}`;
+    let r;
+    try { r = await fetch(url); }
+    catch (e) {
+      if (pageNum === 0) return [];           // page 1 failed → signal "no data"
+      throw new Error(`Alchemy NFT API failed mid-pagination on page ${pageNum+1}: ${e.message}`);
+    }
+    if (!r.ok) {
+      if (pageNum === 0) {                    // page 1 non-OK → signal "no data"
+        console.warn('[staked-tokens] Alchemy page 1 HTTP', r.status);
+        return [];
+      }
+      throw new Error(`Alchemy NFT API page ${pageNum+1} HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    (d.ownedNfts || []).forEach(n => {
+      const raw = String(n.tokenId);
+      const id  = raw.startsWith('0x') || raw.startsWith('0X')
+        ? parseInt(raw, 16)
+        : parseInt(raw, 10);
+      if (Number.isFinite(id) && id >= 0) all.push(id);
+    });
+    pageKey = d.pageKey || null;
+    pageNum++;
+    if (pageKey) await _sleep(150);
+  } while (pageKey && pageNum < 100);
+  return all;
+}
+
 async function getUserOwnedTokens(address) {
   if (!address) return [];
   const _key = address.toLowerCase();
@@ -614,7 +669,7 @@ window.BUData = {
   getPoolStats, getNFTSupply,
   initActivity, refreshActivity, hydrateActivityFromStorage,
   getLeaderboard, getActivity,
-  getUserState, getUserOwnedTokens, clearOwnedCache, calcPoolShare,
+  getUserState, getUserOwnedTokens, getStakingContractTokens, clearOwnedCache, calcPoolShare,
   isStakingApproved, approveStaking,
   stakeTokens, unstakeTokens, stakeAndClaim, claimRewards,
 };

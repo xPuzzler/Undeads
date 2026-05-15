@@ -3,2036 +3,429 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The $1 Game - Based Undeads</title>
-  <meta name="description" content="Any NFT. One dollar a ticket. One winner. Fully on-chain.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
-
+  <title>$1 Game — Based Undeads</title>
+  <meta name="description" content="Stake any NFT as a prize. Tickets cost $1 in ETH. The crypt picks a winner.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+  <meta property="og:title" content="$1 Game — Based Undeads">
+  <meta property="og:description" content="One dollar in. NFT out. Onchain raffles on Base.">
+  <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Creepster&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-   <link rel="stylesheet" href="styles.css">
-<script src="skulls.js" defer></script>
-
-  <style>
-    /* ── Cursor ── */
-    .cursor { width:20px;height:20px;border:1px solid rgba(255,255,255,0.5);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;will-change:transform;transition:width .2s,height .2s,border-color .2s,background .2s; }
-    .cursor-dot { width:4px;height:4px;background:var(--fg);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;will-change:transform; }
-    .cursor.hover { width:50px;height:50px;border-color:var(--accent);background:rgba(0,255,136,0.1); }
-
-    /* ── Constellation ── */
-    .noise { position:fixed;inset:0;pointer-events:none;z-index:1000; }
-    .noise::before,.noise::after { content:'';position:absolute;inset:0;
-      background-image:radial-gradient(1px 1px at 10% 20%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 30% 65%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 55% 30%,rgba(0,255,136,0.5),transparent),radial-gradient(1px 1px at 70% 75%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 85% 15%,rgba(255,255,255,0.4),transparent),radial-gradient(1.5px 1.5px at 20% 80%,rgba(0,255,136,0.4),transparent),radial-gradient(1px 1px at 45% 90%,rgba(0,255,136,0.3),transparent);
-      background-size:200px 200px;animation:twinkle 4s ease-in-out infinite; }
-    .noise::after { background-size:300px 300px;animation:twinkle 6s ease-in-out infinite reverse;opacity:0.7; }
-    @keyframes twinkle { 0%,100%{opacity:0.6}50%{opacity:1} }
-
-    .scroll-progress { position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--accent),#00cc6f);z-index:9999;transition:width .1s; }
-
-    /* ── Nav ── */
-    nav { position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;background:rgba(3,3,3,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border); }
-    .nav-logo { font-family:'Creepster',cursive;font-size:22px;color:var(--accent);text-decoration:none;letter-spacing:2px;text-shadow:0 0 20px rgba(0,255,136,0.5); }
-    .nav-links { display:flex;gap:24px;align-items:center; }
-    .nav-link { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);text-decoration:none;opacity:.6;transition:all .3s; }
-    .nav-link:hover,.nav-link.active { opacity:1;color:var(--accent); }
-    .nav-right { display:flex;gap:16px;align-items:center; }
-    .nav-social a { color:var(--fg);opacity:.6;transition:all .3s;font-size:18px;text-decoration:none; }
-    .nav-social a:hover { opacity:1;color:var(--accent); }
-    .connect-btn { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:10px 22px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:600;transition:all .3s; }
-    .connect-btn:hover { transform:scale(1.05);box-shadow:0 10px 30px var(--accent-glow); }
-    .connect-btn.connected { background:var(--glass);border:1px solid var(--glass-border);color:var(--fg);font-size:10px; }
-    .mobile-nav-btn { display:none;background:none;border:none;color:var(--fg);font-size:22px;cursor:none; }
-
-    /* ── Hero ── */
-    .hero { min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;padding:120px 40px 80px;text-align:center;overflow:hidden; }
-    .hero-bg { position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(0,255,136,0.07) 0%,transparent 65%);pointer-events:none; }
-    
-    @keyframes floatSkull { 0%{opacity:0;transform:translateY(0) rotate(0)} 20%{opacity:.15} 80%{opacity:.08} 100%{opacity:0;transform:translateY(-100vh) rotate(360deg)} }
-    .hero-badge { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);padding:8px 16px;border:1px solid rgba(0,255,136,0.3);border-radius:100px;margin-bottom:28px;display:inline-flex;align-items:center;gap:8px;opacity:0;animation:fadeUp 1s .2s forwards; }
-    .pulse-dot { width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pDot 2s infinite; }
-    @keyframes pDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
-    .hero-title { font-family:'Creepster',cursive;font-size:clamp(60px,14vw,180px);font-weight:400;line-height:.9;letter-spacing:.04em;text-shadow:0 0 80px rgba(0,255,136,0.25);margin-bottom:16px;opacity:0;animation:fadeUp 1s .3s forwards; }
-    .hero-title .green { color:var(--accent); }
-    .hero-subtitle { font-family:'Instrument Serif',serif;font-size:clamp(18px,3vw,28px);font-style:italic;color:var(--muted);margin-bottom:40px;opacity:0;animation:fadeUp 1s .5s forwards; }
-    .hero-stats { display:flex;gap:40px;opacity:0;animation:fadeUp 1s .7s forwards; }
-    .hero-stat { text-align:center; }
-    .hero-stat-num { font-family:'Instrument Serif',serif;font-size:32px;color:var(--accent); }
-    .hero-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:2px; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-
-    /* ── Live Feed Bar ── */
-    .live-bar { background:rgba(0,255,136,0.06);border-top:1px solid rgba(0,255,136,0.1);border-bottom:1px solid rgba(0,255,136,0.1);padding:10px 0;overflow:hidden;position:relative; }
-    .live-bar-inner { display:flex;gap:60px;width:max-content;animation:tickerScroll 40s linear infinite; }
-    .live-bar-inner:hover { animation-play-state:paused; }
-    @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-    .live-event { font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:8px; }
-    .live-event .dot { width:6px;height:6px;background:var(--accent);border-radius:50%;flex-shrink:0; }
-    .live-event .hl { color:var(--accent); }
-
-    /* ── Section Layout ── */
-    .section { padding:80px 40px;max-width:1400px;margin:0 auto; }
-    .section-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:12px; }
-    .section-label::before { content:'';width:30px;height:1px;background:var(--accent); }
-    .section-title { font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,48px);font-weight:400;line-height:1.1;letter-spacing:-.02em;margin-bottom:8px; }
-    .section-title em { font-style:italic;color:var(--accent); }
-    .section-sub { font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:40px;letter-spacing:.03em; }
-
-    /* ── Tabs ── */
-    .tab-bar { display:flex;gap:4px;background:var(--glass);border:1px solid var(--glass-border);border-radius:100px;padding:4px;margin-bottom:32px;width:fit-content; }
-    .tab-btn { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 20px;border:none;background:none;color:var(--muted);border-radius:100px;cursor:none;transition:all .3s; }
-    .tab-btn.active { background:var(--fg);color:var(--bg);font-weight:600; }
-    .tab-btn:hover:not(.active) { color:var(--fg); }
-    .tab-content { display:none; }
-    .tab-content.active { display:block; }
-
-    /* ── Game Cards Grid ── */
-    .games-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px; }
-
-    /* Game Card */
-    .game-card { background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;transition:all .4s cubic-bezier(.4,0,.2,1);cursor:none;position:relative; }
-    .game-card:hover { transform:translateY(-6px);border-color:rgba(255,255,255,0.14);box-shadow:0 20px 60px rgba(0,0,0,0.4); }
-    .game-card.your-game { border-color:rgba(0,255,136,0.2); }
-    .game-card.your-game::before { content:'YOUR ENTRY';position:absolute;top:12px;right:12px;z-index:2;font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.15em;padding:4px 10px;background:var(--accent);color:var(--bg);border-radius:100px;font-weight:700; }
-    .game-card.ending-soon::after { content:'ENDING SOON';position:absolute;top:12px;left:12px;z-index:2;font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.15em;padding:4px 10px;background:rgba(255,100,44,0.9);color:#fff;border-radius:100px;font-weight:700; }
-    .game-card-img { position:relative;aspect-ratio:1;overflow:hidden;background:var(--bg2); }
-    .game-card-img img { width:100%;height:100%;object-fit:cover;transition:transform .4s; }
-    .game-card:hover .game-card-img img { transform:scale(1.05); }
-    .game-card-img .no-img { width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:64px;opacity:.3; }
-    .timer-badge { position:absolute;bottom:10px;left:10px;right:10px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px; }
-    .timer-badge .timer-icon { color:var(--accent);font-size:12px; }
-    .timer-val { font-family:'Geist Mono',monospace;font-size:12px;font-weight:500;color:var(--fg); }
-    .timer-val.urgent { color:#ff6b2b; }
-    .game-card-body { padding:20px; }
-    .game-card-name { font-family:'Instrument Serif',serif;font-size:20px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .game-card-desc { font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .game-card-stats { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px; }
-    .game-stat { background:rgba(255,255,255,0.03);border-radius:10px;padding:10px; }
-    .game-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px; }
-    .game-stat-val { font-family:'Geist Mono',monospace;font-size:14px;font-weight:500;color:var(--fg); }
-    .game-stat-val.accent { color:var(--accent); }
-    .odds-bar { width:100%;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:6px;overflow:hidden; }
-    .odds-fill { height:100%;background:var(--accent);border-radius:2px;transition:width .5s; }
-    .game-card-footer { display:flex;gap:8px; }
-    .btn-primary { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:13px 20px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:600;transition:all .3s;display:flex;align-items:center;gap:8px;flex:1;justify-content:center; }
-    .btn-primary:hover { transform:translateY(-2px);box-shadow:0 10px 30px var(--accent-glow); }
-    .btn-primary:disabled { opacity:.5;transform:none;box-shadow:none; }
-    .btn-ghost { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:13px 16px;background:var(--glass);color:var(--muted);border:1px solid var(--glass-border);border-radius:100px;cursor:none;transition:all .3s;display:flex;align-items:center;gap:6px; }
-    .btn-ghost:hover { color:var(--fg);border-color:rgba(255,255,255,0.2); }
-
-    /* Expired card overlay */
-    .game-card.expired .game-card-img::after { content:'';position:absolute;inset:0;background:rgba(0,0,0,0.5); }
-    .winner-badge { position:absolute;bottom:10px;left:10px;right:10px;background:rgba(0,0,0,0.9);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:10px;cursor:none;transition:all .3s;text-align:center;z-index:2; }
-    .winner-badge:hover { background:rgba(0,255,136,0.15); }
-    .winner-badge span { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent); }
-    .winner-badge p { font-family:'Geist Mono',monospace;font-size:11px;color:var(--fg);margin-top:2px; }
-
-    /* Empty state */
-    .empty-state { text-align:center;padding:80px 40px; }
-    .empty-state .skull { font-size:64px;opacity:.2;margin-bottom:24px; }
-    .empty-state p { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted); }
-
-    /* ── Create CTA ── */
-    .create-cta { background:linear-gradient(135deg,rgba(0,255,136,0.06),rgba(0,255,136,0.02));border:1px solid rgba(0,255,136,0.15);border-radius:24px;padding:48px;text-align:center;margin:40px 0; }
-    .create-cta h3 { font-family:'Creepster',cursive;font-size:36px;color:var(--fg);margin-bottom:12px;text-shadow:0 0 30px rgba(0,255,136,0.3); }
-    .create-cta p { font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;line-height:1.7; }
-    .create-big-btn { font-family:'Geist Mono',monospace;font-size:13px;letter-spacing:.12em;text-transform:uppercase;padding:20px 48px;background:var(--accent);color:var(--bg);border:none;border-radius:100px;cursor:none;font-weight:700;transition:all .4s;display:inline-flex;align-items:center;gap:12px; }
-    .create-big-btn:hover { box-shadow:0 20px 60px var(--accent-glow);transform:scale(1.04); }
-
-    /* ── Hall of Winners ── */
-    .hall-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px; }
-    .hall-card { background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;text-align:center;transition:all .4s; }
-    .hall-card:hover { transform:translateY(-4px);border-color:rgba(255,215,0,0.2); }
-    .hall-card img { width:80px;height:80px;object-fit:cover;border-radius:12px;margin:0 auto 12px;display:block;border:2px solid rgba(255,215,0,0.3); }
-    .hall-card .winner-addr { font-family:'Geist Mono',monospace;font-size:11px;color:var(--accent); }
-    .hall-card .won-item { font-family:'Instrument Serif',serif;font-size:14px;margin:4px 0; }
-    .hall-card .won-date { font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted); }
-    .trophy { font-size:20px;margin-bottom:8px; }
-
-    /* ── MODALS ── */
-    .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:all .3s; }
-    .modal-overlay.active { opacity:1;visibility:visible; }
-    .modal { background:#0e0e0e;border:1px solid var(--glass-border);border-radius:24px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;transform:scale(.96);transition:transform .3s; }
-    .modal-overlay.active .modal { transform:scale(1); }
-    .modal::-webkit-scrollbar { width:4px; }
-    .modal::-webkit-scrollbar-thumb { background:var(--accent);border-radius:4px; }
-    .modal-header { padding:28px 32px 0;display:flex;justify-content:space-between;align-items:center; }
-    .modal-title { font-family:'Creepster',cursive;font-size:28px;color:var(--fg); }
-    .modal-close { background:none;border:none;color:var(--muted);font-size:24px;cursor:none;transition:color .3s;padding:8px; }
-    .modal-close:hover { color:var(--fg); }
-    .modal-body { padding:24px 32px 32px; }
-
-    /* Game detail modal */
-    .detail-img { width:100%;aspect-ratio:1;max-height:300px;object-fit:contain;border-radius:16px;background:var(--bg2);margin-bottom:24px; }
-    .detail-stats { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px; }
-    .detail-stat { background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;text-align:center; }
-    .detail-stat-lbl { font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px; }
-    .detail-stat-val { font-family:'Instrument Serif',serif;font-size:24px; }
-    .detail-stat-val.accent { color:var(--accent); }
-    .participants-list { max-height:160px;overflow-y:auto;margin-bottom:20px; }
-    .participants-list::-webkit-scrollbar { width:3px; }
-    .participants-list::-webkit-scrollbar-thumb { background:var(--accent); }
-    .participant-row { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:'Geist Mono',monospace;font-size:11px; }
-    .participant-row .addr { color:var(--muted); }
-    .participant-row .tkts { color:var(--accent); }
-    .participant-row.you { background:rgba(0,255,136,0.04);margin:0 -8px;padding:8px;border-radius:6px; }
-    .ticket-buy-row { display:flex;gap:12px;align-items:center; }
-    .qty-input { background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:12px;padding:14px 20px;font-family:'Geist Mono',monospace;font-size:16px;color:var(--fg);width:100px;text-align:center;outline:none;transition:all .3s; }
-    .qty-input:focus { border-color:var(--accent);background:rgba(0,255,136,0.04); }
-    .cost-display { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);flex:1; }
-    .cost-display strong { color:var(--fg); }
-
-    /* ── NFT Picker (REDESIGNED) ── */
-    .nft-picker-container {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .nft-picker-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--glass-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .nft-picker-header span {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .nft-picker-count {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: var(--accent);
-      padding: 3px 10px;
-      background: rgba(0,255,136,0.08);
-      border-radius: 100px;
-    }
-    .nft-picker-item {
-      position: relative;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 2px solid transparent;
-      cursor: none;
-      transition: all .25s;
-      background: var(--bg2);
-      aspect-ratio: 1;
-      width: 100%;
-      display: block;
-      contain: layout;
-    }
-    .nft-picker-item:hover {
-      border-color: rgba(0,255,136,0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    }
-    .nft-picker-item.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0,255,136,0.2), 0 8px 20px rgba(0,0,0,0.4);
-    }
-    .nft-picker-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .nft-picker-item .nft-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
-      opacity: 0;
-      transition: opacity .25s;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 10px;
-    }
-    .nft-picker-item:hover .nft-overlay,
-    .nft-picker-item.selected .nft-overlay {
-      opacity: 1;
-    }
-    .nft-overlay-name {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.3;
-    }
-    .nft-overlay-id {
-      font-family: 'Geist Mono', monospace;
-      font-size: 9px;
-      color: var(--accent);
-      margin-top: 1px;
-    }
-    .nft-select-check {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 22px;
-      height: 22px;
-      background: var(--accent);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      color: var(--bg);
-      opacity: 0;
-      transform: scale(0.6);
-      transition: all .2s;
-      font-weight: 700;
-    }
-    .nft-picker-item.selected .nft-select-check {
-      opacity: 1;
-      transform: scale(1);
-    }
-    /* Selected NFT preview strip */
-    .nft-selected-preview {
-      display: none;
-      align-items: center;
-      gap: 16px;
-      background: rgba(0,255,136,0.06);
-      border: 1px solid rgba(0,255,136,0.2);
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-top: 12px;
-    }
-    .nft-selected-preview.show { display: flex; }
-    .nft-selected-preview img {
-      width: 56px;
-      height: 56px;
-      border-radius: 10px;
-      object-fit: cover;
-      border: 1px solid rgba(0,255,136,0.3);
-      flex-shrink: 0;
-    }
-    .nft-selected-info { flex: 1; min-width: 0; }
-    .nft-selected-name {
-      font-family: 'Instrument Serif', serif;
-      font-size: 16px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .nft-selected-addr {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 3px;
-    }
-    .nft-selected-clear {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: none;
-      font-size: 18px;
-      padding: 4px;
-      transition: color .2s;
-      flex-shrink: 0;
-    }
-    .nft-selected-clear:hover { color: var(--danger); }
-    /* Loading skeleton for NFT picker */
-    .nft-skeleton {
-      aspect-ratio: 1;
-      border-radius: 12px;
-      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.5s infinite;
-    }
-    @keyframes skeleton-shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .nft-picker-loading-inner {
-      padding: 12px;
-      display: grid;
-      grid-template-columns: repeat(2,1fr);
-      gap: 10px;
-    }
-    .collection-filter-bar {
-      display: flex;
-      gap: 8px;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--glass-border);
-      scrollbar-width: none;
-    }
-    .collection-filter-bar::-webkit-scrollbar { display: none; }
-    .collection-chip {
-      font-family: 'Geist Mono', monospace;
-      font-size: 10px;
-      letter-spacing: .05em;
-      padding: 5px 13px;
-      border-radius: 100px;
-      border: 1px solid var(--glass-border);
-      background: var(--glass);
-      color: var(--muted);
-      cursor: none;
-      transition: all .2s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .collection-chip.active {
-      background: rgba(0,255,136,0.12);
-      border-color: rgba(0,255,136,0.4);
-      color: var(--accent);
-    }
-    .collection-chip:hover:not(.active) { color: var(--fg); border-color: rgba(255,255,255,0.2); }
-    .nft-picker-scroll {
-      max-height: 380px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 12px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      box-sizing: border-box;
-      align-items: start;
-      align-content: start;
-    }
-    .nft-picker-scroll::-webkit-scrollbar { width: 4px; }
-    .nft-picker-scroll::-webkit-scrollbar-track { background: transparent; }
-    .nft-picker-scroll::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.3); border-radius: 4px; }
-
-    /* Create Game Modal */
-    .form-group { margin-bottom:20px; }
-    .form-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block; }
-    .form-input { width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:14px 18px;font-family:'Geist Mono',monospace;font-size:13px;color:var(--fg);outline:none;transition:all .3s; }
-    .form-input:focus { border-color:var(--accent);background:rgba(0,255,136,0.04); }
-    .form-input::placeholder { color:var(--muted); }
-    .duration-btns { display:flex;gap:8px;flex-wrap:wrap; }
-    .dur-btn { font-family:'Geist Mono',monospace;font-size:11px;padding:8px 16px;background:var(--glass);border:1px solid var(--glass-border);border-radius:100px;color:var(--muted);cursor:none;transition:all .3s; }
-    .dur-btn.active,.dur-btn:hover { background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3);color:var(--accent); }
-
-    /* Winner Reveal Modal */
-    .winner-reveal { text-align:center;padding:20px 0; }
-    .skull-anim { font-size:80px;animation:skullBounce 0.6s ease-out;display:inline-block;filter:drop-shadow(0 0 30px var(--accent)); }
-    @keyframes skullBounce { 0%{transform:scale(0) rotate(-30deg)} 70%{transform:scale(1.15) rotate(5deg)} 100%{transform:scale(1) rotate(0)} }
-    .winner-label { font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px; }
-    .winner-address { font-family:'Instrument Serif',serif;font-size:28px;color:var(--accent);margin-bottom:8px; }
-    .winner-prize { font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);margin-bottom:32px; }
-    .confetti-row { display:flex;justify-content:center;gap:12px;font-size:24px;margin-bottom:24px;animation:confettiFall .8s ease forwards; }
-    @keyframes confettiFall { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
-
-    /* ── Notification ── */
-    .notif { position:fixed;top:90px;right:24px;padding:14px 22px;border-radius:12px;font-family:'Geist Mono',monospace;font-size:12px;z-index:2000;animation:slideIn .3s ease;max-width:300px; }
-    .notif.success { background:rgba(0,255,136,0.15);border:1px solid rgba(0,255,136,0.3);color:var(--accent); }
-    .notif.error { background:rgba(255,68,68,0.15);border:1px solid rgba(255,68,68,0.3);color:var(--danger); }
-    .notif.info { background:rgba(100,100,255,0.15);border:1px solid rgba(100,100,255,0.3);color:#8888ff; }
-    @keyframes slideIn { from{transform:translateX(120px);opacity:0} to{transform:translateX(0);opacity:1} }
-
-    /* ── Withdraw banner ── */
-    .withdraw-banner { background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:16px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:32px; }
-    .withdraw-banner p { font-family:'Geist Mono',monospace;font-size:12px;color:var(--fg); }
-    .withdraw-banner span { color:var(--accent);font-size:16px;font-weight:600; }
-
-    /* ── Loading spinner ── */
-    @keyframes spin { to{transform:rotate(360deg)} }
-    .spin { animation:spin .8s linear infinite;display:inline-block; }
-
-    /* ── Reveal ── */
-    .reveal { opacity:0;transform:translateY(20px);transition:opacity .6s,transform .6s; }
-    .reveal.shown { opacity:1;transform:translateY(0); }
-
-    /* ── DYOR Banner ── */
-    .dyor-banner { background:rgba(255,170,0,0.07); border:1px solid rgba(255,170,0,0.25); border-radius:16px; padding:20px 28px; margin-bottom:32px; display:flex; gap:20px; align-items:flex-start; }
-    .dyor-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
-    .dyor-title { font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
-    .dyor-body { font-family:'Geist Mono',monospace; font-size:11px; color:rgba(255,170,0,0.75); line-height:1.8; }
-    .dyor-body a { color:var(--accent); text-decoration:none; }
-    .dyor-body a:hover { text-decoration:underline; }
-
-    /* ── Ticket Counter ── */
-    .ticket-counter { display:flex; align-items:center; gap:0; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:12px; overflow:hidden; }
-    .counter-btn { width:44px; height:52px; background:none; border:none; color:var(--muted); font-size:20px; cursor:none; transition:all .2s; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'Geist Mono',monospace; }
-    .counter-btn:hover { color:var(--accent); background:rgba(0,255,136,0.06); }
-    .counter-btn:disabled { opacity:.3; cursor:not-allowed; }
-    .counter-val { width:64px; text-align:center; font-family:'Geist Mono',monospace; font-size:18px; font-weight:500; color:var(--fg); padding:0 4px; background:none; border:none; border-left:1px solid var(--glass-border); border-right:1px solid var(--glass-border); height:52px; line-height:52px; }
-
-    /* ── Footer ── */
-    footer { padding:50px 40px;border-top:1px solid var(--border); }
-    .footer-content { max-width:1400px;margin:0 auto;display:flex;justify-content:space-between;align-items:center; }
-    .footer-logo { font-family:'Creepster',cursive;font-size:18px;color:var(--accent);text-decoration:none; }
-    .footer-links { display:flex;gap:28px; }
-    .footer-link { font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .3s; }
-    .footer-link:hover { color:var(--fg); }
-    .footer-copy { font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted); }
-
-    /* ── Responsive ── */
-    @media(max-width:768px){
-      nav { padding:14px 16px; }
-      .nav-links { display:none; }
-      .nav-social { display:none; }
-      .mobile-nav-btn { display:block; }
-      .hero { padding:100px 16px 60px; }
-      .hero-stats { gap:20px; }
-      .hero-stat-num { font-size:24px; }
-      .section { padding:60px 16px; }
-      .games-grid { grid-template-columns:1fr; }
-      .detail-stats { grid-template-columns:1fr 1fr; }
-      .detail-stats .detail-stat:last-child { grid-column:1/-1; }
-      .modal-header,.modal-body { padding:20px; }
-      .modal { max-height:95vh; }
-      .create-cta { padding:32px 20px; }
-      .create-big-btn { width:100%;justify-content:center; }
-      footer { padding:40px 16px; }
-      .footer-content { flex-direction:column;gap:20px;text-align:center; }
-      .footer-links { flex-wrap:wrap;justify-content:center; }
-      .cursor,.cursor-dot { display:none; }
-      body { cursor:auto; }
-      a,button,input,select { cursor:pointer; }
-      .tab-bar { overflow-x:auto; }
-      .nft-picker-scroll { grid-template-columns: repeat(2,1fr); }
-      .nft-picker-loading-inner { grid-template-columns: repeat(2,1fr); }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script src="./config.js"></script>
 </head>
 <body>
 
-  <div class="cursor"></div>
-  <div class="cursor-dot"></div>
-  <div class="noise"></div>
-  <div class="scroll-progress" id="scrollProgress"></div>
-
-  <!-- Skull particles -->
-  <div class="skull-float" style="--x:5%;--dur:18s;--delay:0s">💀</div>
-  <div class="skull-float" style="--x:15%;--dur:22s;--delay:3s">☠</div>
-  <div class="skull-float" style="--x:30%;--dur:16s;--delay:6s">💀</div>
-  <div class="skull-float" style="--x:50%;--dur:24s;--delay:1s">☠</div>
-  <div class="skull-float" style="--x:65%;--dur:19s;--delay:8s">💀</div>
-  <div class="skull-float" style="--x:80%;--dur:21s;--delay:4s">☠</div>
-  <div class="skull-float" style="--x:92%;--dur:17s;--delay:11s">💀</div>
-
-  <!-- NAV -->
-  <nav class="site-nav">
-  <a href="./index.html" class="brand">
-    <span>BASED UNDEADS</span>
-  </a>
+<nav class="site-nav">
+  <a href="./index.html" class="brand"><span>BASED UNDEADS</span></a>
   <ul class="nav-links">
     <li><a href="./index.html">Home</a></li>
     <li><a href="./staking.html">Stake</a></li>
     <li><a href="./tools.html">Tools</a></li>
     <li><a href="./game.html" class="active">$1 Game</a></li>
     <li><a href="./staking-guide.html">Guide</a></li>
-    <li><a href="./index.html#faq">FAQ</a></li>
   </ul>
   <div class="nav-right">
     <div class="nav-socials" id="nav-socials-slot"></div>
     <div id="wallet-slot"></div>
-    <button class="connect-btn" id="connectBtn" onclick="connectWallet()" style="display:none">Connect Wallet</button>
     <button class="mobile-toggle" aria-label="Menu">≡</button>
   </div>
 </nav>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-badge"><span class="pulse-dot"></span> Fully On-Chain · Base Network</div>
-    <h1 class="hero-title">THE <span class="green">$1</span> GAME</h1>
-    <p class="hero-subtitle">Any NFT. One dollar a ticket. One winner. Forever on-chain.</p>
-    <div class="hero-stats">
-      <div class="hero-stat"><div class="hero-stat-num" id="statActive">-</div><div class="hero-stat-lbl">Active Games</div></div>
-      <div class="hero-stat"><div class="hero-stat-num accent" id="statVolume">-</div><div class="hero-stat-lbl">ETH Distributed</div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="statCompleted">-</div><div class="hero-stat-lbl">Games Completed</div></div>
+<!-- ═════════════════════════ HERO ═════════════════════════ -->
+<section class="hero g-hero">
+  <div class="hero-bg"></div>
+  <div class="g-hero-orbs" aria-hidden="true">
+    <span class="g-orb g-orb-1"></span>
+    <span class="g-orb g-orb-2"></span>
+    <span class="g-orb g-orb-3"></span>
+  </div>
+  <div class="container">
+    <div class="hero-badge"><span class="dot"></span>ONCHAIN RAFFLES · ONE DOLLAR PER TICKET · BASE</div>
+    <h1 class="hero-title g-hero-title">
+      THE <em>$1</em> GAME
+    </h1>
+    <p class="hero-subtitle">Stake an NFT. Sell tickets. Let the crypt choose.</p>
+    <p class="hero-description">
+      Anyone can put up any NFT as the prize. Tickets always cost <strong>one US dollar in ETH</strong>, priced by Chainlink at the moment of purchase. The more tickets you buy, the higher your chance. When the timer hits zero the contract draws a winner from on-chain entropy — no oracle, no human in the loop.
+    </p>
+    <div class="hero-cta">
+      <button class="btn btn-primary btn-lg" id="heroCreateBtn">＋ Create a $1 Game</button>
+      <a href="#active-games" class="btn btn-lg">Browse Active Games</a>
     </div>
-  </section>
-
-  <!-- LIVE FEED -->
-  <div class="live-bar">
-    <div class="live-bar-inner" id="liveBar">
-      <div class="live-event"><span class="dot"></span> Loading live activity...</div>
+    <div class="g-hero-meta">
+      <div class="g-hero-meta-item"><span class="g-hero-meta-num" id="heroStatActive">—</span><span class="g-hero-meta-lbl">Active Games</span></div>
+      <div class="g-hero-meta-item"><span class="g-hero-meta-num accent" id="heroStatTickets">$1</span><span class="g-hero-meta-lbl">Per Ticket</span></div>
+      <div class="g-hero-meta-item"><span class="g-hero-meta-num" id="heroStatVolume">—</span><span class="g-hero-meta-lbl">ETH Wagered</span></div>
     </div>
   </div>
+  <div class="hero-scroll"><span>Scroll</span><div class="hero-scroll-arrow"></div></div>
+</section>
 
-  <!-- WITHDRAW BANNER -->
-  <div class="section" id="withdrawBanner" style="display:none;padding-bottom:0">
-    <div class="withdraw-banner">
-      <div><p>A payout to your address failed</p><p style="font-size:11px;color:var(--muted);margin-top:2px">Contact the platform - funds are held safely on-chain</p></div>
-      <div style="display:flex;align-items:center;gap:20px">
-        <span id="pendingAmount">0 ETH</span>
-        <button class="btn-primary" style="flex:unset;padding:12px 24px" onclick="withdrawEarnings()">
-          <i class="fas fa-wallet"></i> Withdraw
-        </button>
+<div class="section-divider"></div>
+
+<!-- ═════════════════════════ HOW IT WORKS ═════════════════════════ -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow">The Mechanics</span>
+      <h2>How The <em>$1 Game</em> Works.</h2>
+      <p class="sub">Four steps from NFT to winner. Fully on-chain. No off-chain oracle for the draw.</p>
+    </div>
+    <div class="g-steps">
+      <div class="g-step">
+        <span class="g-step-num">01</span>
+        <h3>Connect &amp; Pick An NFT</h3>
+        <p>Connect your wallet. We list every NFT you own across Base. Pick the one you'd like to put up as the prize.</p>
+      </div>
+      <div class="g-step">
+        <span class="g-step-num">02</span>
+        <h3>Set Duration &amp; Stake</h3>
+        <p>Choose how long tickets are on sale (1 hour to 7 days) and a self-declared USD value for display. Approve and the NFT moves into the game contract via <code>safeTransferFrom</code> — safe for royalty-enforced collections.</p>
+      </div>
+      <div class="g-step">
+        <span class="g-step-num">03</span>
+        <h3>Buy Tickets · $1 Each</h3>
+        <p>Anyone can buy tickets while the timer runs. Price is locked to one USD by the Chainlink ETH/USD feed. Want better odds? Buy more tickets.</p>
+      </div>
+      <div class="g-step">
+        <span class="g-step-num">04</span>
+        <h3>Draw &amp; Celebrate</h3>
+        <p>When the timer expires anyone may call <code>drawWinner</code>. The contract picks a ticket using <code>prevrandao</code> + blockhash entropy. 90% of the pot goes to the game's creator. 10% to the platform. The NFT goes to the winner.</p>
+      </div>
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-primary btn-lg" id="howCreateBtn">＋ Create a $1 Game</button>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═════════════════════════ YOUR NFT INVENTORY ═════════════════════════ -->
+<section id="your-nfts">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow">Your Wallet</span>
+      <h2>NFTs Ready To <em>Wager</em>.</h2>
+      <p class="sub">Every NFT you hold on Base. Click any to start a $1 game with it as the prize.</p>
+    </div>
+    <div id="inventoryStatus" class="g-inv-status">
+      <div class="g-inv-status-inner">
+        <div class="g-inv-status-icon">👁</div>
+        <p><strong>Connect your wallet</strong> to see your NFT inventory.</p>
+        <div id="connectFromInventory"></div>
+      </div>
+    </div>
+    <div id="inventoryWrap" class="g-inv-wrap" style="display:none">
+      <div class="g-inv-toolbar">
+        <span class="eyebrow" id="inventoryHeader">Loading inventory…</span>
+        <div class="g-inv-search-wrap">
+          <input class="g-input g-inv-search-input" id="invSearchInput" type="text" placeholder="Search NFTs or collections…" autocomplete="off">
+        </div>
+        <button class="btn btn-sm" id="inventoryRefreshBtn">↻ Refresh</button>
+      </div>
+      <div class="g-inv-grid" id="inventoryGrid"></div>
+    </div>
+    <!-- Orphan NFT recovery (creator safety switch) -->
+    <div id="orphanWrap" class="g-orphan-wrap" style="display:none">
+      <div class="g-orphan-banner">
+        <span class="eyebrow">Safety Switch</span>
+        <h3>Recover Stuck NFT</h3>
+        <p>If a previous <em>create-game</em> attempt failed to register, your NFT is held in the contract waiting for you. Only the wallet that sent it in can pull it back.</p>
+        <div class="g-orphan-grid" id="orphanGrid"></div>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- MAIN SECTION -->
-  <div class="section" id="active">
+<div class="section-divider"></div>
 
-    <!-- YOUR GAMES (shown when connected) -->
-    <div id="yourGamesSection" style="display:none;margin-bottom:60px">
-      <div class="section-label" style="margin-bottom:8px">Your Activity</div>
-      <div class="section-title" style="margin-bottom:4px">Your <em>Games</em></div>
-      <p class="section-sub" style="margin-bottom:20px">Games you created or entered</p>
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchYourTab('entered')">Entered</button>
-        <button class="tab-btn" onclick="switchYourTab('created')">Created</button>
-      </div>
-      <div id="yourEnteredGames" class="tab-content active"><div class="games-grid" id="enteredGrid"></div></div>
-      <div id="yourCreatedGames" class="tab-content"><div class="games-grid" id="createdGrid"></div></div>
+<!-- ═════════════════════════ ACTIVE GAMES ═════════════════════════ -->
+<section id="active-games">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow">Live On-Chain</span>
+      <h2>Active <em>Games</em>.</h2>
+      <p class="sub">Buy in for $1, ride the entropy.</p>
     </div>
-
-    <!-- DYOR WARNING -->
-    <div class="dyor-banner">
-      <div class="dyor-icon">⚠</div>
-      <div>
-        <div class="dyor-title">Risk Warning - Do Your Own Research</div>
-        <div class="dyor-body">
-          NFT values are <strong style="color:var(--gold)">self-reported by creators and unverified</strong> by this platform. Ticket purchases are <strong style="color:var(--gold)">irreversible</strong> once confirmed on-chain. You may lose the ETH you spend. Only participate in games you have independently researched - verify the NFT contract address, collection history, and floor price before buying.
-          <br>By purchasing tickets you agree to our <a href="/terms.html">Terms &amp; Conditions</a>. All transactions on Base are permanent.
-        </div>
-      </div>
+    <div class="g-tabs">
+      <button class="g-tab active" data-tab="active">Active</button>
+      <button class="g-tab"          data-tab="ending">Ending Soon</button>
+      <button class="g-tab"          data-tab="mine">My Games</button>
+      <button class="g-tab"          data-tab="ended">Past Winners</button>
     </div>
-
-    <!-- ALL GAMES -->
-    <div class="section-label" style="margin-bottom:8px">Live Now</div>
-    <div class="section-title" style="margin-bottom:4px">Active <em>Games</em></div>
-    <p class="section-sub">Fully on-chain. Every ticket, every dollar, publicly verifiable.</p>
-
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchMainTab('all')">All Active</button>
-      <button class="tab-btn" onclick="switchMainTab('ending')">Ending Soon</button>
+    <div class="g-tab-pane active" data-pane="active">
+      <div class="games-grid" id="gridActive"><div class="empty">Reading chain…</div></div>
     </div>
-    <div id="allActiveGames" class="tab-content active"><div class="games-grid" id="activeGrid"><div class="empty-state"><div class="skull">💀</div><p id="loadingText">Loading games from the chain...</p></div></div></div>
-    <div id="endingGames" class="tab-content"><div class="games-grid" id="endingGrid"></div></div>
-
-    <!-- CREATE CTA -->
-    <div class="create-cta reveal">
-      <h3>☠ Raise the Stakes</h3>
-      <p>List any NFT. Set a duration. Players buy $1 tickets. You keep 90% of the pot. Winner gets your NFT. Zero admin. Fully automated.</p>
-      <button class="create-big-btn" onclick="openCreateModal()">
-        <i class="fas fa-plus"></i> Create a $1 Game
-      </button>
+    <div class="g-tab-pane" data-pane="ending">
+      <div class="games-grid" id="gridEnding"><div class="empty">No games ending soon.</div></div>
     </div>
-
-    <!-- EXPIRED GAMES -->
-    <div style="margin-top:60px" id="expiredSection">
-      <div class="section-label" style="margin-bottom:8px">The Fallen</div>
-      <div class="section-title" style="margin-bottom:4px"><em>Expired</em> Games</div>
-      <p class="section-sub">Concluded games. Click "Winner Announced" to see who won.</p>
-      <div class="games-grid" id="expiredGrid"><div class="empty-state"><div class="skull">☠</div><p>No concluded games yet</p></div></div>
+    <div class="g-tab-pane" data-pane="mine">
+      <div class="games-grid" id="gridMine"><div class="empty">Connect your wallet to see games you created or entered.</div></div>
+    </div>
+    <div class="g-tab-pane" data-pane="ended">
+      <div class="games-grid" id="gridEnded"><div class="empty">No completed games yet.</div></div>
     </div>
   </div>
+</section>
 
-  <!-- HALL OF WINNERS -->
-  <div class="section" id="hall" style="border-top:1px solid var(--border)">
-    <div class="section-label" style="margin-bottom:8px">The Eternal Record</div>
-    <div class="section-title" style="margin-bottom:4px">Hall of <em>Winners</em></div>
-    <p class="section-sub">Every soul that claimed victory - written on-chain, forever.</p>
-    <div class="hall-grid" id="hallGrid">
-      <div class="empty-state" style="grid-column:1/-1"><div class="skull">🏆</div><p>First winner will appear here</p></div>
+<div class="section-divider"></div>
+
+<!-- ═════════════════════════ FAQ ═════════════════════════ -->
+<section id="faq">
+  <div class="container container-narrow">
+    <div class="section-head">
+      <span class="eyebrow">Questions</span>
+      <h2>$1 Game <em>FAQ</em>.</h2>
     </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-content">
-      <a href="index.html" class="footer-logo">BASED UNDEADS</a>
-      <div class="footer-links">
-        <a href="https://discord.gg/9Jh6ywjNdV" target="_blank" class="footer-link">Discord</a>
-        <a href="https://x.com/BasedUndeads" target="_blank" class="footer-link">Twitter</a>
-        <a href="https://opensea.io/collection/basedundeads/overview" target="_blank" class="footer-link">OpenSea</a>
-        <a href="/terms.html" class="footer-link">Terms &amp; Conditions</a>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question"><span>How is the ticket price locked at exactly $1?</span><span class="caret">+</span></button>
+        <div class="faq-answer">
+          <p>The game contract reads the <strong>Chainlink ETH/USD feed</strong> on Base at the moment your <code>buyTickets()</code> call lands. It divides one US dollar by the live ETH price to produce the ticket cost in wei. Any overpayment is refunded automatically in the same transaction.</p>
+          <p>If the oracle round is stale, the contract reverts — your ETH stays in your wallet. There is no path where you pay more than ~$1 per ticket plus gas.</p>
+        </div>
       </div>
-      <span class="footer-copy">© 2026 Based Undeads. Games run on Base. &nbsp;·&nbsp; <a href="/terms.html" style="color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Terms</a></span>
-    </div>
-  </footer>
-
-  <!-- ─────────── GAME DETAIL MODAL ─────────── -->
-  <div class="modal-overlay" id="gameModal" onclick="closeOnBg(event,'gameModal')">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title" id="modalTitle">-</span>
-        <button class="modal-close" onclick="closeModal('gameModal')"><i class="fas fa-times"></i></button>
+      <div class="faq-item">
+        <button class="faq-question"><span>Can I create a game with a royalty-enforced (ERC-721C) NFT?</span><span class="caret">+</span></button>
+        <div class="faq-answer">
+          <p><strong>Yes.</strong> The game uses the canonical <code>safeTransferFrom(from, gameAddress, tokenId, data)</code> flow. The caller (you) is the operator on that call, and ERC-721C / operator-filter collections allow EOA-initiated transfers — so the NFT moves cleanly into the contract.</p>
+          <p>The fallback <code>createGame()</code> function (which uses <code>transferFrom</code>) is only for non-filtered collections and will revert under operator filters. The frontend always picks the safe path automatically.</p>
+        </div>
       </div>
-      <div class="modal-body">
-        <img id="modalImg" class="detail-img" src="" alt="" style="display:none">
-        <div id="modalNoImg" style="display:flex;align-items:center;justify-content:center;height:200px;font-size:80px;opacity:.2;margin-bottom:24px">💀</div>
-
-        <div class="detail-stats">
-          <div class="detail-stat"><div class="detail-stat-lbl">Ticket Price</div><div class="detail-stat-val accent" id="modalTicketPrice">$1</div></div>
-          <div class="detail-stat"><div class="detail-stat-lbl">Tickets Sold</div><div class="detail-stat-val" id="modalTicketCount">0</div></div>
-          <div class="detail-stat"><div class="detail-stat-lbl">Prize Pool</div><div class="detail-stat-val accent" id="modalPool">0 ETH</div></div>
-          <div class="detail-stat"><div class="detail-stat-lbl">Asset Value</div><div class="detail-stat-val" id="modalAssetVal">-</div></div>
-          <div class="detail-stat"><div class="detail-stat-lbl">Your Tickets</div><div class="detail-stat-val accent" id="modalYourTickets">0</div></div>
-          <div class="detail-stat"><div class="detail-stat-lbl">Your Odds</div><div class="detail-stat-val" id="modalOdds">-</div></div>
+      <div class="faq-item">
+        <button class="faq-question"><span>What if my NFT gets stuck in the contract?</span><span class="caret">+</span></button>
+        <div class="faq-answer">
+          <p>The contract has a <strong>creator safety switch</strong>. If your <code>create-game</code> attempt encounters any error — bad parameters, malformed encoded data, or a temporary glitch — the contract registers your NFT as a <em>recoverable orphan</em> tied to your wallet. The Safety Switch panel on this page lists your orphans and lets you either withdraw the NFT or retry the game creation.</p>
+          <p><strong>Only the wallet that originally sent the NFT can recover it.</strong> No admin can pull a user's orphaned NFT out.</p>
         </div>
-
-        <div style="margin-bottom:16px">
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Time Remaining</div>
-          <div id="modalTimer" style="font-family:'Geist Mono',monospace;font-size:20px;color:var(--fg)">-</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question"><span>How is the winner chosen? Is it manipulable?</span><span class="caret">+</span></button>
+        <div class="faq-answer">
+          <p>When the timer expires the contract draws a winning ticket index from <code>keccak256(block.prevrandao, blockhash, gameId, ticketCount)</code>. Each ticket maps to one of the buyers via a binary-searched range table — your odds equal your tickets divided by total tickets.</p>
+          <p>The draw cannot be biased by individual purchases because tickets are sold over a real time window, and <code>prevrandao</code> is determined at the moment the draw transaction is mined, not at purchase time. The only entity with marginal influence on <code>prevrandao</code> is the proposer of that single block — which is a Base sequencer for now.</p>
         </div>
-
-        <div style="margin-bottom:20px">
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Participants (<span id="modalParticipantCount">0</span>)</div>
-          <div class="participants-list" id="participantList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No participants yet</div></div>
-        </div>
-
-        <!-- Buy tickets -->
-        <div id="buySection">
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Buy Tickets</div>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-            <div class="ticket-counter">
-              <button class="counter-btn" id="qtyMinus" onclick="changeQty(-1)">−</button>
-              <div class="counter-val" id="qtyDisplay">1</div>
-              <button class="counter-btn" id="qtyPlus"  onclick="changeQty(1)">+</button>
-            </div>
-            <div class="cost-display" style="flex:1;min-width:120px">
-              <strong id="costEth">-</strong>
-              <br><span style="font-size:10px;color:var(--muted)">≈ $<span id="costUsd">-</span> USD</span>
-            </div>
-            <button class="btn-primary" style="flex:unset;padding:14px 28px" id="buyBtn" onclick="doBuyTickets()">
-              <i class="fas fa-ticket-alt"></i> Buy
-            </button>
-          </div>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <button class="dur-btn" onclick="setQty(1)"   style="font-size:10px;padding:6px 12px">1</button>
-            <button class="dur-btn" onclick="setQty(5)"   style="font-size:10px;padding:6px 12px">5</button>
-            <button class="dur-btn" onclick="setQty(10)"  style="font-size:10px;padding:6px 12px">10</button>
-            <button class="dur-btn" onclick="setQty(25)"  style="font-size:10px;padding:6px 12px">25</button>
-            <button class="dur-btn" onclick="setQty(50)"  style="font-size:10px;padding:6px 12px">50</button>
-            <button class="dur-btn" onclick="setQty(100)" style="font-size:10px;padding:6px 12px">100</button>
-          </div>
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px">$1 per ticket · max 100 per transaction · <a href="/terms.html" style="color:var(--accent);text-decoration:none">terms apply</a></div>
-        </div>
-
-        <!-- Draw button -->
-        <div id="drawSection" style="display:none">
-          <div style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
-            This game has ended. Anyone can trigger the draw - winner is selected automatically on-chain.
-          </div>
-          <button class="btn-primary" style="width:100%" onclick="doDrawWinner()">
-            <i class="fas fa-dice"></i> Draw Winner Now
-          </button>
-        </div>
-
-        <!-- Cancel button (creator only, 0 tickets) -->
-        <div id="cancelSection" style="display:none;margin-top:12px">
-          <button class="btn-ghost" style="width:100%;justify-content:center" onclick="doCancelGame()">
-            <i class="fas fa-undo"></i> Reclaim NFT (0 tickets only)
-          </button>
-        </div>
-
-        <!-- Share -->
-        <div style="display:flex;gap:8px;margin-top:16px">
-          <button class="btn-ghost" style="flex:1;justify-content:center" onclick="shareGame()">
-            <i class="fab fa-x-twitter"></i> Share Game
-          </button>
-          <button class="btn-ghost" style="padding:13px 16px" onclick="copyGameLink()">
-            <i class="far fa-copy"></i>
-          </button>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question"><span>How does the pot get split?</span><span class="caret">+</span></button>
+        <div class="faq-answer">
+          <p>Every ticket purchase is instantly split <strong>90% to the game creator</strong> and <strong>10% to the platform</strong>. No escrow, no claim step. By design the contract holds zero ETH between transactions — the only ETH that can ever sit in it is residue from rounding (refunds of fractional wei) or accidental transfers, both of which the platform's <code>sweep()</code> function can rescue.</p>
         </div>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ─────────── CREATE GAME MODAL ─────────── -->
-  <div class="modal-overlay" id="createModal" onclick="closeOnBg(event,'createModal')">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">☠ New Game</span>
-        <button class="modal-close" onclick="closeModal('createModal')"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body">
+<div class="section-divider"></div>
 
-        <!-- NFT Picker -->
-        <div class="form-group">
-          <label class="form-label">Select Your NFT</label>
+<!-- ═════════════════════════ FINAL CTA ═════════════════════════ -->
+<section>
+  <div class="container container-narrow center">
+    <div class="section-head"><span class="eyebrow">Open The Crypt</span><h2>Your NFT. <em>Their</em> Dollars.</h2></div>
+    <p style="margin-bottom:32px;max-width:580px;margin-left:auto;margin-right:auto;">Spin up a raffle in three clicks. The smart contract handles the rest — ticketing, drawing, payouts.</p>
+    <div class="cta-row">
+      <button class="btn btn-primary btn-lg" id="finalCreateBtn">＋ Create a $1 Game</button>
+      <a href="#active-games" class="btn btn-lg">Browse Active Games</a>
+    </div>
+  </div>
+</section>
 
-          <!-- Loading state -->
-          <div id="nftPickerLoading">
-            <div class="nft-picker-container">
-              <div class="nft-picker-header">
-                <span>Loading wallet NFTs...</span>
-                <span style="color:var(--muted)"><i class="fas fa-spinner spin"></i></span>
-              </div>
-              <div class="nft-picker-loading-inner" id="nftSkeletons">
-                <!-- skeletons injected by JS -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Loaded grid -->
-          <div id="nftPickerLoaded" style="display:none">
-            <div class="nft-picker-container">
-              <div class="nft-picker-header">
-                <span>Your NFTs on Base</span>
-                <span class="nft-picker-count" id="nftPickerCount">0 NFTs</span>
-              </div>
-              <div class="collection-filter-bar" id="collectionFilterBar"></div>
-              <div class="nft-picker-scroll" id="nftPickerGrid"></div>
-            </div>
-          </div>
-
-          <!-- Empty / error state -->
-          <div id="nftPickerEmpty" style="display:none;text-align:center;padding:28px;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;color:var(--muted);font-family:'Geist Mono',monospace;font-size:12px;line-height:1.8">
-            No NFTs found in your wallet on Base.<br>Make sure you're connected to Base Mainnet.<br>You can still enter the contract + token ID manually below.
-          </div>
-
-          <!-- Selected NFT preview -->
-          <div class="nft-selected-preview" id="nftSelectedPreview">
-            <img id="nftPreviewImg" src="" alt="">
-            <div class="nft-selected-info">
-              <div class="nft-selected-name" id="nftPreviewName">-</div>
-              <div class="nft-selected-addr" id="nftPreviewAddr">-</div>
-            </div>
-            <button class="nft-selected-clear" onclick="clearNFTSelection()" title="Clear selection">
-              <i class="fas fa-times-circle"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Manual entry -->
-        <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;text-align:center;letter-spacing:.05em">- or enter manually -</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-          <div class="form-group" style="margin:0">
-            <label class="form-label">NFT Contract</label>
-            <input type="text" id="manualContract" class="form-input" placeholder="0x..." oninput="updateCreateSummary()">
-          </div>
-          <div class="form-group" style="margin:0">
-            <label class="form-label">Token ID</label>
-            <input type="number" id="manualTokenId" class="form-input" placeholder="e.g. 421" oninput="updateCreateSummary()">
-          </div>
-        </div>
-
-        <!-- Asset Value -->
-        <div class="form-group">
-          <label class="form-label">Estimated Asset Value (USD)</label>
-          <input type="number" id="assetValue" class="form-input" placeholder="e.g. 500" min="1" oninput="updateCreateSummary()">
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px">Shown to players as prize value. Be honest - it builds trust.</div>
-        </div>
-
-        <!-- Duration -->
-        <div class="form-group">
-          <label class="form-label">Game Duration</label>
-          <div class="duration-btns" id="durationBtns">
-            <button class="dur-btn" data-dur="3600">1 Hour</button>
-            <button class="dur-btn" data-dur="21600">6 Hours</button>
-            <button class="dur-btn active" data-dur="86400">24 Hours</button>
-            <button class="dur-btn" data-dur="259200">3 Days</button>
-            <button class="dur-btn" data-dur="604800">7 Days</button>
-          </div>
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px">Starts immediately. Ends automatically.</div>
-        </div>
-
-        <!-- Description -->
-        <div class="form-group">
-          <label class="form-label">Short Description (optional)</label>
-          <input type="text" id="gameDesc" class="form-input" placeholder="e.g. Rare 1/1 custom undead..." maxlength="120">
-        </div>
-
-        <!-- Summary -->
-        <div id="createSummary" style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:12px;padding:16px;margin-bottom:20px;display:none">
-          <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px">Game Summary</div>
-          <div id="summaryText" style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8"></div>
-        </div>
-
-        <div id="createStepNote" style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px;text-align:center">
-          Step 1: Approve NFT transfer · Step 2: Create game
-        </div>
-
-        <button class="btn-primary" style="width:100%;font-size:13px;padding:18px" id="createConfirmBtn" onclick="doCreateGame()">
-          <i class="fas fa-bolt"></i> List NFT &amp; Start Game
-        </button>
-        <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:10px">
-          You keep 90% of ticket sales · Platform fee 10% · Fully on-chain
-        </div>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand"><a href="./index.html" class="brand"><span>BASED UNDEADS</span></a><p>Six thousand six hundred and sixty-six Undeads, etched into Base.</p></div>
+      <div class="footer-col"><h4>Pages</h4><ul><li><a href="./index.html">Home</a></li><li><a href="./staking.html">Stake</a></li><li><a href="./staking-guide.html">Staking Guide</a></li><li><a href="./index.html#faq">FAQ</a></li></ul></div>
+      <div class="footer-col"><h4>Extras</h4><ul><li><a href="./tools.html">Tools</a></li><li><a href="./game.html">$1 Game</a></li></ul></div>
+      <div class="footer-col"><h4>Connect</h4><ul><li><a href="https://x.com/BasedUndeads" target="_blank" rel="noopener">Twitter</a></li><li><a href="https://discord.gg/9Jh6ywjNdV" target="_blank" rel="noopener">Discord</a></li><li><a href="https://opensea.io/collection/basedundeads/overview" target="_blank" rel="noopener">OpenSea</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Based Undeads · Onchain on Base</span>
+      <div class="contracts">
+        <span>NFT: <span id="footer-nft-addr">—</span></span>
+        <span>Staking: <span id="footer-staking-addr">—</span></span>
+        <span>Renderer: <span id="footer-renderer-addr">—</span></span>
       </div>
     </div>
   </div>
+</footer>
 
-  <!-- ─────────── WINNER REVEAL MODAL ─────────── -->
-  <div class="modal-overlay" id="winnerModal" onclick="closeOnBg(event,'winnerModal')">
-    <div class="modal">
-      <div class="modal-header" style="justify-content:flex-end;padding-bottom:0">
-        <button class="modal-close" onclick="closeModal('winnerModal')"><i class="fas fa-times"></i></button>
+<!-- ═════════════════════════ CREATE-GAME MODAL ═════════════════════════ -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal g-cf-modal">
+    <div class="g-cf-glow" aria-hidden="true"></div>
+    <button class="modal-close" data-close>×</button>
+
+    <!-- Step indicator -->
+    <div class="g-cf-steps-indicator">
+      <span class="g-cf-step-dot" data-step="1"><span>1</span><label>Pick</label></span>
+      <span class="g-cf-step-line"></span>
+      <span class="g-cf-step-dot" data-step="2"><span>2</span><label>Configure</label></span>
+      <span class="g-cf-step-line"></span>
+      <span class="g-cf-step-dot" data-step="3"><span>3</span><label>Confirm</label></span>
+    </div>
+
+    <div class="modal-head g-cf-head">
+      <span class="eyebrow" id="cfEyebrow">Create A Game</span>
+      <h3 id="cfTitle">Pick An NFT</h3>
+    </div>
+
+    <!-- STEP A: wallet not connected -->
+    <div id="cfConnectStep" class="g-cf-step" style="display:none">
+      <div class="g-cf-empty">
+        <div class="g-cf-empty-icon">👁</div>
+        <p><strong>Connect your wallet first.</strong></p>
+        <p class="g-help">You need a connected wallet so we can list your NFTs.</p>
+        <div id="cfConnectSlot" style="margin-top:18px"></div>
       </div>
-      <div class="modal-body">
-        <div class="winner-reveal">
-          <div class="skull-anim">💀</div>
-          <div class="confetti-row">🏆 ☠ 🎊 ☠ 🏆</div>
-          <div class="winner-label">The Winner Is</div>
-          <div class="winner-address" id="winnerAddress">-</div>
-          <div class="winner-prize" id="winnerPrize">won -</div>
-          <div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap">
-            <button class="btn-primary" style="flex:unset" onclick="shareWinner()">
-              <i class="fab fa-x-twitter"></i> Share
-            </button>
-            <button class="btn-ghost" onclick="closeModal('winnerModal')">Close</button>
+    </div>
+
+    <!-- STEP B: picker (collections / NFTs) -->
+    <div id="cfPickerStep" class="g-cf-step" style="display:none">
+      <!-- Search + counters -->
+      <div class="g-cf-search-row">
+        <div class="g-cf-search">
+          <span class="g-cf-search-icon">⌕</span>
+          <input class="g-input g-cf-search-input" id="cfSearch" type="text" placeholder="Search collections or NFTs…" autocomplete="off">
+        </div>
+        <button class="btn btn-sm g-cf-refresh" type="button" id="cfPickerRefresh" title="Refresh"><span class="g-cf-refresh-icon">↻</span></button>
+      </div>
+
+      <!-- Breadcrumb (visible only in 'nfts' mode) -->
+      <div class="g-cf-breadcrumb" id="cfBreadcrumb" style="display:none">
+        <button class="g-link g-cf-crumb-back" type="button" id="cfBackToCollections">← All Collections</button>
+        <span class="g-cf-crumb-sep">›</span>
+        <span class="g-cf-crumb-current" id="cfCollectionName">—</span>
+      </div>
+
+      <div class="g-cf-status" id="cfPickerStatus">Loading your NFTs…</div>
+
+      <!-- Collections grid (mode='collections') -->
+      <div class="g-collections-grid" id="cfCollectionsGrid" style="display:none"></div>
+
+      <!-- NFTs grid (mode='nfts') -->
+      <div class="g-picker-grid" id="cfPickerGrid" style="display:none"></div>
+
+      <div class="g-cf-fallback">
+        Don't see it? <button type="button" class="g-link" id="cfManualLink">Enter contract address manually →</button>
+      </div>
+    </div>
+
+    <!-- STEP C: configuration form -->
+    <form id="cfConfigStep" class="g-form g-cf-step" style="display:none" onsubmit="return false;">
+      <div class="g-form-row" id="cfSelectedRow" style="display:none">
+        <label class="g-label">Prize NFT</label>
+        <div class="g-selected-nft">
+          <div class="g-selected-nft-img" id="cfSelectedImg">💀</div>
+          <div class="g-selected-nft-meta">
+            <div class="g-selected-nft-name" id="cfSelectedName">—</div>
+            <div class="g-selected-nft-sub"  id="cfSelectedSub">—</div>
           </div>
+          <button class="btn btn-sm" type="button" id="cfChangeNft">Change</button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ─────────── WALLET REQUIRED MODAL ─────────── -->
-  <div class="modal-overlay" id="walletModal" onclick="closeOnBg(event,'walletModal')">
-    <div class="modal" style="max-width:400px">
-      <div class="modal-body" style="text-align:center;padding:40px">
-        <div style="font-size:60px;margin-bottom:20px">☠</div>
-        <div class="modal-title" style="font-family:'Creepster',cursive;font-size:28px;margin-bottom:12px">Connect Your Wallet</div>
-        <p style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:32px;line-height:1.7">To buy tickets, create games, or claim winnings - connect your wallet on Base network.</p>
-        <button class="create-big-btn" style="font-size:12px;padding:16px 32px;width:100%;justify-content:center" onclick="connectWallet();closeModal('walletModal')">
-          <i class="fas fa-wallet"></i> Connect Wallet
-        </button>
+      <div class="g-form-row" id="cfManualRow" style="display:none">
+        <label class="g-label">NFT Contract Address</label>
+        <input class="g-input" id="cfNftAddr" placeholder="0x…" autocomplete="off">
+        <label class="g-label" style="margin-top:8px">Token ID</label>
+        <input class="g-input" id="cfTokenId" placeholder="123" autocomplete="off" inputmode="numeric">
+        <p class="g-help"><button type="button" class="g-link" id="cfBackToPicker">← Back to your NFTs</button></p>
       </div>
-    </div>
-  </div>
-
-<script>
-// ================================================================
-// BASED UNDEADS - THE $1 GAME  (v4 frontend)
-// ================================================================
-
-const CONTRACT_ADDRESS = '0x2Ee5381B13644a3C8302547F90E139e6F7562f97'; // ← REPLACE
-const BASE_CHAIN_ID    = 8453;
-const PLATFORM_WALLET  = '0xf2046406D6ccd578206E54207dA9143954F75989';
-
-// ─── ABI ─────────────────────────────────────────────────────────
-const GAME_ABI = [
-  "function createGame(address nftContract, uint256 tokenId, uint256 durationSecs, uint256 assetValueUSD, string calldata description) external",
-  "function buyTickets(uint256 id, uint256 qty) external payable",
-  "function drawWinner(uint256 id) external",
-  "function creatorReclaimNFT(uint256 id) external",
-  "function claimNFT(uint256 id) external",
-  "function getTicketPriceWei() external view returns (uint256)",
-  "function getAllGames() external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
-  "function getGame(uint256 id) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim))",
-  "function getGamesPaginated(uint256 start, uint256 count) external view returns (tuple(address creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, uint256 totalETH, uint256 ticketCount, address winner, bool active, bool drawn, string description, bool nftPendingClaim)[])",
-  "function getParticipants(uint256 id) external view returns (address[])",
-  "function getTicketRanges(uint256 id) external view returns (tuple(address buyer, uint32 rangeStart, uint32 rangeEnd)[])",
-  "function getTicketEntryCount(uint256 id) external view returns (uint256)",
-  "function walletTickets(uint256 id, address wallet) external view returns (uint256)",
-  "function gameCount() external view returns (uint256)",
-  "function totalGamesCompleted() external view returns (uint256)",
-  "function totalETHVolume() external view returns (uint256)",
-  "function hasEntered(uint256 id, address wallet) external view returns (bool)",
-  "function getMyTickets(uint256 id, address wallet) external view returns (uint256)",
-  "function failedCreatorPayouts(address) external view returns (uint256 amount, uint256 firstRecordedAt)",
-  "event GameCreated(uint256 indexed id, address indexed creator, address nftContract, uint256 tokenId, uint256 endTime, uint256 assetValueUSD, string description)",
-  "event TicketsBought(uint256 indexed id, address indexed buyer, uint256 qty, uint256 totalTickets)",
-  "event WinnerDrawn(uint256 indexed id, address indexed winner, uint256 winnerTicketIndex, uint256 totalETH)"
-];
-
-const ERC721_ABI = [
-  "function approve(address to, uint256 tokenId) external",
-  "function setApprovalForAll(address operator, bool approved) external",
-  "function getApproved(uint256 tokenId) external view returns (address)",
-  "function isApprovedForAll(address owner, address operator) external view returns (bool)",
-  "function safeTransferFrom(address from, address to, uint256 tokenId) external",
-  "function ownerOf(uint256 tokenId) external view returns (address)"
-];
-
-// ─── State ────────────────────────────────────────────────────────
-let provider, signer, contract, readContract;
-let userAddress    = null;
-let allGames       = [];
-let currentGameId  = null;
-let ticketPriceWei = 0n;
-let selectedDuration = 86400;
-let selectedNFT    = null; // { contract, tokenId, image, name }
-let openSeaApiKey  = null;
-let winnerData     = null;
-
-// ─── Cursor ───────────────────────────────────────────────────────
-const cursor    = document.querySelector('.cursor');
-const cursorDot = document.querySelector('.cursor-dot');
-let mx=0,my=0,cx=0,cy=0;
-(function loop(){cx+=(mx-cx)*.12;cy+=(my-cy)*.12;cursor.style.transform=`translate(${cx-10}px,${cy-10}px)`;requestAnimationFrame(loop)})();
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursorDot.style.transform=`translate(${mx-2}px,${my-2}px)`},{passive:true});
-document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,input'))cursor.classList.add('hover')},{passive:true});
-document.addEventListener('mouseout', e=>{if(e.target.closest('a,button,input'))cursor.classList.remove('hover')},{passive:true});
-
-// ─── Scroll Progress ──────────────────────────────────────────────
-window.addEventListener('scroll',()=>{
-  const max=document.documentElement.scrollHeight-document.documentElement.clientHeight;
-  document.getElementById('scrollProgress').style.width=(window.pageYOffset/max*100)+'%';
-});
-
-// ─── Reveal ───────────────────────────────────────────────────────
-const revObs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('shown')}),{threshold:.1});
-document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
-
-// ─── Notification ─────────────────────────────────────────────────
-function notify(msg,type='success'){
-  const old=document.querySelector('.notif');if(old)old.remove();
-  const n=document.createElement('div');n.className=`notif ${type}`;n.textContent=msg;
-  document.body.appendChild(n);setTimeout(()=>n.remove(),4000);
-}
-
-// ─── Modal helpers ────────────────────────────────────────────────
-function openModal(id){document.getElementById(id).classList.add('active');}
-function closeModal(id){document.getElementById(id).classList.remove('active');}
-function closeOnBg(e,id){if(e.target===document.getElementById(id))closeModal(id);}
-
-// ─── Wallet Connection ────────────────────────────────────────────
-async function connectWallet(){
-  if(!window.ethereum){notify('Please install MetaMask','error');return;}
-  try {
-    await window.ethereum.request({method:'eth_requestAccounts'});
-    provider = new ethers.BrowserProvider(window.ethereum);
-    const net = await provider.getNetwork();
-    if(net.chainId !== BASE_CHAIN_ID){
-      try {
-        await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16)}]});
-        provider = new ethers.BrowserProvider(window.ethereum);
-      } catch(sw){
-        if(sw.code===4902){
-          await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x'+BASE_CHAIN_ID.toString(16),chainName:'Base',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://mainnet.base.org'],blockExplorerUrls:['https://basescan.org']}]});
-          provider = new ethers.BrowserProvider(window.ethereum);
-        } else { notify('Please switch to Base network','error');return; }
-      }
-    }
-    signer = await provider.getSigner();
-    userAddress = await signer.getAddress();
-    if(CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE'){
-      contract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, signer);
-    }
-    const btn = document.getElementById('connectBtn');
-    if(btn){
-      btn.textContent=userAddress.slice(0,6)+'...'+userAddress.slice(-4);
-      btn.classList.add('connected');
-      btn.style.display='';
-    }
-    notify('Wallet connected · Base Mainnet','success');
-    await checkPendingPayout();
-    document.getElementById('yourGamesSection').style.display='block';
-    renderYourGames();
-    window.ethereum.on('accountsChanged',()=>location.reload());
-    window.ethereum.on('chainChanged',()=>location.reload());
-  } catch(e){
-    if(e.code!==4001) notify('Connection failed: '+e.message,'error');
-  }
-}
-
-// ─── Init ─────────────────────────────────────────────────────────
-async function init(){
-  try {
-    const r = await fetch('/.netlify/functions/api-keys');
-    if(r.ok){ const d=await r.json(); openSeaApiKey=Array.isArray(d.apiKeys?.opensea)?d.apiKeys.opensea[0]:d.apiKeys?.opensea; }
-  } catch(e){}
-
-  // Create a read-only provider so games load for everyone (no wallet required).
-  // Use the Alchemy URL which has correct CORS headers on localhost.
-  try {
-    const _roRpc = window.BU_CONFIG?.activeNetwork?.rpcUrl
-                   || 'https://base-mainnet.g.alchemy.com/v2/zRlDmWXD-OkVUdXuiY8sBppRtbWt9FDx';
-    const _roProv = new ethers.JsonRpcProvider(_roRpc, { chainId: 8453, name: 'base' });
-    readContract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, _roProv);
-  } catch(e){ console.warn('[game] read-only contract init failed', e.message); }
-
-  if(window.ethereum){
-    const accounts = await window.ethereum.request({method:'eth_accounts'}).catch(()=>[]);
-    if(accounts.length>0) await connectWallet();
-  }
-
-  if(CONTRACT_ADDRESS==='YOUR_CONTRACT_ADDRESS_HERE'){
-    document.getElementById('loadingText').textContent='⚠ Contract not yet deployed - showing demo.';
-    renderDemoGames();
-    return;
-  }
-
-  await loadAllGames();
-  setInterval(loadAllGames,30000);
-}
-
-// ─── Load All Games ───────────────────────────────────────────────
-async function loadAllGames(){
-  const _c = contract || readContract;
-  if(!_c) return;
-  try {
-    const raw = await _c.getAllGames();
-    allGames = raw.map((g,i)=>({
-      id            : i,
-      creator       : g.creator,
-      nftContract   : g.nftContract,
-      tokenId       : g.tokenId.toString(),
-      endTime       : Number(g.endTime),
-      assetValueUSD : Number(g.assetValueUSD),
-      totalETH      : ethers.formatEther(g.totalETH),
-      ticketCount   : Number(g.ticketCount),
-      winner        : g.winner,
-      active        : g.active,
-      drawn         : g.drawn,
-      description   : g.description,
-      nftPendingClaim: g.nftPendingClaim,
-      _myTickets    : 0
-    }));
-
-    await enrichWithImages(allGames);
-
-    const completed = await _c.totalGamesCompleted();
-    const volume    = await _c.totalETHVolume();
-    const active    = allGames.filter(g=>g.active&&!g.drawn&&Date.now()/1000<g.endTime).length;
-    document.getElementById('statActive').textContent    = active;
-    document.getElementById('statCompleted').textContent = completed.toString();
-    document.getElementById('statVolume').textContent    = parseFloat(ethers.formatEther(volume)).toFixed(3)+' ETH';
-
-    ticketPriceWei = await _c.getTicketPriceWei();
-
-    renderActiveGames();
-    renderExpiredGames();
-    renderHallOfWinners();
-    if(userAddress) renderYourGames();
-    buildLiveFeed();
-  } catch(e){ console.error('loadAllGames:',e); }
-}
-
-// ─── NFT image enrichment ─────────────────────────────────────────
-async function enrichWithImages(games){
-  if(!openSeaApiKey) return;
-  const toFetch = games.filter(g=>!g.imageUrl).slice(0,20);
-  await Promise.all(toFetch.map(async(g)=>{
-    try {
-      const r = await fetch(`https://api.opensea.io/api/v2/chain/base/contract/${g.nftContract}/nfts/${g.tokenId}`,{headers:{'accept':'application/json','x-api-key':openSeaApiKey}});
-      if(r.ok){const d=await r.json();g.imageUrl=d.nft?.image_url||d.nft?.display_image_url||null;g.nftName=d.nft?.name||`Token #${g.tokenId}`;}
-    } catch(e){}
-  }));
-}
-
-// ─── Render Active / Expired ──────────────────────────────────────
-function renderActiveGames(){
-  const now    = Date.now()/1000;
-  const active = allGames.filter(g=>g.active&&!g.drawn&&now<g.endTime);
-  const ending = active.filter(g=>(g.endTime-now)<3600);
-  renderGrid('activeGrid', active.length?active:null, false);
-  renderGrid('endingGrid', ending.length?ending:null, false);
-}
-
-function renderExpiredGames(){
-  const now     = Date.now()/1000;
-  const expired = allGames.filter(g=>!g.active||g.drawn||now>=g.endTime);
-  expired.sort((a,b)=>{
-    if(a.drawn&&!b.drawn)return -1;
-    if(!a.drawn&&b.drawn)return 1;
-    return b.endTime-a.endTime;
-  });
-  renderGrid('expiredGrid', expired.length?expired:null, true);
-}
-
-function renderYourGames(){
-  if(!userAddress) return;
-  const entered = allGames.filter(g=>g.active&&!g.drawn&&(g._myTickets||0)>0);
-  const created = allGames.filter(g=>(g.creator||'').toLowerCase()===userAddress.toLowerCase());
-  renderGrid('enteredGrid', entered.length?entered:null, false);
-  renderGrid('createdGrid', created.length?created:null, false);
-  // Async ticket fetch
-  allGames.filter(g=>g.active&&!g.drawn).forEach(async(g)=>{
-    if(!contract||!userAddress)return;
-    try {
-      const t=await contract.walletTickets(g.id,userAddress);
-      g._myTickets=Number(t);
-      if(g._myTickets>0){
-        const card=document.getElementById(`card-${g.id}`);
-        if(card)card.classList.add('your-game');
-        renderGrid('enteredGrid',allGames.filter(x=>x.active&&!x.drawn&&x._myTickets>0),false);
-      }
-    } catch(e){}
-  });
-}
-
-function renderGrid(containerId,games,isExpired){
-  const container=document.getElementById(containerId);
-  if(!container)return;
-  if(!games||games.length===0){
-    container.innerHTML=`<div class="empty-state"><div class="skull">${isExpired?'☠':'💀'}</div><p>${isExpired?'No concluded games yet':'No active games right now'}</p></div>`;
-    return;
-  }
-  container.innerHTML=games.map(g=>gameCardHTML(g,isExpired)).join('');
-  games.forEach(g=>{if(!isExpired&&g.active)startTimer(g);});
-}
-
-function gameCardHTML(g,isExpired){
-  const now      = Date.now()/1000;
-  const timeLeft = g.endTime-now;
-  const poolETH  = parseFloat(g.totalETH||0).toFixed(4);
-  const valUSD   = ((g.assetValueUSD||0)/100).toFixed(0);
-  const isEnding = !isExpired&&timeLeft<3600;
-  const myTickets= g._myTickets||0;
-  const oddsVal  = g.ticketCount>0&&myTickets>0?((myTickets/g.ticketCount)*100).toFixed(1):0;
-  const creator  = g.creator||'';
-  const isYours  = userAddress&&creator.toLowerCase()===userAddress.toLowerCase();
-
-  return `
-  <div class="game-card${isExpired?' expired':''}${myTickets>0?' your-game':''}${isEnding?' ending-soon':''}"
-       id="card-${g.id}" onclick="openGameDetail(${g.id})">
-    <div class="game-card-img">
-      ${g.imageUrl
-        ?`<img src="${g.imageUrl}" alt="${g.nftName||'NFT'}" loading="lazy" onerror="this.style.display='none'">`
-        :`<div class="no-img">💀</div>`}
-      ${!isExpired?`
-        <div class="timer-badge">
-          <i class="fas fa-clock timer-icon"></i>
-          <span class="timer-val${isEnding?' urgent':''}" id="timer-${g.id}">${formatTime(timeLeft)}</span>
-        </div>`:''}
-      ${isExpired&&g.drawn?`
-        <div class="winner-badge" onclick="event.stopPropagation();showWinnerRevealById(${g.id})">
-          <span>Winner Announced</span>
-          <p>${g.winner&&g.winner!==ethers.ZeroAddress?g.winner.slice(0,6)+'...'+g.winner.slice(-4):'-'}</p>
-        </div>`:''}
-      ${isExpired&&!g.drawn&&g.ticketCount>0?`
-        <div class="winner-badge" onclick="event.stopPropagation();openGameDetail(${g.id})">
-          <span style="color:#ffaa00">Draw Pending</span>
-          <p>Click to trigger draw</p>
-        </div>`:''}
-    </div>
-    <div class="game-card-body">
-      <div class="game-card-name">${g.nftName||'Based Undead #'+g.tokenId}</div>
-      <div class="game-card-desc">${g.description||'NFT · Token #'+g.tokenId}</div>
-      <div class="game-card-stats">
-        <div class="game-stat"><div class="game-stat-lbl">Tickets</div><div class="game-stat-val accent">${g.ticketCount}</div></div>
-        <div class="game-stat"><div class="game-stat-lbl">Prize Pool</div><div class="game-stat-val">${poolETH} ETH</div></div>
-        <div class="game-stat"><div class="game-stat-lbl">Est. Value</div><div class="game-stat-val">$${valUSD}</div></div>
-        <div class="game-stat">
-          <div class="game-stat-lbl">${myTickets>0?'Your Odds':'Ticket'}</div>
-          <div class="game-stat-val${myTickets>0?' accent':''}">
-            ${myTickets>0?oddsVal+'%':'$1'}
-          </div>
-          ${myTickets>0?`<div class="odds-bar"><div class="odds-fill" style="width:${Math.min(oddsVal,100)}%"></div></div>`:''}
+      <div class="g-form-row">
+        <label class="g-label">Duration</label>
+        <div class="g-duration-pills">
+          <button class="g-pill" type="button" data-dur="3600">1h</button>
+          <button class="g-pill" type="button" data-dur="21600">6h</button>
+          <button class="g-pill active" type="button" data-dur="86400">24h</button>
+          <button class="g-pill" type="button" data-dur="259200">3d</button>
+          <button class="g-pill" type="button" data-dur="604800">7d</button>
         </div>
       </div>
-      ${!isExpired?`
-        <div class="game-card-footer">
-          <button class="btn-primary" onclick="event.stopPropagation();openGameDetail(${g.id})">
-            <i class="fas fa-ticket-alt"></i> Buy Tickets
-          </button>
-          <button class="btn-ghost" onclick="event.stopPropagation();shareGame(${g.id})">
-            <i class="fab fa-x-twitter"></i>
-          </button>
-        </div>`:''}
-    </div>
-  </div>`;
-}
-
-// ─── Hall of Winners ──────────────────────────────────────────────
-function renderHallOfWinners(){
-  const won=allGames.filter(g=>g.drawn&&g.winner&&g.winner!==ethers.ZeroAddress);
-  won.sort((a,b)=>b.endTime-a.endTime);
-  const container=document.getElementById('hallGrid');
-  if(!won.length){container.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="skull">🏆</div><p>First winner will appear here</p></div>`;return;}
-  container.innerHTML=won.slice(0,12).map((g,i)=>{
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'🏆';
-    const d=new Date(g.endTime*1000);
-    return `<div class="hall-card reveal" onclick="showWinnerRevealById(${g.id})" style="cursor:pointer">
-      <div class="trophy">${medal}</div>
-      ${g.imageUrl?`<img src="${g.imageUrl}" alt="${g.nftName||'NFT'}" onerror="this.style.display='none'">`:`<div style="font-size:40px;margin-bottom:12px">💀</div>`}
-      <div class="winner-addr">${g.winner.slice(0,6)}...${g.winner.slice(-4)}</div>
-      <div class="won-item">${g.nftName||'Token #'+g.tokenId}</div>
-      <div class="won-date">${d.toLocaleDateString()}</div>
-    </div>`;
-  }).join('');
-  container.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
-}
-
-// ─── Game Detail Modal ────────────────────────────────────────────
-async function openGameDetail(id){
-  currentGameId=id;
-  const g=allGames[id];
-  if(!g)return;
-  const now=Date.now()/1000;
-  const ended=now>=g.endTime||!g.active||g.drawn;
-
-  document.getElementById('modalTitle').textContent=g.nftName||'Token #'+g.tokenId;
-  const img=document.getElementById('modalImg'),noImg=document.getElementById('modalNoImg');
-  if(g.imageUrl){img.src=g.imageUrl;img.style.display='block';noImg.style.display='none';}
-  else{img.style.display='none';noImg.style.display='flex';}
-
-  document.getElementById('modalTicketPrice').textContent='$1 USD';
-  document.getElementById('modalTicketCount').textContent=g.ticketCount;
-  document.getElementById('modalPool').textContent=parseFloat(g.totalETH||0).toFixed(4)+' ETH';
-  document.getElementById('modalAssetVal').textContent='$'+((g.assetValueUSD||0)/100).toFixed(0);
-
-  const timerEl=document.getElementById('modalTimer');
-  if(!ended){
-    timerEl.textContent=formatTime(g.endTime-now);
-    const ti=setInterval(()=>{
-      const tl=g.endTime-Date.now()/1000;
-      if(tl<=0){timerEl.textContent='Ended';clearInterval(ti);}
-      else timerEl.textContent=formatTime(tl);
-    },1000);
-  } else timerEl.textContent='Game Ended';
-
-  let myTickets=0;
-  if(contract&&userAddress){try{myTickets=Number(await contract.walletTickets(id,userAddress));}catch(e){}}
-  document.getElementById('modalYourTickets').textContent=myTickets;
-  document.getElementById('modalOdds').textContent=g.ticketCount>0&&myTickets>0?((myTickets/g.ticketCount)*100).toFixed(2)+'%':'-';
-
-  await loadParticipants(id);
-
-  const buySection=document.getElementById('buySection');
-  const drawSection=document.getElementById('drawSection');
-  const cancelSection=document.getElementById('cancelSection');
-  buySection.style.display=drawSection.style.display=cancelSection.style.display='none';
-
-  if(g.drawn){}
-  else if(ended&&g.ticketCount>0){drawSection.style.display='block';}
-  else if(ended&&g.ticketCount===0&&userAddress&&(g.creator||'').toLowerCase()===userAddress.toLowerCase()){cancelSection.style.display='block';}
-  else if(!ended){
-    buySection.style.display='block';
-    if(userAddress&&(g.creator||'').toLowerCase()===userAddress.toLowerCase()&&g.ticketCount===0){cancelSection.style.display='block';}
-    updateCostDisplay();
-  }
-
-  openModal('gameModal');
-}
-
-async function loadParticipants(id){
-  const container=document.getElementById('participantList');
-  if(!contract){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Connect wallet to view</div>';return;}
-  try {
-    const p=await contract.getParticipants(id);
-    document.getElementById('modalParticipantCount').textContent=p.length;
-    if(!p.length){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">No participants yet - be first!</div>';return;}
-    const counts={};
-    p.forEach(addr=>{const a=addr.toLowerCase();counts[a]=(counts[a]||0)+1;});
-    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-    container.innerHTML=sorted.map(([addr,cnt])=>{
-      const isYou=userAddress&&addr===userAddress.toLowerCase();
-      return `<div class="participant-row${isYou?' you':''}">
-        <span class="addr">${isYou?'<strong style="color:var(--accent)">You</strong>':addr.slice(0,6)+'...'+addr.slice(-4)}</span>
-        <span class="tkts">${cnt} ticket${cnt>1?'s':''} · ${((cnt/p.length)*100).toFixed(1)}%</span>
-      </div>`;
-    }).join('');
-  } catch(e){container.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Error loading participants</div>';}
-}
-
-function updateCostDisplay(){
-  const qty=getTicketQty();
-  if(ticketPriceWei > 0n){
-    const total=ticketPriceWei * BigInt(qty);
-    document.getElementById('costEth').textContent=parseFloat(ethers.formatEther(total)).toFixed(6)+' ETH';
-    document.getElementById('costUsd').textContent=(qty*1).toFixed(2);
-  } else {
-    document.getElementById('costEth').textContent='~'+qty+' × $1 in ETH';
-    document.getElementById('costUsd').textContent=qty.toFixed(2);
-  }
-}
-
-// ─── Buy Tickets ──────────────────────────────────────────────────
-async function doBuyTickets(){
-  if(!userAddress){openModal('walletModal');return;}
-  if(currentGameId===null)return;
-  const qty=getTicketQty();
-  if(qty<1||qty>100){notify('1-100 tickets per transaction','error');return;}
-  const btn=document.getElementById('buyBtn');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner spin"></i> Buying...';
-  try {
-    const price=await contract.getTicketPriceWei();
-    ticketPriceWei=price;
-    const totalCost=price * BigInt(qty);
-    const withBuffer=totalCost * 101n / 100n;
-    const tx=await contract.buyTickets(currentGameId,qty,{value:withBuffer});
-    notify('Transaction submitted...','info');
-    await tx.wait();
-    notify(`${qty} ticket${qty>1?'s':''} purchased!`,'success');
-    await loadAllGames();
-    await openGameDetail(currentGameId);
-  } catch(e){
-    if(e.code===4001)notify('Transaction cancelled','info');
-    else notify('Failed: '+(e.reason||e.message||'Unknown error').substring(0,80),'error');
-  }
-  btn.disabled=false;btn.innerHTML='<i class="fas fa-ticket-alt"></i> Buy';
-}
-
-// ─── Draw Winner ──────────────────────────────────────────────────
-async function doDrawWinner(){
-  if(!userAddress){openModal('walletModal');return;}
-  const btn=document.querySelector('#drawSection button');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner spin"></i> Drawing winner...';
-  try {
-    const tx=await contract.drawWinner(currentGameId);
-    notify('Drawing winner on-chain...','info');
-    const receipt=await tx.wait();
-    const iface=new ethers.Interface(GAME_ABI);
-    let winnerAddr=null;
-    for(const log of receipt.logs){try{const p=iface.parseLog(log);if(p.name==='WinnerDrawn'){winnerAddr=p.args.winner;break;}}catch(e){}}
-    closeModal('gameModal');
-    await loadAllGames();
-    if(winnerAddr){const g=allGames[currentGameId];showWinnerReveal(winnerAddr,g?.nftName||'Token #'+g?.tokenId,g?.imageUrl);}
-  } catch(e){
-    if(e.code===4001)notify('Transaction cancelled','info');
-    else notify('Draw failed: '+(e.reason||e.message||'').substring(0,80),'error');
-    btn.disabled=false;btn.innerHTML='<i class="fas fa-dice"></i> Draw Winner Now';
-  }
-}
-
-// ─── Cancel Game ──────────────────────────────────────────────────
-async function doCancelGame(){
-  if(!userAddress||currentGameId===null)return;
-  if(!confirm('Reclaim your NFT? Only possible if zero tickets have been sold.'))return;
-  try {
-    const tx=await contract.creatorReclaimNFT(currentGameId);
-    notify('Reclaiming NFT...','info');await tx.wait();
-    notify('NFT returned to your wallet.','success');
-    closeModal('gameModal');await loadAllGames();
-  } catch(e){
-    if(e.code===4001)notify('Cancelled','info');
-    else notify('Failed: '+(e.reason||e.message||'').substring(0,80),'error');
-  }
-}
-
-// ─── Withdraw ─────────────────────────────────────────────────────
-async function withdrawEarnings(){
-  // Payouts are pushed directly on-chain as tickets are sold.
-  // Failed payouts can only be recovered by the contract owner via withdrawFailedPayout().
-  // This banner only appears if a send to your address failed (e.g. contract wallet).
-  notify('Payouts are sent automatically on-chain. If a payout failed, contact the platform owner to recover it.','info');
-}
-
-async function checkPendingPayout(){
-  if(!contract||!userAddress)return;
-  try {
-    const fp=await contract.failedCreatorPayouts(userAddress);
-    // fp.amount is the failed ETH that the owner can recover for this address
-    if(fp.amount && fp.amount > 0n){
-      document.getElementById('withdrawBanner').style.display='flex';
-      document.getElementById('pendingAmount').textContent=parseFloat(ethers.formatEther(fp.amount)).toFixed(6)+' ETH';
-    }
-  } catch(e){}
-}
-
-// ─── Open Create Modal ────────────────────────────────────────────
-async function openCreateModal(){
-  if(!userAddress){openModal('walletModal');return;}
-  openModal('createModal');
-  await loadUserNFTsForCreate();
-}
-
-// ─── NFT Picker (redesigned) ──────────────────────────────────────
-let _allWalletNFTs = [];
-let _activeCollectionSlug = '__all__';
-
-async function loadUserNFTsForCreate(){
-  const loading = document.getElementById('nftPickerLoading');
-  const loaded  = document.getElementById('nftPickerLoaded');
-  const empty   = document.getElementById('nftPickerEmpty');
-  const grid    = document.getElementById('nftPickerGrid');
-
-  const skels = document.getElementById('nftSkeletons');
-  skels.innerHTML = [...Array(6)].map(()=>'<div class="nft-skeleton"></div>').join('');
-  loading.style.display = 'block';
-  loaded.style.display  = 'none';
-  empty.style.display   = 'none';
-  _allWalletNFTs = [];
-  _activeCollectionSlug = '__all__';
-
-  if(!openSeaApiKey){
-    loading.style.display = 'none';
-    empty.style.display   = 'block';
-    empty.innerHTML = '<i class="fas fa-image" style="font-size:32px;margin-bottom:12px;display:block;opacity:.3"></i>No OpenSea API key - enter NFT details manually below.';
-    return;
-  }
-
-  try {
-    let cursor_os = null;
-    for(let page = 0; page < 20; page++){
-      const url = `https://api.opensea.io/api/v2/chain/base/account/${userAddress}/nfts?limit=200${cursor_os ? '&next='+cursor_os : ''}`;
-      const r = await fetch(url, { headers:{ 'accept':'application/json','x-api-key':openSeaApiKey } });
-      if(!r.ok) break;
-      const d = await r.json();
-      const nfts = d.nfts||[];
-      _allWalletNFTs = [..._allWalletNFTs, ...nfts];
-      cursor_os = d.next;
-      if(!cursor_os) break;
-    }
-
-    loading.style.display = 'none';
-
-    if(!_allWalletNFTs.length){
-      empty.style.display = 'block';
-      return;
-    }
-
-    document.getElementById('nftPickerCount').textContent =
-      _allWalletNFTs.length + ' NFT' + (_allWalletNFTs.length !== 1 ? 's' : '');
-    loaded.style.display = 'block';
-
-    // Build collection map: slug → { name, nfts[] }
-    const colMap = {};
-    _allWalletNFTs.forEach(n => {
-      const slug = n.collection || n.contract || 'unknown';
-      if(!colMap[slug]){
-        const label = slug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-        colMap[slug] = { label, nfts:[] };
-      }
-      colMap[slug].nfts.push(n);
-    });
-
-    // Render collection chips
-    const bar = document.getElementById('collectionFilterBar');
-    const slugs = Object.keys(colMap);
-    bar.innerHTML = `<button class="collection-chip active" onclick="filterNFTsByCollection('__all__')">All (${_allWalletNFTs.length})</button>` +
-      slugs.map(s =>
-        `<button class="collection-chip" id="chip-${s.replace(/[^a-z0-9]/gi,'_')}"
-           onclick="filterNFTsByCollection('${s.replace(/'/g,"\\'")}')">
-           ${colMap[s].label} (${colMap[s].nfts.length})
-         </button>`
-      ).join('');
-
-    renderNFTPickerGrid(_allWalletNFTs);
-
-  } catch(e){
-    loading.style.display = 'none';
-    empty.style.display   = 'block';
-    console.error('NFT load error:', e);
-  }
-}
-
-function filterNFTsByCollection(slug){
-  _activeCollectionSlug = slug;
-
-  // Update chip active states
-  document.querySelectorAll('.collection-chip').forEach(el => el.classList.remove('active'));
-  if(slug === '__all__'){
-    const allChip = document.querySelector('.collection-chip');
-    if(allChip) allChip.classList.add('active');
-  } else {
-    const chip = document.getElementById('chip-'+slug.replace(/[^a-z0-9]/gi,'_'));
-    if(chip) chip.classList.add('active');
-  }
-
-  const nfts = slug === '__all__'
-    ? _allWalletNFTs
-    : _allWalletNFTs.filter(n => (n.collection || n.contract || 'unknown') === slug);
-
-  renderNFTPickerGrid(nfts);
-
-  // Scroll grid back to top when switching collections
-  const grid = document.getElementById('nftPickerGrid');
-  if(grid) grid.scrollTop = 0;
-}
-
-function renderNFTPickerGrid(nfts){
-  const grid = document.getElementById('nftPickerGrid');
-  if(!grid) return;
-
-  grid.innerHTML = nfts.map(n => {
-    const img  = n.image_url || n.display_image_url || '';
-    const name = (n.name || 'Token #' + n.identifier).replace(/"/g,'');
-    const safeId = `nftItem-${n.contract}-${n.identifier}`;
-    const isSelected = selectedNFT && selectedNFT.contract === n.contract && selectedNFT.tokenId === n.identifier;
-    return `
-    <div class="nft-picker-item${isSelected?' selected':''}" id="${safeId}"
-         onclick="selectNFT('${n.contract}','${n.identifier}','${img.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')">
-      ${img
-        ? `<img src="${img}" alt="${name}" loading="lazy" onerror="this.style.display='none'">`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.3;background:var(--bg2)">💀</div>`}
-      <div class="nft-overlay">
-        <div class="nft-overlay-name">${name}</div>
-        <div class="nft-overlay-id">#${n.identifier}</div>
+      <div class="g-form-row">
+        <label class="g-label">Self-Declared NFT Value (USD)</label>
+        <input class="g-input" id="cfValue" placeholder="100" inputmode="numeric" value="100">
+        <p class="g-help">Displayed to buyers. Not verified by the platform. Be honest.</p>
       </div>
-      <div class="nft-select-check">✓</div>
-    </div>`;
-  }).join('');
-}
+      <div class="g-form-row">
+        <label class="g-label">Description <span class="g-help-inline">(max 120 chars)</span></label>
+        <textarea class="g-input g-textarea" id="cfDesc" maxlength="120" placeholder="What's on the line?"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn btn-primary" type="button" id="cfSubmit">Create Game</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-function selectNFT(contract,tokenId,image,name){
-  // Deselect all
-  document.querySelectorAll('.nft-picker-item').forEach(el=>el.classList.remove('selected'));
-  const el=document.getElementById(`nftItem-${contract}-${tokenId}`);
-  if(el){el.classList.add('selected');el.scrollIntoView({block:'nearest',behavior:'smooth'});}
-  selectedNFT={contract,tokenId,image,name};
-  document.getElementById('manualContract').value=contract;
-  document.getElementById('manualTokenId').value=tokenId;
-  // Update preview strip
-  const preview=document.getElementById('nftSelectedPreview');
-  const previewImg=document.getElementById('nftPreviewImg');
-  const previewName=document.getElementById('nftPreviewName');
-  const previewAddr=document.getElementById('nftPreviewAddr');
-  previewImg.src=image||'';
-  previewImg.style.display=image?'block':'none';
-  previewName.textContent=name||'Unknown NFT';
-  previewAddr.textContent=contract.slice(0,10)+'...'+contract.slice(-6)+' · #'+tokenId;
-  preview.classList.add('show');
-  updateCreateSummary();
-}
+<!-- ═════════════════════════ GAME DETAIL MODAL ═════════════════════════ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" data-close>×</button>
+    <div class="modal-head">
+      <span class="eyebrow" id="gdEyebrow">Game</span>
+      <h3 id="gdTitle">—</h3>
+    </div>
+    <div class="g-detail-img-wrap">
+      <img id="gdImg" alt="" style="display:none">
+      <div id="gdImgFallback" class="g-detail-img-fallback">💀</div>
+    </div>
+    <div class="g-detail-meta">
+      <div class="g-detail-row"><span>Prize Value</span><strong id="gdValue">—</strong></div>
+      <div class="g-detail-row"><span>Tickets Sold</span><strong id="gdTickets">—</strong></div>
+      <div class="g-detail-row"><span>Pot Size</span><strong id="gdPot">—</strong></div>
+      <div class="g-detail-row"><span>Time Left</span><strong id="gdTime">—</strong></div>
+      <div class="g-detail-row"><span>Your Tickets</span><strong id="gdMine">—</strong></div>
+      <div class="g-detail-row"><span>Your Odds</span><strong id="gdOdds">—</strong></div>
+    </div>
+    <div class="g-buy-row" id="gdBuyRow">
+      <label class="g-label">Buy Tickets <span class="g-help-inline">($1 each)</span></label>
+      <div class="g-buy-input">
+        <button class="g-qty" type="button" data-step="-1">−</button>
+        <input class="g-input" id="gdQty" value="1" inputmode="numeric">
+        <button class="g-qty" type="button" data-step="+1">+</button>
+      </div>
+      <p class="g-help" id="gdCost">~0 ETH</p>
+    </div>
+    <div class="modal-actions" id="gdActions"></div>
+  </div>
+</div>
 
-function clearNFTSelection(){
-  document.querySelectorAll('.nft-picker-item').forEach(el=>el.classList.remove('selected'));
-  selectedNFT=null;
-  document.getElementById('manualContract').value='';
-  document.getElementById('manualTokenId').value='';
-  document.getElementById('nftSelectedPreview').classList.remove('show');
-  updateCreateSummary();
-}
+<!-- ═════════════════════════ WINNER CELEBRATION OVERLAY ═════════════════════════ -->
+<div class="g-celebration" id="celebration" aria-hidden="true">
+  <canvas id="confettiCanvas"></canvas>
+  <div class="g-celebration-card">
+    <div class="g-celebration-eyebrow">A WINNER IS CHOSEN</div>
+    <div class="g-celebration-skull">☠</div>
+    <div class="g-celebration-title">THE CRYPT HAS SPOKEN</div>
+    <div class="g-celebration-name" id="celebrationWinner">—</div>
+    <div class="g-celebration-prize" id="celebrationPrize">—</div>
+    <button class="btn btn-primary" id="celebrationClose">Close</button>
+  </div>
+</div>
 
-// Duration buttons
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('#durationBtns .dur-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('#durationBtns .dur-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedDuration=parseInt(btn.dataset.dur);
-      updateCreateSummary();
-    });
-  });
-});
-
-function updateCreateSummary(){
-  const summary=document.getElementById('createSummary');
-  const hasNFT=selectedNFT||(document.getElementById('manualContract').value.trim());
-  if(!hasNFT){summary.style.display='none';return;}
-  summary.style.display='block';
-  const valUSD=parseFloat(document.getElementById('assetValue').value||0);
-  const d=selectedDuration;
-  const durStr=d>=86400?Math.round(d/86400)+'d':Math.round(d/3600)+'h';
-  const isHighValue=(valUSD*100)>=20000;
-  document.getElementById('summaryText').innerHTML=
-    `NFT: ${selectedNFT?.name||'Custom NFT'}<br>`+
-    `Duration: ${durStr}<br>`+
-    `Ticket price: $1 USD<br>`+
-    `Est. asset value: $${valUSD}<br>`+
-    `You receive: 90% of ticket sales`+
-    (isHighValue?`<br><span style="color:var(--gold)">⚠ High-value game - commit-reveal required (auto-generated)</span>`:'');
-}
-
-// ─── Create Game ──────────────────────────────────────────────────
-async function doCreateGame(){
-  if(!userAddress){openModal('walletModal');return;}
-  const nftContract=(selectedNFT?.contract||document.getElementById('manualContract').value).trim();
-  const tokenId    =(selectedNFT?.tokenId ||document.getElementById('manualTokenId').value).trim();
-  const assetVal   =parseFloat(document.getElementById('assetValue').value||0);
-  const desc       =document.getElementById('gameDesc').value.trim();
-
-  if(!nftContract||!ethers.isAddress(nftContract)){notify('Enter a valid NFT contract address','error');return;}
-  if(!tokenId||isNaN(parseInt(tokenId))){notify('Enter a valid token ID','error');return;}
-  if(assetVal<1){notify('Minimum asset value is $1 USD','error');return;}
-  if(Math.round(assetVal*100)<100){notify('Minimum asset value is $1 USD','error');return;}
-
-  const btn=document.getElementById('createConfirmBtn');
-  btn.disabled=true;
-  // DEBUG - open F12 console to see this
-  console.log('=== CREATE GAME DEBUG ===');
-  console.log('selectedNFT object:', selectedNFT);
-  console.log('manualContract field:', document.getElementById('manualContract').value);
-  console.log('manualTokenId field:', document.getElementById('manualTokenId').value);
-  console.log('assetValue field raw:', document.getElementById('assetValue').value);
-
-  try {
-    const nftCon = new ethers.Contract(nftContract, ERC721_ABI, signer);
-    const tokenIdBN = BigInt(tokenId);
-
-    // Step 1: Approve the contract to pull the NFT.
-    // The contract calls transferFrom(msg.sender, address(this), tokenId) inside createGame.
-    // We just need approval - do NOT push the NFT manually.
-    btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 1/2: Approving NFT...';
-    document.getElementById('createStepNote').textContent = 'Approving NFT transfer (sign in wallet)...';
-
-    try {
-      // Try setApprovalForAll first - most reliable across all collections
-      const alreadyAll = await nftCon.isApprovedForAll(userAddress, CONTRACT_ADDRESS).catch(() => false);
-      if (!alreadyAll) {
-        // Check individual token approval before trying setApprovalForAll
-        let alreadyDirect = false;
-        try {
-          const approvedAddr = await nftCon.getApproved(tokenIdBN);
-          alreadyDirect = approvedAddr.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
-        } catch(e) {}
-
-        if (!alreadyDirect) {
-          // Try individual approve first, fall back to setApprovalForAll
-          try {
-            const appTx = await nftCon.approve(CONTRACT_ADDRESS, tokenIdBN);
-            await appTx.wait();
-          } catch(approveErr) {
-            if (approveErr.code === 4001) {
-              notify('Transaction cancelled', 'info');
-              btn.disabled = false;
-              btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
-              document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
-              return;
-            }
-            // Individual approve failed - try setApprovalForAll
-            const allTx = await nftCon.setApprovalForAll(CONTRACT_ADDRESS, true);
-            await allTx.wait();
-          }
-        }
-      }
-    } catch(approvalErr) {
-      if (approvalErr.code === 4001) {
-        notify('Transaction cancelled', 'info');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
-        document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
-        return;
-      }
-      notify('Approval failed: ' + (approvalErr.reason || approvalErr.message || 'unknown').substring(0, 100), 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-bolt"></i> List NFT & Start Game';
-      document.getElementById('createStepNote').textContent = 'Step 1: Approve NFT · Step 2: Create game';
-      return;
-    }
-
-    btn.innerHTML = '<i class="fas fa-spinner spin"></i> Step 2/2: Creating game...';
-    document.getElementById('createStepNote').textContent = 'Creating game on-chain...';
-
-   const assetValueUSD=Math.round(assetVal*100);
-    console.log('--- Final params being sent to contract ---');
-    console.log('nftContract:', nftContract);
-    console.log('tokenId string:', tokenId);
-    console.log('tokenId as BigNumber:', BigInt(tokenId).toString());
-    console.log('selectedDuration:', selectedDuration);
-    console.log('assetValueUSD (cents):', assetValueUSD);
-    console.log('desc:', desc);
-    console.log('desc length:', desc.length);
-
-    let tx;
-    try {
-      let gasEstimate;
-      try {
-        gasEstimate = await contract.createGame.estimateGas(
-          nftContract, BigInt(tokenId), selectedDuration, assetValueUSD, desc
-        );
-        gasEstimate = gasEstimate * 140n / 100n; // 40% buffer
-        console.log('Gas estimate (with buffer):', gasEstimate.toString());
-      } catch(estErr) {
-        console.error('Gas estimate failed:', estErr);
-        const rawEst = estErr?.error?.data || estErr?.data?.data || estErr?.data || '';
-        let estMsg = estErr?.reason || estErr?.error?.message || estErr?.message || 'Contract will revert';
-        if (typeof rawEst === 'string' && rawEst.startsWith('0x08c379a0')) {
-          try { const d = ethers.AbiCoder.defaultAbiCoder().decode(['string'],'0x'+rawEst.slice(10)); estMsg=d[0]; } catch(e){}
-        }
-        if (typeof rawEst === 'string' && rawEst.includes('e1f1d02e')) estMsg = 'Collection not allowed by contract';
-        notify('Transaction will fail: ' + estMsg.substring(0,160), 'error');
-        btn.disabled=false;
-        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
-        return;
-      }
-      tx = await contract.createGame(nftContract,BigInt(tokenId),selectedDuration,assetValueUSD,desc,{gasLimit:gasEstimate});
-    } catch(txErr) {
-      console.error('=== RAW TX ERROR ===', txErr);
-      console.error('code:', txErr?.code);
-      console.error('reason:', txErr?.reason);
-      console.error('message:', txErr?.message);
-      console.error('data:', txErr?.data);
-      console.error('error.data:', txErr?.error?.data);
-
-      // Try to decode the revert reason
-      const raw = txErr?.data?.data || txErr?.error?.data || txErr?.data || '';
-      console.error('raw revert data:', raw);
-
-      // Known contract revert strings (require messages)
-      // Known custom error selectors
-      if (typeof raw === 'string' && raw.startsWith('0xe1f1d02e')) {
-        notify('This NFT collection is not allowlisted. The contract owner needs to either allowlist this collection on Basescan, or disable the allowlist entirely.', 'error');
-        btn.disabled=false;
-        btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-        document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
-        throw txErr;
-      }
-
-      // Known contract revert strings (require messages)
-      const revertStrings = {
-        'Invalid NFT contract': 'Invalid NFT contract address',
-        'Min 1 hour': 'Duration too short (min 1 hour)',
-        'Max 7 days': 'Duration too long (max 7 days)',
-        'Asset must be >= $1': 'Asset value must be at least $1',
-        'Description too long': 'Description over 120 characters',
-        'Not ERC721': 'This contract is not an ERC721 NFT',
-        'No ERC165 support': 'NFT contract does not support ERC165 - cannot verify it is an NFT',
-        'Collection not allowlisted': 'This NFT collection is not allowlisted',
-        'Not token owner': 'You do not own this token',
-        'NFT not approved': 'NFT approval was not detected by the contract',
-      };
-
-      let msg = txErr?.reason || '';
-      if (!msg && typeof raw === 'string' && raw.length > 10) {
-        // Try decoding as revert string (starts with 0x08c379a0)
-        if (raw.startsWith('0x08c379a0')) {
-          try {
-            const decoded = ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + raw.slice(10));
-            msg = decoded[0];
-          } catch(e) {}
-        }
-      }
-      if (!msg) msg = txErr?.message || 'Execution reverted';
-
-      // Check against known strings
-      for (const [key, val] of Object.entries(revertStrings)) {
-        if (msg.includes(key)) { msg = val; break; }
-      }
-
-      notify('Failed: ' + msg.substring(0, 160), 'error');
-      throw txErr; // rethrow so outer catch resets the button
-    }
-    notify('Game creation in progress...','info');
-    await tx.wait();
-    notify('🎮 Game is live!','success');
-    closeModal('createModal');
-    selectedNFT=null;
-    document.getElementById('nftSelectedPreview').classList.remove('show');
-    await loadAllGames();
-
-  } catch(e){
-    console.error('createGame error (full object):', e);
-    if(e.code===4001)notify('Transaction cancelled','info');
-    else {
-      let msg = 'Unknown error';
-      // Try ethers decoded reason first
-      if(e.reason) {
-        msg = e.reason;
-      } else {
-        // Try to decode custom error selector from raw data
-        const rawData = e.data?.data || e.error?.data || e.data;
-        if(typeof rawData === 'string' && rawData.length >= 10){
-          const selector = rawData.slice(0,10);
-          const knownErrors = {
-            '0xe1f1d02e': 'Collection not allowlisted - owner must call setAllowlistEnabled(false) or allowlist this collection',
-            '0x8d6ea8be': 'Game is not active',
-            '0x2a5d262e': 'Game already drawn',
-            '0x82b42900': 'Not the creator',
-            '0x1a5695f5': 'Insufficient payment',
-          };
-          msg = knownErrors[selector] || `Contract error (${selector}) - check Basescan for details`;
-        } else {
-          msg = e.data?.message || e.message || 'Execution reverted';
-        }
-      }
-      notify('Failed: '+msg.substring(0,160),'error');
-    }
-    btn.disabled=false;
-    btn.innerHTML='<i class="fas fa-bolt"></i> List NFT & Start Game';
-    document.getElementById('createStepNote').textContent='Step 1: Approve NFT transfer · Step 2: Create game';
-  }
-}
-
-// ─── Winner Reveal ────────────────────────────────────────────────
-function showWinnerReveal(address,nftName,imageUrl){
-  winnerData={address,nftName,imageUrl};
-  document.getElementById('winnerAddress').textContent=address.slice(0,6)+'...'+address.slice(-4);
-  document.getElementById('winnerPrize').textContent='won '+(nftName||'the NFT');
-  openModal('winnerModal');
-}
-function showWinnerRevealById(id){
-  const g=allGames[id];
-  if(!g?.winner)return;
-  showWinnerReveal(g.winner,g.nftName||'Token #'+g.tokenId,g.imageUrl);
-}
-
-// ─── Share ────────────────────────────────────────────────────────
-function shareGame(id){
-  const gId=id??currentGameId;if(gId===null)return;
-  const g=allGames[gId];
-  const url=`${location.origin}/game?id=${gId}`;
-  const text = encodeURIComponent(`Only one will survive: ${g.nftName||'Token #'+g.tokenId} is LIVE! 🎮
-
-$1 to enter. One winner snatches it all.  
-Do you have what it takes to rise above the rest?  
-
-Est. value: $${((g.assetValueUSD||0)/100).toFixed(0)} 🔥 
-Enter now: ${url}  
-
-#BasedUndeads #UndeadRaffle #RiseOrFall #NFTHunt
-`);
-  window.open(`https://twitter.com/intent/tweet?text=${text}`,'_blank');
-}
-function shareWinner(){
-  if(!winnerData)return;
-  const text=encodeURIComponent(`☠ Winner Announced on The $1 Game!\n${winnerData.address.slice(0,6)}... just won ${winnerData.nftName||'an NFT'}!\n\nPlay at basedundeads.xyz/game\n#BasedUndeads #NFT #OnChain`);
-  window.open(`https://twitter.com/intent/tweet?text=${text}`,'_blank');
-}
-function copyGameLink(){
-  if(currentGameId===null)return;
-  navigator.clipboard.writeText(`${location.origin}/game?id=${currentGameId}`).then(()=>notify('Link copied!'));
-}
-
-// ─── Tabs ──────────────────────────────────────────────────────────
-function switchMainTab(tab){
-  document.querySelectorAll('#active > .tab-bar .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(tab==='all'?0:1)));
-  document.getElementById('allActiveGames').classList.toggle('active',tab==='all');
-  document.getElementById('endingGames').classList.toggle('active',tab==='ending');
-}
-function switchYourTab(tab){
-  document.querySelectorAll('#yourGamesSection .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(tab==='entered'?0:1)));
-  document.getElementById('yourEnteredGames').classList.toggle('active',tab==='entered');
-  document.getElementById('yourCreatedGames').classList.toggle('active',tab==='created');
-}
-
-// ─── Time Formatting ──────────────────────────────────────────────
-function formatTime(secs){
-  if(secs<=0)return'Ended';
-  const d=Math.floor(secs/86400),h=Math.floor((secs%86400)/3600),m=Math.floor((secs%3600)/60),s=Math.floor(secs%60);
-  if(d>0)return`${d}d ${h}h`;
-  if(h>0)return`${h}h ${m}m`;
-  return`${m}m ${s}s`;
-}
-function startTimer(g){
-  const el=document.getElementById(`timer-${g.id}`);if(!el)return;
-  const ti=setInterval(()=>{
-    const tl=g.endTime-Date.now()/1000;
-    if(!el.isConnected){clearInterval(ti);return;}
-    if(tl<=0){el.textContent='Ended';el.classList.add('urgent');clearInterval(ti);return;}
-    el.textContent=formatTime(tl);
-    if(tl<3600)el.classList.add('urgent');
-  },1000);
-}
-
-// ─── Live Feed Builder ────────────────────────────────────────────
-function buildLiveFeed(){
-  const now = Date.now()/1000;
-  const events = [];
-
-  allGames.forEach(g=>{
-    const name = g.nftName || 'Token #'+g.tokenId;
-    const timeLeft = g.endTime - now;
-
-    // Active game just created (started less than 1 hour ago)
-    if(g.active && !g.drawn && (now - (g.endTime - (g.endTime > now ? timeLeft : 0))) < 3600){
-      // We don't have createdAt but endTime - duration approximates it
-      // Just flag very new games (less than 10 tickets, active)
-      if(g.ticketCount <= 5){
-        events.push({ type:'new', name, valUSD: ((g.assetValueUSD||0)/100).toFixed(0) });
-      }
-    }
-
-    // Ending soon (less than 1 hour left, still active)
-    if(g.active && !g.drawn && timeLeft > 0 && timeLeft < 3600){
-      events.push({ type:'ending', name, timeLeft });
-    }
-
-    // Ticket purchases - show top buyer if tickets exist
-    if(g.active && !g.drawn && g.ticketCount > 0){
-      events.push({ type:'tickets', name, count: g.ticketCount });
-    }
-
-    // Winner announced
-    if(g.drawn && g.winner && g.winner !== ethers.ZeroAddress){
-      const pool = parseFloat(g.totalETH||0).toFixed(4);
-      events.push({ type:'winner', name, winner: g.winner, pool });
-    }
-  });
-
-  // If nothing real yet, show a placeholder
-  if(!events.length){
-    events.push({ type:'waiting' });
-  }
-
-  // Build HTML - duplicate for seamless scroll loop
-  const makeItem = ev => {
-    if(ev.type === 'new')
-      return `<div class="live-event"><span class="dot"></span> New game live - <span class="hl">${ev.name}</span> · Est. $${ev.valUSD}</div>`;
-    if(ev.type === 'ending')
-      return `<div class="live-event"><span class="dot"></span> ⏳ Ending in ${formatTime(ev.timeLeft)} - <span class="hl">${ev.name}</span></div>`;
-    if(ev.type === 'tickets')
-      return `<div class="live-event"><span class="dot"></span> <span class="hl">${ev.count} ticket${ev.count!==1?'s':''}</span> sold in <span class="hl">${ev.name}</span></div>`;
-    if(ev.type === 'winner')
-      return `<div class="live-event"><span class="dot"></span> 🏆 <span class="hl">${ev.winner.slice(0,6)}…${ev.winner.slice(-4)}</span> won <span class="hl">${ev.name}</span> · ${ev.pool} ETH pool</div>`;
-    return `<div class="live-event"><span class="dot"></span> No active games yet - <span class="hl">be the first to create one!</span></div>`;
-  };
-
-  const html = [...events, ...events].map(makeItem).join('');
-  document.getElementById('liveBar').innerHTML = html;
-}
-
-// ─── Demo mode ────────────────────────────────────────────────────
-// FIX: All fields now fully populated to prevent .toLowerCase() errors
-function renderDemoGames(){
-  const demoGames=[
-    {
-      id:0,creator:'0x0000000000000000000000000000000000000000',
-      nftName:'Based Undead #421',nftContract:'0x0000000000000000000000000000000000000001',
-      tokenId:'421',description:'Rare 1/1 custom warrior',ticketCount:47,
-      totalETH:'0.0141',assetValueUSD:25000,
-      endTime:Math.floor(Date.now()/1000)+3600*8,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
-    },
-    {
-      id:1,creator:'0x0000000000000000000000000000000000000000',
-      nftName:'Based Undead #69',nftContract:'0x0000000000000000000000000000000000000001',
-      tokenId:'69',description:'OG genesis undead',ticketCount:183,
-      totalETH:'0.0549',assetValueUSD:100000,
-      endTime:Math.floor(Date.now()/1000)+3600*2,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
-    },
-    {
-      id:2,creator:'0x0000000000000000000000000000000000000000',
-      nftName:'Based Undead #1337',nftContract:'0x0000000000000000000000000000000000000001',
-      tokenId:'1337',description:'Legendary skull knight',ticketCount:22,
-      totalETH:'0.0066',assetValueUSD:5000,
-      endTime:Math.floor(Date.now()/1000)+86400*3,
-      active:true,drawn:false,imageUrl:null,_myTickets:0,winner:ethers.ZeroAddress
-    },
-  ];
-  allGames=demoGames;
-  buildLiveFeed();
-  document.getElementById('statActive').textContent='3';
-  document.getElementById('statCompleted').textContent='0';
-  document.getElementById('statVolume').textContent='0 ETH';
-  renderGrid('activeGrid',demoGames,false);
-}
-
-// ─── Ticket Qty Counter ───────────────────────────────────────────
-let _ticketQty=1;
-function getTicketQty(){return _ticketQty;}
-function setQty(n){
-  _ticketQty=Math.max(1,Math.min(100,n));
-  document.getElementById('qtyDisplay').textContent=_ticketQty;
-  document.getElementById('qtyMinus').disabled=_ticketQty<=1;
-  document.getElementById('qtyPlus').disabled=_ticketQty>=100;
-  updateCostDisplay();
-}
-function changeQty(delta){setQty(_ticketQty+delta);}
-
-// ─── URL param + mobile nav ───────────────────────────────────────
-window.addEventListener('DOMContentLoaded',()=>{
-  const params=new URLSearchParams(location.search);
-  const gameId=params.get('id');
-  if(gameId!==null)setTimeout(()=>openGameDetail(parseInt(gameId)),1500);
-
-  // Mobile nav is handled by BUUI.bindMobileNav()
-
-  init();
-});
-</script>
-<script src="./config.js"></script>
+<!-- ═════════════════════════ SCRIPTS ═════════════════════════ -->
 <script src="./js/web3.js"></script>
+<script src="./js/images.js"></script>
 <script src="./js/ui.js"></script>
-
 <script>
-// New nav init (injected by patch.py)
-(function initNewNav() {
-  if (typeof window.BUUI === 'undefined') return;
-  window.BUUI.renderNavSocials();
-  window.BUUI.renderNetworkPill();
-  window.BUUI.bindMobileNav();
-  window.BU && window.BU.onAccountChange && window.BU.onAccountChange(async (addr) => {
-    // Refresh nav wallet button
-    window.BUUI && window.BUUI.renderWalletSlot();
-    if (addr) {
-      // Sync BU's connected signer into game.html's local state so
-      // buyTickets / createGame / renderYourGames all work.
-      signer      = window.BU.getSigner();
-      userAddress = addr;
-      if (typeof CONTRACT_ADDRESS !== 'undefined' &&
-          CONTRACT_ADDRESS !== 'YOUR_CONTRACT_ADDRESS_HERE') {
-        contract = new ethers.Contract(CONTRACT_ADDRESS, GAME_ABI, signer);
-      }
-      // Reload games so "Your Games" section appears
-      await loadAllGames();
-    } else {
-      signer = null; userAddress = null; contract = null;
-    }
-  });
-  // Wallet slot
-  if (typeof window.BU !== 'undefined' && window.BU.tryEagerConnect) {
-    Promise.resolve()
-      .then(() => window.BU.loadABIs && window.BU.loadABIs())
-      .then(() => window.BU.upgradeProviderFromKeys && window.BU.upgradeProviderFromKeys())
-      .then(() => window.BU.tryEagerConnect())
-      .then(() => window.BUUI.renderWalletSlot())
-      .catch(() => window.BUUI.renderWalletSlot());
-  }
-})();
+  window.ALCHEMY_KEY  = '';
+  window.OPENSEA_KEY  = '';
+  window.BASESCAN_KEY = '';
+  fetch('/.netlify/functions/api-keys')
+    .then(r => r.json())
+    .then(d => {
+      if (d.apiKeys?.alchemy)  window.ALCHEMY_KEY  = d.apiKeys.alchemy;
+      if (d.apiKeys?.basescan) window.BASESCAN_KEY = d.apiKeys.basescan;
+      if (d.apiKeys?.opensea)  window.OPENSEA_KEY  = Array.isArray(d.apiKeys.opensea) ? d.apiKeys.opensea[0] : d.apiKeys.opensea;
+    })
+    .catch(() => {});
 </script>
+<script src="./js/data.js"></script>
+<script src="./js/page-game.js?v=2"></script>
+
 </body>
 </html>

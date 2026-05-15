@@ -23,6 +23,7 @@ window.BU_CONFIG = {
     nft:      "0x4Ec576C1Cc8e462cEca264FE52B10Cc75F7EC7Ea",
     staking:  "0xCd3Ce3d26926Cc942E0A58cE290fB3709dA42dB1",
     renderer: "0x71565FD19431f917F38DA462433bA1D7A81Ec700",
+    game:     "0x219fA75999FC26c26E47fBbeF275C3Bb5c03564b",
   },
   collection: {
     totalSupply: 6666,
